@@ -44,7 +44,7 @@ const validProvider: ProviderConfig = {
   base_url: "https://api.anthropic.com/v1/messages",
   api_key: "sk-secret-value",
   model: "claude-sonnet",
-  thinking: true,
+  thinking: "high",
   context_window: 1_000_000,
   max_output_tokens: 128_000,
 };
@@ -126,6 +126,7 @@ describe("ProviderLogin", () => {
     expect(rendered).toContain("Provider login");
     expect(rendered).toContain("1000000");
     expect(rendered).toContain("128000");
+    expect(rendered).toContain("high");
     expect(rendered).not.toContain("sk-secret-value");
   });
 
@@ -146,7 +147,7 @@ describe("ProviderLogin", () => {
     });
   });
 
-  it("navigates with Tab and toggles both two-way fields with arrows", async () => {
+  it("navigates with Tab and follows the protocol default for thinking", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     mount(validProvider, onSubmit);
 
@@ -162,10 +163,30 @@ describe("ProviderLogin", () => {
       await Promise.resolve();
     });
 
+    // Switching anthropic -> openai moves the untouched default from high to
+    // off; the right arrow then advances off -> minimal.
     expect(onSubmit).toHaveBeenCalledWith({
       ...validProvider,
       protocol: "openai",
-      thinking: false,
+      thinking: "minimal",
+    });
+  });
+
+  it("keeps an explicit thinking level when the protocol changes", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    mount({ ...validProvider, thinking: "medium" }, onSubmit);
+
+    send("", { tab: true });
+    send("", { rightArrow: true });
+    send("", { return: true });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...validProvider,
+      thinking: "medium",
+      protocol: "openai",
     });
   });
 

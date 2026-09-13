@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { ProviderConfig } from "../config/config.js";
+import type { ProviderConfig, ThinkingLevel } from "../config/config.js";
 import type { ConversationManager } from "../conversation/conversation.js";
 
 import type { StreamEvent } from "./events.js";
@@ -70,7 +70,7 @@ import type { ToolSchema } from "@/tools/types.js";
 // 	eager_input_streaming?: boolean | null;
 // }
 
-export interface LLMClient extends Partial<MaxTokensSetter> {
+export interface LLMClient extends Partial<MaxTokensSetter>, Partial<ThinkingLevelControl> {
   stream(
     conversationManager: ConversationManager,
     toolSchemas: ToolSchema[],
@@ -82,6 +82,12 @@ export interface LLMClient extends Partial<MaxTokensSetter> {
 
 export interface MaxTokensSetter {
   setMaxOutputTokens(maxTokens: number): void;
+}
+
+/** Runtime control of the PI-equivalent thinking level. */
+export interface ThinkingLevelControl {
+  setThinkingLevel(level: ThinkingLevel): void;
+  getThinkingLevel(): ThinkingLevel;
 }
 
 // Use dynamic import for lazy loading

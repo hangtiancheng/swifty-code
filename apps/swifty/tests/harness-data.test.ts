@@ -361,3 +361,92 @@ describe("multimodal provider requests", () => {
     },
   );
 });
+
+describe("Anthropic thinking budget under an output cap", () => {
+  async function captureAnthropicBody(
+    thinking: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max",
+    maxOutputTokens: number,
+  ) {
+    let request: unknown;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init: RequestInit) => {
+        request = JSON.parse(z.string().parse(init.body));
+        const events = [
+          {
+            type: "message_start",
+            message: {
+              id: "test",
+              type: "message",
+              role: "assistant",
+              model: "test",
+              content: [],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: 1, output_tokens: 0 },
+            },
+          },
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: 1 },
+          },
+          { type: "message_stop" },
+        ];
+        return Promise.resolve(
+          new Response(
+            events
+              .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+              .join(""),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
+      }),
+    );
+    const client = new AnthropicClient(
+      {
+        name: "test",
+        protocol: "anthropic",
+        base_url: "https://example.invalid",
+        api_key: "test",
+        model: "test",
+        thinking,
+        max_output_tokens: maxOutputTokens,
+      },
+      "stable system",
+    );
+    const conversation = new ConversationManager();
+    conversation.addUserMessage("hi");
+    for await (const event of client.stream(conversation, [])) {
+      expect(event.type).not.toBe("error");
+    }
+    return z
+      .object({
+        max_tokens: z.number(),
+        thinking: z.object({ type: z.string(), budget_tokens: z.number().optional() }),
+      })
+      .parse(request);
+  }
+
+  it("shrinks the budget instead of disabling thinking when it does not fit", async () => {
+    // high requests 16384, but the cap only leaves 16384 - 1024 for thinking.
+    const body = await captureAnthropicBody("high", 16384);
+    expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 15360 });
+    expect(body.thinking.budget_tokens).toBeLessThan(body.max_tokens);
+  });
+
+  it("reserves at least one answer window for a tight cap", async () => {
+    const body = await captureAnthropicBody("high", 2048);
+    expect(body.thinking).toEqual({ type: "enabled", budget_tokens: 1024 });
+  });
+
+  it("disables thinking when the cap cannot hold a valid budget", async () => {
+    const body = await captureAnthropicBody("high", 1500);
+    expect(body.thinking).toEqual({ type: "disabled" });
+  });
+
+  it("disables thinking when the level is off", async () => {
+    const body = await captureAnthropicBody("off", 128000);
+    expect(body.thinking).toEqual({ type: "disabled" });
+  });
+});

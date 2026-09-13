@@ -83,6 +83,7 @@ providers:
     base_url: https://api.anthropic.com
     model: claude-sonnet-4-20250514
     # api_key defaults to $ANTHROPIC_API_KEY
+    thinking: high # off | minimal | low | medium | high | xhigh | max
 
 permission_mode: default
 
@@ -111,16 +112,18 @@ enable_coordinator_mode: false
 
 Provider fields:
 
-| Field             | Required | Description                                                          |
-| ----------------- | -------- | -------------------------------------------------------------------- |
-| name              | yes      | Display name for the provider                                        |
-| protocol          | yes      | One of: anthropic, openai, openai-compat                             |
-| base_url          | yes      | API base URL                                                         |
-| model             | yes      | Model identifier                                                     |
-| api_key           | no       | API key (falls back to environment variable)                         |
-| thinking          | no       | Enable extended thinking (default: true)                             |
-| context_window    | no       | Context window in tokens (default: 1000000; no model-name inference) |
-| max_output_tokens | no       | Maximum output tokens (default: 128000)                              |
+| Field             | Required | Description                                                                                                                                                                                                                                                                            |
+| ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name              | yes      | Display name for the provider                                                                                                                                                                                                                                                          |
+| protocol          | yes      | One of: anthropic, openai, openai-compat                                                                                                                                                                                                                                               |
+| base_url          | yes      | API base URL                                                                                                                                                                                                                                                                           |
+| model             | yes      | Model identifier                                                                                                                                                                                                                                                                       |
+| api_key           | no       | API key (falls back to environment variable)                                                                                                                                                                                                                                           |
+| thinking          | no       | Thinking level: off, minimal, low, medium, high, xhigh, max. Defaults to `high` for `anthropic` and `off` for `openai`/`openai-compat` (reasoning parameters are only sent when configured). A legacy `true`/`false` is still accepted (`false` → off, `true` → the protocol default). |
+| context_window    | no       | Context window in tokens (default: 1000000; no model-name inference)                                                                                                                                                                                                                   |
+| max_output_tokens | no       | Output cap for the model (default: 128000, never above `context_window`). Set this for models with a smaller output limit.                                                                                                                                                             |
+
+The thinking level controls reasoning depth. For `anthropic` it maps to a thinking token budget (minimal 1024, low 2048, medium 8192, high 16384, xhigh 32768, max 65536); for `openai` and `openai-compat` it maps to the provider reasoning effort. The budget shares `max_output_tokens` and always leaves at least 1024 answer tokens, so lower `max_output_tokens` shrinks the thinking budget instead of disabling it (below a 2048-token cap no valid budget remains and thinking falls back to disabled). On `openai`/`openai-compat`, the effort string is passed through verbatim, and only levels supported by the model are accepted (`xhigh`/`max` are model-specific). Use `/thinking <level>` to change it at runtime, or `/thinking` to show the current level.
 
 API keys are resolved in this order: explicit api_key field, then environment variables (ANTHROPIC_API_KEY for anthropic, OPENAI_API_KEY for openai and openai-compat).
 
@@ -134,7 +137,7 @@ swifty
 
 Launches the terminal interface. If multiple providers are configured, a provider selection screen appears first.
 
-Use `/login` to configure and activate a provider from the TUI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or thinking, Enter to save, and Esc to cancel. Duplicate names receive numeric suffixes (`name2`, `name3`, …).
+Use `/login` to configure and activate a provider from the TUI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or cycle the thinking level, Enter to save, and Esc to cancel. Changing the protocol also moves an untouched thinking level to that protocol's default. Duplicate names receive numeric suffixes (`name2`, `name3`, …).
 
 The form saves to the project's `.swifty/config.local.yaml`, retaining existing providers and other settings. Context window accepts integers from 1000 to 10000000; max output accepts integers from 1 to 1000000 and must not exceed the context window. Empty optional fields use the defaults above.
 
@@ -180,6 +183,7 @@ Inside the TUI, these commands are available:
 | /sandbox [1/2/3]        | Configure sandbox (1=on+auto, 2=on+manual, 3=off)                                  |
 | /worktree               | List git worktrees                                                                 |
 | /mcp                    | Show MCP server status                                                             |
+| /thinking [level]       | Show or set the thinking level (off, minimal, low, medium, high, xhigh, max)       |
 | /quit                   | Exit the application                                                               |
 
 ### Keyboard Shortcuts

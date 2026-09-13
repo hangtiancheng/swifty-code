@@ -5,8 +5,11 @@ import type { ReactNode } from "react";
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
-  DEFAULT_PROVIDER_THINKING,
+  DEFAULT_THINKING_LEVEL,
+  defaultThinkingLevelFor,
   type ProviderConfig,
+  type ThinkingLevel,
+  THINKING_LEVELS,
 } from "../config/config.js";
 import { ProviderLoginSchema } from "../config/provider-login.js";
 
@@ -34,7 +37,7 @@ interface FormState {
   base_url: string;
   api_key: string;
   model: string;
-  thinking: boolean;
+  thinking: ThinkingLevel;
   context_window: string;
   max_output_tokens: string;
 }
@@ -60,14 +63,29 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   max_output_tokens: "Max output tokens",
 };
 
+function normalizeThinkingLevel(
+  value: ProviderConfig["thinking"],
+  protocol: ProviderConfig["protocol"],
+): ThinkingLevel {
+  if (typeof value === "boolean") {
+    return value ? defaultThinkingLevelFor(protocol) : "off";
+  }
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  if (typeof value === "string" && (THINKING_LEVELS as readonly string[]).includes(value)) {
+    return value;
+  }
+  return defaultThinkingLevelFor(protocol);
+}
+
 function createInitialForm(initialValues?: Partial<ProviderConfig>): FormState {
+  const protocol = initialValues?.protocol ?? "anthropic";
   return {
     name: initialValues?.name ?? "",
-    protocol: initialValues?.protocol ?? "anthropic",
+    protocol,
     base_url: initialValues?.base_url ?? "",
     api_key: initialValues?.api_key ?? "",
     model: initialValues?.model ?? "",
-    thinking: initialValues?.thinking ?? DEFAULT_PROVIDER_THINKING,
+    thinking: normalizeThinkingLevel(initialValues?.thinking, protocol),
     context_window: String(initialValues?.context_window ?? DEFAULT_CONTEXT_WINDOW),
     max_output_tokens: String(initialValues?.max_output_tokens ?? DEFAULT_MAX_OUTPUT_TOKENS),
   };
@@ -118,7 +136,7 @@ function displayValue(form: FormState, field: FieldKey): string {
     return form.protocol;
   }
   if (field === "thinking") {
-    return form.thinking ? "on" : "off";
+    return form.thinking;
   }
   if (field === "api_key") {
     return form.api_key ? "•".repeat(form.api_key.length) : "";
@@ -278,7 +296,14 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
         const index = PROTOCOLS.indexOf(formRef.current.protocol);
         const next = (index + (key.rightArrow ? 1 : -1) + PROTOCOLS.length) % PROTOCOLS.length;
         const protocol = PROTOCOLS[next] ?? PROTOCOLS[0];
-        const nextForm = { ...formRef.current, protocol };
+        // Keep an explicitly chosen level, but move the protocol default along
+        // when the user has not touched the thinking field yet.
+        const previousDefault = defaultThinkingLevelFor(formRef.current.protocol);
+        const thinking =
+          formRef.current.thinking === previousDefault
+            ? defaultThinkingLevelFor(protocol)
+            : formRef.current.thinking;
+        const nextForm = { ...formRef.current, protocol, thinking };
         formRef.current = nextForm;
         setForm(nextForm);
         setFieldErrors((current) => ({ ...current, protocol: undefined }));
@@ -288,7 +313,11 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
     }
     if (activeField === "thinking") {
       if (key.leftArrow || key.rightArrow) {
-        const nextForm = { ...formRef.current, thinking: !formRef.current.thinking };
+        const index = THINKING_LEVELS.indexOf(formRef.current.thinking);
+        const next =
+          (index + (key.rightArrow ? 1 : -1) + THINKING_LEVELS.length) % THINKING_LEVELS.length;
+        const thinking = THINKING_LEVELS[next] ?? DEFAULT_THINKING_LEVEL;
+        const nextForm = { ...formRef.current, thinking };
         formRef.current = nextForm;
         setForm(nextForm);
         setFieldErrors((current) => ({ ...current, thinking: undefined }));

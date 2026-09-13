@@ -43,7 +43,7 @@ import {
 import { loadUserCommands } from "../commands/loader.js";
 import { forceCompact } from "../compact/compact.js";
 import { RecoveryState } from "../compact/recovery.js";
-import { getContextWindow, getMaxOutputTokens } from "../config/config.js";
+import { defaultThinkingLevelFor, getContextWindow, getMaxOutputTokens } from "../config/config.js";
 import type { HookConfig, MCPServerConfig, ProviderConfig } from "../config/config.js";
 import { ConversationManager } from "../conversation/conversation.js";
 import { FileHistory } from "../file-history/file-history.js";
@@ -1360,6 +1360,9 @@ export class RemoteServer {
       toolCount: () => handle.registry.listTools().length,
       memoryList: () => handle.memoryManager.getMemories().map((m) => m.name),
       model: handle.provider.model,
+      thinkingLevel: () =>
+        handle.client.getThinkingLevel?.() ?? defaultThinkingLevelFor(handle.provider.protocol),
+      setThinkingLevel: (level) => handle.client.setThinkingLevel?.(level),
     };
   }
 

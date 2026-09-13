@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+import { isValidThinkingLevel, THINKING_LEVELS, type ThinkingLevel } from "../config/config.js";
+
 export type CommandType = "local" | "local_ui" | "prompt" | "skill_fork";
 
 export interface CommandContext {
@@ -39,6 +41,10 @@ export interface CommandContext {
   memoryClear?: () => void;
   /** Returns the current model name */
   model?: string;
+  /** Returns the current thinking level */
+  thinkingLevel?: () => ThinkingLevel;
+  /** Sets the thinking level for the active client */
+  setThinkingLevel?: (level: ThinkingLevel) => void;
 }
 
 export interface Command {
@@ -356,6 +362,28 @@ export function createDefaultRegistry(): CommandRegistry {
     type: "local_ui",
     description: "Toggle OS sandbox mode for command execution",
     handler: () => "sandbox",
+  });
+
+  registry.register({
+    name: "thinking",
+    aliases: ["think"],
+    type: "local",
+    description: "Show or set the thinking level (off, minimal, low, medium, high, xhigh, max)",
+    handler: (ctx) => {
+      const arg = ctx.args.trim().toLowerCase();
+      if (!arg) {
+        const current = ctx.thinkingLevel ? ctx.thinkingLevel() : "unknown";
+        return `Thinking level: ${current}\nUsage: /thinking <${THINKING_LEVELS.join(" | ")}>`;
+      }
+      if (!isValidThinkingLevel(arg)) {
+        return `Unknown thinking level "${arg}". Valid levels: ${THINKING_LEVELS.join(", ")}`;
+      }
+      if (!ctx.setThinkingLevel) {
+        return "Thinking level control is not available in this context.";
+      }
+      ctx.setThinkingLevel(arg);
+      return `Thinking level set to ${arg}.`;
+    },
   });
 
   return registry;

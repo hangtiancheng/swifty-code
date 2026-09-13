@@ -22,7 +22,14 @@
 
 import OpenAI from "openai";
 
-import { getMaxOutputTokens, type ProviderConfig, resolveAPIKey } from "../config/config.js";
+import {
+  getMaxOutputTokens,
+  getThinkingLevel,
+  type ProviderConfig,
+  resolveAPIKey,
+  type ThinkingLevel,
+  toReasoningEffort,
+} from "../config/config.js";
 import type {
   ConversationManager,
   Message,
@@ -62,6 +69,7 @@ export class OpenAIClient implements LLMClient {
   private model: string;
   private systemPrompt: string;
   private maxOutputTokens: number;
+  private thinkingLevel: ThinkingLevel;
 
   constructor(config: ProviderConfig, systemPrompt: string) {
     const apiKey = resolveAPIKey(config);
@@ -78,6 +86,7 @@ export class OpenAIClient implements LLMClient {
     this.model = config.model;
     this.systemPrompt = systemPrompt;
     this.maxOutputTokens = getMaxOutputTokens(config);
+    this.thinkingLevel = getThinkingLevel(config);
   }
   async *stream(
     conversation: ConversationManager,
@@ -114,6 +123,11 @@ export class OpenAIClient implements LLMClient {
       stream: true,
       max_output_tokens: this.maxOutputTokens,
       ...(tools.length > 0 ? { tools } : {}),
+      // PI-equivalent thinking level → Responses API reasoning effort. Omitted
+      // entirely when thinking is off so non-reasoning models are unaffected.
+      ...(this.thinkingLevel !== "off"
+        ? { reasoning: { effort: toReasoningEffort(this.thinkingLevel), summary: "auto" as const } }
+        : {}),
     };
 
     let inputTokens = 0;
@@ -268,6 +282,12 @@ export class OpenAIClient implements LLMClient {
   }
   setMaxOutputTokens(maxTokens: number): void {
     this.maxOutputTokens = maxTokens;
+  }
+  setThinkingLevel(level: ThinkingLevel): void {
+    this.thinkingLevel = level;
+  }
+  getThinkingLevel(): ThinkingLevel {
+    return this.thinkingLevel;
   }
 }
 
@@ -513,6 +533,7 @@ export class OpenAICompatClient implements LLMClient {
   private model: string;
   private systemPrompt: string;
   private maxOutputTokens: number;
+  private thinkingLevel: ThinkingLevel;
 
   constructor(config: ProviderConfig, systemPrompt: string) {
     const apiKey = resolveAPIKey(config);
@@ -525,12 +546,19 @@ export class OpenAICompatClient implements LLMClient {
     this.model = config.model;
     this.systemPrompt = systemPrompt;
     this.maxOutputTokens = getMaxOutputTokens(config);
+    this.thinkingLevel = getThinkingLevel(config);
   }
   setSystemPrompt(prompt: string): void {
     this.systemPrompt = prompt;
   }
   setMaxOutputTokens(maxTokens: number): void {
     this.maxOutputTokens = maxTokens;
+  }
+  setThinkingLevel(level: ThinkingLevel): void {
+    this.thinkingLevel = level;
+  }
+  getThinkingLevel(): ThinkingLevel {
+    return this.thinkingLevel;
   }
 
   async *stream(
@@ -566,6 +594,11 @@ export class OpenAICompatClient implements LLMClient {
       stream_options: { include_usage: true },
       max_tokens: this.maxOutputTokens,
       ...(tools.length > 0 ? { tools } : {}),
+      // PI-equivalent thinking level → Chat Completions reasoning_effort.
+      // Omitted when thinking is off so non-reasoning models are unaffected.
+      ...(this.thinkingLevel !== "off"
+        ? { reasoning_effort: toReasoningEffort(this.thinkingLevel) }
+        : {}),
     };
 
     let inputTokens = 0;

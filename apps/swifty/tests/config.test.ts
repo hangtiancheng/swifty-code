@@ -23,11 +23,18 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  DEFAULT_MAX_OUTPUT_TOKENS,
+  defaultThinkingLevelFor,
   forkEnabled,
   mergeConfig,
   getContextWindow,
   getMaxOutputTokens,
+  getThinkingLevel,
+  isValidThinkingLevel,
   resolveAPIKey,
+  thinkingBudgetForLevel,
+  toReasoningEffort,
+  withProviderDefaults,
   type AppConfig,
   type ProviderConfig,
 } from "../src/config/config.js";
@@ -67,36 +74,110 @@ describe("config", () => {
   });
 
   describe("getMaxOutputTokens", () => {
-    it("returns configured value if set", () => {
-      const p: ProviderConfig = {
-        max_output_tokens: 4096,
-        name: "p",
-        base_url: "#",
-        protocol: "anthropic",
-        model: "m",
-      };
-      expect(getMaxOutputTokens(p)).toBe(4096);
+    const base = {
+      name: "p",
+      base_url: "#",
+      protocol: "anthropic",
+      model: "m",
+    } as const;
+
+    it("returns the configured cap when set", () => {
+      expect(getMaxOutputTokens({ ...base, max_output_tokens: 4096 })).toBe(4096);
     });
 
-    it("returns 128k when thinking enabled", () => {
-      const p: ProviderConfig = {
+    it("falls back to the 128k default", () => {
+      expect(getMaxOutputTokens({ ...base })).toBe(DEFAULT_MAX_OUTPUT_TOKENS);
+    });
+
+    it("ignores non-positive or non-integer values", () => {
+      expect(getMaxOutputTokens({ ...base, max_output_tokens: 0 })).toBe(DEFAULT_MAX_OUTPUT_TOKENS);
+      expect(getMaxOutputTokens({ ...base, max_output_tokens: 1.5 })).toBe(
+        DEFAULT_MAX_OUTPUT_TOKENS,
+      );
+    });
+
+    it("never exceeds the context window (PI clampMaxTokensToContext)", () => {
+      expect(
+        getMaxOutputTokens({ ...base, context_window: 16_000, max_output_tokens: 32_000 }),
+      ).toBe(16_000);
+      expect(getMaxOutputTokens({ ...base, context_window: 16_000 })).toBe(16_000);
+    });
+  });
+
+  describe("getThinkingLevel", () => {
+    const base = {
+      name: "p",
+      base_url: "#",
+      protocol: "anthropic",
+      model: "m",
+    } as const;
+
+    it("defaults to high for anthropic when unset", () => {
+      expect(getThinkingLevel({ ...base })).toBe("high");
+      expect(defaultThinkingLevelFor("anthropic")).toBe("high");
+    });
+
+    it("defaults to off for OpenAI protocols when unset", () => {
+      expect(getThinkingLevel({ ...base, protocol: "openai" })).toBe("off");
+      expect(getThinkingLevel({ ...base, protocol: "openai-compat" })).toBe("off");
+      expect(defaultThinkingLevelFor("openai")).toBe("off");
+      expect(defaultThinkingLevelFor("openai-compat")).toBe("off");
+    });
+
+    it("maps legacy boolean true to the protocol default", () => {
+      expect(getThinkingLevel({ ...base, thinking: true })).toBe("high");
+      // Old OpenAI configs wrote `thinking: true` by default; they must keep
+      // omitting reasoning parameters.
+      expect(getThinkingLevel({ ...base, protocol: "openai", thinking: true })).toBe("off");
+      expect(getThinkingLevel({ ...base, protocol: "openai-compat", thinking: true })).toBe("off");
+    });
+
+    it("maps legacy boolean false to off", () => {
+      expect(getThinkingLevel({ ...base, thinking: false })).toBe("off");
+    });
+
+    it("passes an explicit level through", () => {
+      expect(getThinkingLevel({ ...base, thinking: "max" })).toBe("max");
+      expect(getThinkingLevel({ ...base, thinking: "off" })).toBe("off");
+    });
+
+    it("keeps an explicit openai level instead of the protocol default", () => {
+      expect(getThinkingLevel({ ...base, protocol: "openai", thinking: "high" })).toBe("high");
+    });
+  });
+
+  describe("withProviderDefaults", () => {
+    it("normalizes thinking and carries the output cap", () => {
+      const provider = withProviderDefaults({
+        name: "p",
+        protocol: "openai",
+        base_url: "#",
+        model: "m",
         thinking: true,
-        name: "p",
-        base_url: "#",
-        protocol: "anthropic",
-        model: "m",
-      };
-      expect(getMaxOutputTokens(p)).toBe(128000);
+      });
+      expect(provider.thinking).toBe("off");
+      expect(provider.context_window).toBe(1000000);
+      expect(provider.max_output_tokens).toBe(DEFAULT_MAX_OUTPUT_TOKENS);
+    });
+  });
+
+  describe("thinking level helpers", () => {
+    it("validates level strings", () => {
+      expect(isValidThinkingLevel("high")).toBe(true);
+      expect(isValidThinkingLevel("bogus")).toBe(false);
     });
 
-    it("returns 128k by default", () => {
-      const p: ProviderConfig = {
-        name: "p",
-        base_url: "#",
-        protocol: "anthropic",
-        model: "m",
-      };
-      expect(getMaxOutputTokens(p)).toBe(128000);
+    it("maps levels to anthropic thinking budgets", () => {
+      expect(thinkingBudgetForLevel("minimal")).toBe(1024);
+      expect(thinkingBudgetForLevel("high")).toBe(16384);
+      expect(thinkingBudgetForLevel("max")).toBe(65536);
+      expect(thinkingBudgetForLevel("off")).toBe(0);
+    });
+
+    it("maps levels to OpenAI reasoning effort", () => {
+      expect(toReasoningEffort("off")).toBe("none");
+      expect(toReasoningEffort("low")).toBe("low");
+      expect(toReasoningEffort("max")).toBe("max");
     });
   });
 

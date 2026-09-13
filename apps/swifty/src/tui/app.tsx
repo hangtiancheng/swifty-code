@@ -49,7 +49,12 @@ import type {
   HookConfig,
   SandboxYamlConfig,
 } from "../config/config.js";
-import { getContextWindow, getMaxOutputTokens, DEFAULT_CONTEXT_WINDOW } from "../config/config.js";
+import {
+  DEFAULT_CONTEXT_WINDOW,
+  defaultThinkingLevelFor,
+  getContextWindow,
+  getMaxOutputTokens,
+} from "../config/config.js";
 import { saveLocalProvider } from "../config/provider-login.js";
 import { expandAtRefsWithImages } from "../conversation/at-expand.js";
 import { ConversationManager } from "../conversation/conversation.js";
@@ -224,6 +229,8 @@ export function App({
   const contextWindowRef = useRef(
     providers[0] ? getContextWindow(providers[0]) : DEFAULT_CONTEXT_WINDOW,
   );
+  // Output ceiling for the active provider (PI's model.maxTokens equivalent).
+  const maxOutputRef = useRef(providers[0] ? getMaxOutputTokens(providers[0]) : undefined);
   const convRef = useRef(new ConversationManager());
   const sessionIdRef = useRef(sessionMod.newSessionId());
   const interactionStatsRef = useRef({
@@ -436,6 +443,7 @@ export function App({
         clientRef.current = client;
 
         contextWindowRef.current = getContextWindow(provider);
+        maxOutputRef.current = getMaxOutputTokens(provider);
 
         // Init file history
         fileHistoryRef.current = new FileHistory(workDir, sessionIdRef.current);
@@ -658,6 +666,7 @@ export function App({
         selectedProviderRef.current = provider;
         setSelectedProvider(provider);
         contextWindowRef.current = getContextWindow(provider);
+        maxOutputRef.current = getMaxOutputTokens(provider);
         decideAndApply(registryRef.current, provider.base_url, contextWindowRef.current);
         setMessages((current) => [
           ...current,
@@ -1206,7 +1215,14 @@ export function App({
     }
 
     if (cmd.type === "local") {
-      const output = cmd.handler({ workDir, args: parsed.args });
+      const output = cmd.handler({
+        workDir,
+        args: parsed.args,
+        thinkingLevel: () =>
+          clientRef.current?.getThinkingLevel?.() ??
+          defaultThinkingLevelFor(selectedProviderRef.current.protocol),
+        setThinkingLevel: (level) => clientRef.current?.setThinkingLevel?.(level),
+      });
       setMessages((prev) => [...prev, { role: "system", content: output }]);
       return true;
     }
@@ -1372,7 +1388,7 @@ export function App({
       fileStateCache: fileStateCacheRef.current,
       abortSignal: controller.signal,
       contextWindow: contextWindowRef.current,
-      maxOutput: getMaxOutputTokens(selectedProvider),
+      maxOutput: maxOutputRef.current,
       recoveryState: recoveryStateRef.current,
       activeSkills: activeSkillsRef.current,
       // The first system-reminder carries the full skill list; later turns
@@ -1750,6 +1766,7 @@ export function App({
       selectedProviderRef.current = saved.provider;
       setSelectedProvider(saved.provider);
       contextWindowRef.current = getContextWindow(saved.provider);
+      maxOutputRef.current = getMaxOutputTokens(saved.provider);
       decideAndApply(registryRef.current, saved.provider.base_url, contextWindowRef.current);
       memExtractorRef.current = null;
       setMessages((current) => [

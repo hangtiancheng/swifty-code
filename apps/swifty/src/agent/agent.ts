@@ -501,15 +501,14 @@ export class Agent {
 
           // Handle the max_tokens stop reason: escalate the output ceiling once,
           // then do up to N multi-turn recoveries before giving up. Each recovery
-          // re-prompts the model to resume from where it stopped.
+          // re-prompts the model to resume from where it stopped. The escalated
+          // ceiling stays inside the context window (PI never requests more than
+          // the model window can hold).
           if (stopReason === "max_tokens") {
-            if (
-              !maxTokensEscalated &&
-              this.maxOutput < MAX_TOKENS_CEILING &&
-              this.client.setMaxOutputTokens
-            ) {
-              this.client.setMaxOutputTokens?.(MAX_TOKENS_CEILING);
-              this.maxOutput = MAX_TOKENS_CEILING;
+            const ceiling = Math.min(MAX_TOKENS_CEILING, this.contextWindow);
+            if (!maxTokensEscalated && this.maxOutput < ceiling && this.client.setMaxOutputTokens) {
+              this.client.setMaxOutputTokens?.(ceiling);
+              this.maxOutput = ceiling;
               maxTokensEscalated = true;
               if (fullText) {
                 this.conversation.addAssistantFull(fullText, thinkingBlocks, []);

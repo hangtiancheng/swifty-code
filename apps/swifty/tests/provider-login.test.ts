@@ -30,13 +30,19 @@ describe("provider login", () => {
       max_output_tokens: " ",
     });
     expect(result).toMatchObject({
-      thinking: true,
+      thinking: "high",
       context_window: 1000000,
       max_output_tokens: 128000,
     });
     for (const field of ["name", "protocol", "base_url", "api_key", "model"]) {
       expect(ProviderLoginSchema.safeParse({ ...input, [field]: " " }).success).toBe(false);
     }
+  });
+
+  it("defaults thinking per protocol", () => {
+    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai" }).thinking).toBe("off");
+    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai-compat" }).thinking).toBe("off");
+    expect(ProviderLoginSchema.parse({ ...input, protocol: "anthropic" }).thinking).toBe("high");
   });
 
   it.each(["-1", "0", "1.5", "NaN", "Infinity", "999999999", "oops"])(
@@ -64,11 +70,21 @@ describe("provider login", () => {
     expect(
       ProviderLoginSchema.parse({
         ...input,
-        thinking: false,
+        thinking: "off",
         context_window: "10000",
         max_output_tokens: "2048",
       }),
-    ).toMatchObject({ thinking: false, context_window: 10000, max_output_tokens: 2048 });
+    ).toMatchObject({ thinking: "off", context_window: 10000, max_output_tokens: 2048 });
+  });
+
+  it("validates the thinking level", () => {
+    expect(ProviderLoginSchema.safeParse({ ...input, thinking: "bogus" }).success).toBe(false);
+    expect(ProviderLoginSchema.parse({ ...input, thinking: "max" })).toMatchObject({
+      thinking: "max",
+    });
+    expect(ProviderLoginSchema.parse({ ...input, thinking: "off" })).toMatchObject({
+      thinking: "off",
+    });
   });
 
   it("preserves local settings and providers, suffixes duplicate names, and writes private YAML", () => {
@@ -116,7 +132,7 @@ describe("provider login", () => {
       "providers:\n  - name: old\n    protocol: anthropic\n    base_url: https://example.com\n    model: claude-old\n",
     );
     expect(loadConfig(path).providers[0]).toMatchObject({
-      thinking: true,
+      thinking: "high",
       context_window: 1000000,
       max_output_tokens: 128000,
     });

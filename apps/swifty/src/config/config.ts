@@ -52,6 +52,21 @@ export class ConfigError extends Error {
   }
 }
 
+/**
+ * PI-equivalent thinking levels. `off` disables reasoning entirely; the rest
+ * map to a provider-native effort string (openai / openai-compat) or a thinking
+ * token budget (anthropic).
+ */
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+
+/**
+ * Accepts a thinking level, or a legacy boolean (`true` → default level,
+ * `false` → off) so existing configs keep working.
+ */
+const ThinkingConfigSchema = z.union([z.boolean(), z.enum(THINKING_LEVELS)]);
+
 export const ProviderConfigSchema = z.object({
   name: z.string(),
   /**
@@ -61,21 +76,85 @@ export const ProviderConfigSchema = z.object({
   base_url: z.string(),
   model: z.string(),
   api_key: z.string().optional(),
-  thinking: z.boolean().optional(),
+  thinking: ThinkingConfigSchema.optional(),
   context_window: z.coerce.number().optional(),
+  /**
+   * The model's output ceiling (PI's `model.maxTokens`). Clamped to the
+   * context window; reasoning shares this ceiling instead of raising it.
+   */
   max_output_tokens: z.coerce.number().optional(),
 });
 
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 
-export const DEFAULT_PROVIDER_THINKING = true;
+export const DEFAULT_THINKING_LEVEL: ThinkingLevel = "high";
 export const DEFAULT_CONTEXT_WINDOW = 1_000_000;
+/**
+ * Fallback output-token ceiling used when `max_output_tokens` is unset (PI's
+ * custom-model `maxTokens` default).
+ */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 128_000;
+
+/**
+ * PI-equivalent thinking token budgets, used by the anthropic budget-based
+ * thinking path. Must stay below DEFAULT_MAX_OUTPUT_TOKENS so the answer keeps
+ * room after the thinking budget is reserved.
+ */
+export const THINKING_BUDGETS: Record<Exclude<ThinkingLevel, "off">, number> = {
+  minimal: 1024,
+  low: 2048,
+  medium: 8192,
+  high: 16384,
+  xhigh: 32768,
+  max: 65536,
+};
+
+export function isValidThinkingLevel(value: string): value is ThinkingLevel {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return (THINKING_LEVELS as readonly string[]).includes(value);
+}
+
+/**
+ * Default thinking level per protocol. Anthropic historically enabled extended
+ * thinking by default; the OpenAI protocols never sent a reasoning parameter
+ * before, and non-reasoning models reject `reasoning_effort`, so they only opt
+ * in when `thinking` is configured explicitly.
+ */
+export function defaultThinkingLevelFor(protocol: ProviderConfig["protocol"]): ThinkingLevel {
+  return protocol === "anthropic" ? DEFAULT_THINKING_LEVEL : "off";
+}
+
+/** Normalize the config `thinking` field (level or legacy boolean) to a level. */
+export function getThinkingLevel(provider: ProviderConfig): ThinkingLevel {
+  const thinking = provider.thinking;
+  if (thinking === undefined) {
+    return defaultThinkingLevelFor(provider.protocol);
+  }
+  if (typeof thinking === "boolean") {
+    // The legacy boolean was only meaningful for Anthropic. Map `true` to the
+    // protocol default so old OpenAI configs (which wrote `thinking: true` by
+    // default) keep omitting reasoning parameters.
+    return thinking ? defaultThinkingLevelFor(provider.protocol) : "off";
+  }
+  return thinking;
+}
+
+/** Thinking token budget for a level; 0 when thinking is off. */
+export function thinkingBudgetForLevel(level: ThinkingLevel): number {
+  return level === "off" ? 0 : THINKING_BUDGETS[level];
+}
+
+/** Map a PI thinking level to an OpenAI reasoning effort string. */
+export function toReasoningEffort(
+  level: ThinkingLevel,
+): "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" {
+  return level === "off" ? "none" : level;
+}
 
 export function withProviderDefaults(provider: ProviderConfig): ProviderConfig {
   return {
     ...provider,
-    thinking: provider.thinking ?? DEFAULT_PROVIDER_THINKING,
+    thinking: getThinkingLevel(provider),
     context_window: getContextWindow(provider),
     max_output_tokens: getMaxOutputTokens(provider),
   };
@@ -87,10 +166,19 @@ export function getContextWindow(provider: ProviderConfig): number {
     : DEFAULT_CONTEXT_WINDOW;
 }
 
+/**
+ * Effective output cap for a provider. Configured value wins, otherwise the
+ * 128k fallback applies; the result never exceeds the context window (PI's
+ * `clampMaxTokensToContext`). This keeps small-output models from being sent an
+ * over-large `max_tokens` while still letting users lower the cap.
+ */
 export function getMaxOutputTokens(provider: ProviderConfig): number {
-  return Number.isSafeInteger(provider.max_output_tokens) && (provider.max_output_tokens ?? 0) > 0
-    ? (provider.max_output_tokens ?? DEFAULT_MAX_OUTPUT_TOKENS)
-    : DEFAULT_MAX_OUTPUT_TOKENS;
+  const configured = provider.max_output_tokens;
+  const maxOutput =
+    Number.isSafeInteger(configured) && (configured ?? 0) > 0
+      ? (configured ?? DEFAULT_MAX_OUTPUT_TOKENS)
+      : DEFAULT_MAX_OUTPUT_TOKENS;
+  return Math.min(maxOutput, getContextWindow(provider));
 }
 
 export function resolveAPIKey(p: ProviderConfig): string {

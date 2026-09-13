@@ -15,9 +15,10 @@ import { z } from "zod";
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
-  DEFAULT_PROVIDER_THINKING,
+  defaultThinkingLevelFor,
   ProviderConfigSchema,
   type ProviderConfig,
+  THINKING_LEVELS,
 } from "./config.js";
 
 const tokenLimit = (fallback: number, min: number, max: number) =>
@@ -41,13 +42,20 @@ export const ProviderLoginSchema = ProviderConfigSchema.extend({
     .refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL"),
   api_key: z.string().trim().min(1, "API key is required"),
   model: z.string().trim().min(1, "Model is required"),
-  thinking: z.boolean().default(DEFAULT_PROVIDER_THINKING),
+  thinking: z.enum(THINKING_LEVELS).optional(),
   context_window: tokenLimit(DEFAULT_CONTEXT_WINDOW, 1_000, 10_000_000),
   max_output_tokens: tokenLimit(DEFAULT_MAX_OUTPUT_TOKENS, 1, 1_000_000),
-}).refine((provider) => provider.max_output_tokens <= provider.context_window, {
-  path: ["max_output_tokens"],
-  message: "Max output tokens must not exceed the context window",
-});
+})
+  .refine((provider) => provider.max_output_tokens <= provider.context_window, {
+    path: ["max_output_tokens"],
+    message: "Max output tokens must not exceed the context window",
+  })
+  // Old providers may omit `thinking`; default it per protocol so the form and
+  // saved YAML always carry an explicit level.
+  .transform((provider) => ({
+    ...provider,
+    thinking: provider.thinking ?? defaultThinkingLevelFor(provider.protocol),
+  }));
 
 export function saveLocalProvider(
   workDir: string,

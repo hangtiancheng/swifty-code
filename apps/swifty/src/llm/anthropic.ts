@@ -24,10 +24,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { safeParseAsync, z } from "zod";
 
 import {
-  DEFAULT_PROVIDER_THINKING,
   getMaxOutputTokens,
+  getThinkingLevel,
   type ProviderConfig,
   resolveAPIKey,
+  type ThinkingLevel,
+  thinkingBudgetForLevel,
 } from "../config/config.js";
 import type { ConversationManager, Message } from "../conversation/conversation.js";
 import { ensureToolPairing } from "../conversation/pairing.js";
@@ -54,6 +56,12 @@ import {
 import type { StreamEvent } from "./events.js";
 
 import type { ToolSchema } from "@/tools/types.js";
+
+// Anthropic requires thinking budgets of at least 1024 tokens, and the budget
+// must stay strictly below max_tokens. Reserve room for the answer so a long
+// thinking phase cannot consume the whole response.
+const MIN_THINKING_BUDGET_TOKENS = 1024;
+const MIN_ANSWER_TOKENS = 1024;
 
 /**
  * Place the cache breakpoint on the last non-deferred tool.
@@ -293,9 +301,9 @@ export class AnthropicClient implements LLMClient {
   private client: Anthropic;
   private model: string;
   /**
-   * Whether supports/enable thinking, default false
+   * PI-equivalent thinking level; maps to a thinking token budget.
    */
-  private thinking: boolean;
+  private thinkingLevel: ThinkingLevel;
   private systemPrompt: string;
   private maxOutputTokens: number;
   /** Currently not used */
@@ -313,7 +321,7 @@ export class AnthropicClient implements LLMClient {
       baseURL: config.base_url,
     });
     this.model = config.model;
-    this.thinking = config.thinking ?? DEFAULT_PROVIDER_THINKING;
+    this.thinkingLevel = getThinkingLevel(config);
     this.systemPrompt = systemPrompt;
     this.maxOutputTokens = getMaxOutputTokens(config);
   }
@@ -322,6 +330,12 @@ export class AnthropicClient implements LLMClient {
   }
   setMaxOutputTokens(maxTokens: number): void {
     this.maxOutputTokens = maxTokens;
+  }
+  setThinkingLevel(level: ThinkingLevel): void {
+    this.thinkingLevel = level;
+  }
+  getThinkingLevel(): ThinkingLevel {
+    return this.thinkingLevel;
   }
 
   async *stream(
@@ -376,9 +390,17 @@ export class AnthropicClient implements LLMClient {
       ...(antToolSchemas.length > 0 ? { tools: antToolSchemas } : {}),
     };
 
+    // Map the PI-equivalent thinking level to a thinking token budget. Mirrors
+    // PI's `adjustMaxTokensForThinking` + `clampThinkingBudgetToAnswerRoom`: the
+    // budget shares the output ceiling, always leaves room for the answer, and
+    // is shrunk (rather than disabling thinking) when it would not fit.
+    const budgetCeiling = this.maxOutputTokens - MIN_ANSWER_TOKENS;
     params.thinking =
-      this.thinking && this.maxOutputTokens > 1024
-        ? { type: "enabled", budget_tokens: Math.min(16_384, this.maxOutputTokens - 1) }
+      this.thinkingLevel !== "off" && budgetCeiling >= MIN_THINKING_BUDGET_TOKENS
+        ? {
+            type: "enabled",
+            budget_tokens: Math.min(thinkingBudgetForLevel(this.thinkingLevel), budgetCeiling),
+          }
         : { type: "disabled" };
 
     let inputTokens = 0;
