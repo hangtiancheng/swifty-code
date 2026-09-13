@@ -3,7 +3,7 @@ import { icons } from "./icons";
 export const REPO_URL = "https://github.com/hangtiancheng/swifty-code";
 export const NPM_URL = "https://www.npmjs.com/package/@swifty.js/swifty";
 export const DOCS_URL = `${REPO_URL}/blob/main/apps/swifty/README.md`;
-export const VERSION = "v0.0.28";
+export const VERSION = "v0.0.29";
 
 export const INSTALL_METHODS = [
   {

@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "git:commit": "git add -A && git commit -m \"feat: Introduce new features\"",
-    "git:commit:n": "git add -A && git commit -m \"feat: Introduce new features\" --no-verify",
+    "git:commit:skip": "git add -A && git commit -m \"feat: Introduce new features [skip ci]\"",
     "git:push": "pnpm git:commit && git push origin main",
-    "git:push:n": "pnpm git:commit:n && git push origin main",
+    "git:push:skip": "pnpm git:commit:skip && git push origin main",
     "format:sh": "shfmt -w ./install.sh",
     "format": "pnpm --filter @swifty.js/swifty format",
     "build": "pnpm --filter @swifty.js/swifty build",

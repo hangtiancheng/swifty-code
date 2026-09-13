@@ -379,7 +379,7 @@ export class TerminalShowcaseElement extends LitElement {
               <span className="bg-brand-500/10 inline-flex h-4 items-center rounded px-1.5 text-zinc-500 dark:bg-white/6 dark:text-zinc-400">
                 swifty
               </span>
-              <span>v0.0.28</span>
+              <span>v0.0.29</span>
               <span>·</span>
               <span>model {scene.model}</span>
               <span>·</span>
