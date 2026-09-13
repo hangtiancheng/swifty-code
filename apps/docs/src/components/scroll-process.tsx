@@ -27,7 +27,7 @@ export class ScrollProgressElement extends LitElement {
     });
     progress.on("change", (value) => {
       const bar = this.querySelector<HTMLElement>("[data-progress-bar]");
-      if (bar) bar.style.transform = `scaleX(${value})`;
+      if (bar) bar.style.scale = `${value} 1`;
     });
     this.stopScroll = scrollInfo(({ y }) => {
       progress.set(y.progress);

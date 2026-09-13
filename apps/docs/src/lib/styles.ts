@@ -47,7 +47,7 @@ export const secondaryButton =
   "inline-flex items-center justify-center gap-2 rounded-full border border-brand-950/10 bg-white/70 px-5 py-2.5 text-sm font-semibold text-brand-950 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-500/40 hover:bg-brand-50/70 dark:border-white/10 dark:bg-white/3 dark:text-brand-100 dark:hover:border-white/20 dark:hover:bg-white/[0.07]";
 
 export const ghostButton =
-  "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-brand-500/10 hover:text-brand-950 dark:text-zinc-400 dark:hover:bg-white/6 dark:hover:text-white";
+  "inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-brand-500/10 hover:text-brand-950 dark:text-zinc-400 dark:hover:bg-white/6 dark:hover:text-white";
 
 export const chip =
   "inline-flex items-center gap-1.5 rounded-lg border border-brand-950/8 bg-white px-2.5 py-1.5 font-mono text-xs text-zinc-700 dark:border-white/8 dark:bg-white/3 dark:text-zinc-300";
