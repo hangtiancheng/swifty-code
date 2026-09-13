@@ -7,7 +7,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import yaml from "js-yaml";
 import { z } from "zod";
@@ -16,9 +16,11 @@ import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
   defaultThinkingLevelFor,
+  globalConfigPath,
   ProviderConfigSchema,
   type ProviderConfig,
   THINKING_LEVELS,
+  type ThinkingLevel,
 } from "./config.js";
 
 const tokenLimit = (fallback: number, min: number, max: number) =>
@@ -57,8 +59,44 @@ export const ProviderLoginSchema = ProviderConfigSchema.extend({
     thinking: provider.thinking ?? defaultThinkingLevelFor(provider.protocol),
   }));
 
-export function saveLocalProvider(
-  workDir: string,
+/** Read the raw global config as a record; an absent file yields {}. */
+function readConfigRaw(path: string): Record<string, unknown> {
+  if (!existsSync(path)) {
+    return {};
+  }
+  let raw: unknown;
+  try {
+    raw = yaml.load(readFileSync(path, "utf-8"));
+  } catch {
+    throw new Error(`Unable to read existing ${path}; it has not been changed.`);
+  }
+  return z.record(z.string(), z.unknown()).parse(raw ?? {});
+}
+
+/** Atomically write the global config, preserving 0600 permissions. */
+function writeConfigAtomic(path: string, raw: Record<string, unknown>): void {
+  const directory = dirname(path);
+  mkdirSync(directory, { recursive: true });
+  const temporary = join(directory, `.config-${randomUUID()}.tmp`);
+  try {
+    writeFileSync(temporary, yaml.dump(raw, { lineWidth: -1, noRefs: true }), {
+      encoding: "utf-8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    renameSync(temporary, path);
+  } finally {
+    if (existsSync(temporary)) {
+      unlinkSync(temporary);
+    }
+  }
+}
+
+/**
+ * Save a new provider to the single global config ($HOME/.swifty/config.yaml),
+ * retaining every currently available provider and suffixing duplicate names.
+ */
+export function saveProvider(
   input: unknown,
   available: ProviderConfig[],
 ): {
@@ -67,25 +105,15 @@ export function saveLocalProvider(
   path: string;
 } {
   const provider = ProviderLoginSchema.parse(input);
-  const directory = join(workDir, ".swifty");
-  const path = join(directory, "config.local.yaml");
-  let raw: unknown = {};
-  if (existsSync(path)) {
-    try {
-      raw = yaml.load(readFileSync(path, "utf-8"));
-    } catch {
-      throw new Error(
-        "Unable to read existing .swifty/config.local.yaml; it has not been changed.",
-      );
-    }
-  }
-  const config = z.record(z.string(), z.unknown()).parse(raw ?? {});
-  const local = z.array(z.record(z.string(), z.unknown())).parse(config.providers ?? []);
-  // A local provider list replaces earlier config layers, so retain every currently available provider.
-  const stored = [...local];
-  for (const existing of available) {
-    if (!stored.some((entry) => entry.name === existing.name)) {
-      stored.push({ ...existing });
+  const path = globalConfigPath();
+  const config = readConfigRaw(path);
+  const existing = z.array(z.record(z.string(), z.unknown())).parse(config.providers ?? []);
+  // Retain every currently available provider so an in-memory list never loses
+  // entries that are not yet written to the file.
+  const stored = [...existing];
+  for (const entry of available) {
+    if (!stored.some((existingEntry) => existingEntry.name === entry.name)) {
+      stored.push({ ...entry });
     }
   }
   const names = new Set(stored.map((entry) => entry.name));
@@ -96,19 +124,26 @@ export function saveLocalProvider(
   }
   stored.push(provider);
   const providers = stored.map((entry) => ProviderConfigSchema.parse(entry));
-  mkdirSync(directory, { recursive: true });
-  const temporary = join(directory, `.config.local-${randomUUID()}.tmp`);
-  try {
-    writeFileSync(
-      temporary,
-      yaml.dump({ ...config, providers: stored }, { lineWidth: -1, noRefs: true }),
-      { encoding: "utf-8", mode: 0o600, flag: "wx" },
-    );
-    renameSync(temporary, path);
-  } finally {
-    if (existsSync(temporary)) {
-      unlinkSync(temporary);
-    }
-  }
+  writeConfigAtomic(path, { ...config, providers: stored });
   return { provider, providers, path };
+}
+
+/**
+ * Persist a provider's thinking level to the global config. Throws when the
+ * named provider is absent so callers can surface a clear error.
+ */
+export function persistThinkingLevel(providerName: string, level: ThinkingLevel): void {
+  const path = globalConfigPath();
+  const config = readConfigRaw(path);
+  const providers = z.array(z.record(z.string(), z.unknown())).parse(config.providers ?? []);
+  const target = providers.find((entry) => entry.name === providerName);
+  if (!target) {
+    throw new Error(`Provider "${providerName}" not found in ${path}.`);
+  }
+  // Avoid rewriting (and reformatting) the file when nothing changes.
+  if (target.thinking === level) {
+    return;
+  }
+  target.thinking = level;
+  writeConfigAtomic(path, { ...config, providers });
 }

@@ -408,8 +408,6 @@ async function performPostCreationSetup(repoRoot: string, wtPath: string): Promi
  * Node's cp rejects that with EINVAL.
  */
 const SHARED_SWIFTY_ENTRIES = [
-  "config.yaml",
-  "config.local.yaml",
   "permissions.yaml",
   "permissions.local.yaml",
   "agents",

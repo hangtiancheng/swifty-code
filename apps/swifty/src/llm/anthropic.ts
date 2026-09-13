@@ -312,7 +312,7 @@ export class AnthropicClient implements LLMClient {
     const apiKey = resolveAPIKey(config);
     if (!apiKey) {
       throw new AuthenticationError(
-        "Anthropic API key not found, set ANTHROPIC_API_KEY in .swifty/config.y(a)ml, or via ANTHROPIC_API_KEY env variable.",
+        "Anthropic API key not found, set ANTHROPIC_API_KEY in ~/.swifty/config.yaml, or via ANTHROPIC_API_KEY env variable.",
       );
     }
 

@@ -45,6 +45,7 @@ import { forceCompact } from "../compact/compact.js";
 import { RecoveryState } from "../compact/recovery.js";
 import { defaultThinkingLevelFor, getContextWindow, getMaxOutputTokens } from "../config/config.js";
 import type { HookConfig, MCPServerConfig, ProviderConfig } from "../config/config.js";
+import { persistThinkingLevel } from "../config/provider-login.js";
 import { ConversationManager } from "../conversation/conversation.js";
 import { FileHistory } from "../file-history/file-history.js";
 import { HookEngine, validate as validateHooks } from "../hooks/hooks.js";
@@ -1363,6 +1364,12 @@ export class RemoteServer {
       thinkingLevel: () =>
         handle.client.getThinkingLevel?.() ?? defaultThinkingLevelFor(handle.provider.protocol),
       setThinkingLevel: (level) => handle.client.setThinkingLevel?.(level),
+      persistThinkingLevel: (level) => {
+        persistThinkingLevel(handle.provider.name, level);
+        // Keep the handle's provider in sync so forked clients inherit the
+        // persisted level instead of the value loaded at startup.
+        handle.provider.thinking = level;
+      },
     };
   }
 

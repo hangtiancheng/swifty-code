@@ -1,12 +1,25 @@
 import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import type * as nodeOs from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDefaultRegistry } from "../src/commands/commands.js";
-import { loadConfig } from "../src/config/config.js";
-import { ProviderLoginSchema, saveLocalProvider } from "../src/config/provider-login.js";
+import { globalConfigPath, loadConfig } from "../src/config/config.js";
+import {
+  persistThinkingLevel,
+  ProviderLoginSchema,
+  saveProvider,
+} from "../src/config/provider-login.js";
+
+// Redirect $HOME to a temp dir so saveProvider/persistThinkingLevel write to an
+// isolated global config instead of the real ~/.swifty/config.yaml.
+const homeRef = vi.hoisted(() => ({ current: "" }));
+vi.mock("node:os", async (importOriginal) => {
+  const actual = await importOriginal<typeof nodeOs>();
+  return { ...actual, homedir: () => homeRef.current };
+});
 
 const input = {
   name: "custom",
@@ -15,6 +28,10 @@ const input = {
   api_key: "test-key",
   model: "test-model",
 };
+
+beforeEach(() => {
+  homeRef.current = mkdtempSync(join(tmpdir(), "swifty-home-"));
+});
 
 describe("provider login", () => {
   it("registers /login as a local UI command", () => {
@@ -87,17 +104,16 @@ describe("provider login", () => {
     });
   });
 
-  it("preserves local settings and providers, suffixes duplicate names, and writes private YAML", () => {
-    const directory = mkdtempSync(join(tmpdir(), "swifty-login-"));
-    mkdirSync(join(directory, ".swifty"));
-    const path = join(directory, ".swifty/config.local.yaml");
+  it("saves to the global config, preserving settings and suffixing duplicate names", () => {
+    mkdirSync(join(homeRef.current, ".swifty"));
+    const path = globalConfigPath();
     writeFileSync(
       path,
       "permission_mode: plan\nenable_fork: false\nsandbox:\n  enabled: true\ncustom_setting: keep\n",
     );
-    const first = saveLocalProvider(directory, input, []);
-    const second = saveLocalProvider(directory, input, first.providers);
-    const third = saveLocalProvider(directory, input, second.providers);
+    const first = saveProvider(input, []);
+    const second = saveProvider(input, first.providers);
+    const third = saveProvider(input, second.providers);
     expect(third.provider.name).toBe("custom3");
     expect(third.providers.map((provider) => provider.name)).toEqual([
       "custom",
@@ -114,14 +130,32 @@ describe("provider login", () => {
     }
   });
 
-  it("keeps an existing config untouched when parsing or validation fails", () => {
-    const directory = mkdtempSync(join(tmpdir(), "swifty-login-invalid-"));
-    mkdirSync(join(directory, ".swifty"));
-    const path = join(directory, ".swifty/config.local.yaml");
+  it("creates the global config when it does not exist", () => {
+    const path = globalConfigPath();
+    const saved = saveProvider(input, []);
+    expect(saved.path).toBe(path);
+    expect(loadConfig(path).providers.map((p) => p.name)).toEqual(["custom"]);
+  });
+
+  it("keeps an existing config untouched when parsing fails", () => {
+    mkdirSync(join(homeRef.current, ".swifty"));
+    const path = globalConfigPath();
     const before = "providers: [invalid YAML";
     writeFileSync(path, before);
-    expect(() => saveLocalProvider(directory, input, [])).toThrow();
+    expect(() => saveProvider(input, [])).toThrow();
     expect(readFileSync(path, "utf-8")).toBe(before);
+  });
+
+  it("persists a thinking level update to the global config", () => {
+    saveProvider(input, []);
+    const path = globalConfigPath();
+    persistThinkingLevel("custom", "max");
+    expect(loadConfig(path).providers[0].thinking).toBe("max");
+  });
+
+  it("throws when persisting a thinking level for an unknown provider", () => {
+    saveProvider(input, []);
+    expect(() => persistThinkingLevel("nope", "max")).toThrow();
   });
 
   it("applies defaults to old configuration without model-name inference", () => {
@@ -136,5 +170,17 @@ describe("provider login", () => {
       context_window: 1000000,
       max_output_tokens: 128000,
     });
+  });
+
+  it("points at leftover project configs when the global config is missing", () => {
+    const projectDir = mkdtempSync(join(tmpdir(), "swifty-project-"));
+    mkdirSync(join(projectDir, ".swifty"));
+    writeFileSync(join(projectDir, ".swifty", "config.local.yaml"), "providers: []\n");
+    const cwd = vi.spyOn(process, "cwd").mockReturnValue(projectDir);
+    try {
+      expect(() => loadConfig()).toThrow(/Found project config/);
+    } finally {
+      cwd.mockRestore();
+    }
   });
 });

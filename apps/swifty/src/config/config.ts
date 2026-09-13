@@ -52,6 +52,11 @@ export class ConfigError extends Error {
   }
 }
 
+/** The single global config file: $HOME/.swifty/config.yaml. */
+export function globalConfigPath(): string {
+  return join(homedir(), ".swifty", "config.yaml");
+}
+
 /**
  * PI-equivalent thinking levels. `off` disables reasoning entirely; the rest
  * map to a provider-native effort string (openai / openai-compat) or a thinking
@@ -327,50 +332,6 @@ function loadSingleFile(path: string): AppConfig {
   };
 }
 
-export function mergeConfig(base: AppConfig, override: AppConfig): AppConfig {
-  if (override.providers.length > 0) {
-    base.providers = override.providers;
-  }
-
-  if (override.permission_mode) {
-    base.permission_mode = override.permission_mode;
-  }
-
-  if (override.mcp_servers.length > 0) {
-    /** base mcp server to index */
-    const mcpToIdx = new Map<string, number>();
-    for (let i = 0; i < base.mcp_servers.length; i++) {
-      const mcp = base.mcp_servers[i];
-      mcpToIdx.set(mcp.name, i);
-    }
-
-    for (const s of override.mcp_servers) {
-      const idx = mcpToIdx.get(s.name);
-      if (idx !== undefined) {
-        base.mcp_servers[idx] = s;
-      } else {
-        base.mcp_servers.push(s);
-        mcpToIdx.set(s.name, base.mcp_servers.length - 1);
-      }
-    }
-  }
-
-  base.hooks = [...base.hooks, ...override.hooks];
-  if (override.sandbox) {
-    base.sandbox = { ...base.sandbox, ...override.sandbox };
-  }
-  if (override.enable_coordinator_mode) {
-    base.enable_coordinator_mode = true;
-  }
-  // enable_fork defaults to true, so we cannot use the "override only if truthy"
-  // pattern here — otherwise an explicit false in config would be treated as
-  // unset and the feature could never be disabled.
-  if (override.enable_fork !== undefined) {
-    base.enable_fork = override.enable_fork;
-  }
-  return base;
-}
-
 function validateProviders(config: AppConfig): void {
   if (config.providers.length === 0) {
     throw new ConfigError("At least one provider MUST be configured.");
@@ -410,37 +371,29 @@ export function loadConfig(
     return config;
   }
 
-  const wd = process.cwd();
-  const home = homedir();
-  const candidates = [
-    join(home, ".swifty", "config.yaml"),
-    join(wd, ".swifty", "config.yaml"),
-    join(wd, ".swifty", "config.local.yaml"),
-  ];
+  const candidate = globalConfigPath();
 
-  let merged: AppConfig | null = null;
-  for (const candidate of candidates) {
-    if (!existsSync(candidate)) {
-      continue;
-    }
-    const layer = loadSingleFile(candidate);
-    if (!merged) {
-      merged = layer;
-    } else {
-      merged = mergeConfig(merged, layer);
-    }
-  }
-
-  if (!merged) {
+  if (!existsSync(candidate)) {
     if (options.allowEmptyProviders) {
       return { providers: [], mcp_servers: [], hooks: [] };
     }
+    // Point at leftover project-level configs: Swifty used to merge them, so
+    // upgrading users would otherwise just see "no config file found".
+    const legacy = [
+      join(process.cwd(), ".swifty/config.yaml"),
+      join(process.cwd(), ".swifty/config.local.yaml"),
+    ]
+      .filter((legacyPath) => existsSync(legacyPath))
+      .join(", ");
     throw new ConfigError(
-      "No config file found, expected .swifty/config.y(a)ml under project or $HOME/.swifty/config.y(a)ml.",
+      `No config file found, expected ${candidate}.` +
+        (legacy ? ` Found project config at ${legacy}; move it to ${candidate}.` : ""),
     );
   }
-  if (!options.allowEmptyProviders || merged.providers.length > 0) {
-    validateProviders(merged);
+
+  const config = loadSingleFile(candidate);
+  if (!options.allowEmptyProviders || config.providers.length > 0) {
+    validateProviders(config);
   }
-  return merged;
+  return config;
 }

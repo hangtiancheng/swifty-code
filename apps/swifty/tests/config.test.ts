@@ -26,7 +26,6 @@ import {
   DEFAULT_MAX_OUTPUT_TOKENS,
   defaultThinkingLevelFor,
   forkEnabled,
-  mergeConfig,
   getContextWindow,
   getMaxOutputTokens,
   getThinkingLevel,
@@ -219,69 +218,6 @@ describe("config", () => {
     it("disables for real when set to false", () => {
       expect(forkEnabled({ ...bare(), enable_fork: false })).toBe(false);
       expect(forkEnabled({ ...bare(), enable_fork: true })).toBe(true);
-    });
-
-    it("does not override a previous layer's false when the next layer is unset", () => {
-      const result = mergeConfig({ ...bare(), enable_fork: false }, bare());
-      expect(forkEnabled(result)).toBe(false);
-    });
-
-    it("overrides the default when a later layer sets false", () => {
-      const result = mergeConfig(bare(), { ...bare(), enable_fork: false });
-      expect(forkEnabled(result)).toBe(false);
-    });
-  });
-
-  describe("mergeConfig", () => {
-    it("overrides providers completely", () => {
-      const base: AppConfig = {
-        providers: [{ name: "a", protocol: "anthropic", base_url: "#", model: "m" }],
-        mcp_servers: [],
-        hooks: [],
-      };
-      const override: AppConfig = {
-        providers: [{ name: "b", protocol: "openai", base_url: "#", model: "m2" }],
-        mcp_servers: [],
-        hooks: [],
-      };
-      const result = mergeConfig(base, override);
-      expect(result.providers).toHaveLength(1);
-      expect(result.providers[0].name).toBe("b");
-    });
-
-    it("merges MCP servers by name", () => {
-      const base: AppConfig = {
-        providers: [],
-        mcp_servers: [{ name: "s1", command: "old" }],
-        hooks: [],
-      };
-      const override: AppConfig = {
-        providers: [],
-        mcp_servers: [
-          { name: "s1", command: "new" },
-          { name: "s2", command: "extra" },
-        ],
-        hooks: [],
-      };
-      const result = mergeConfig(base, override);
-      expect(result.mcp_servers).toHaveLength(2);
-      expect(result.mcp_servers[0].command).toBe("new");
-      expect(result.mcp_servers[1].name).toBe("s2");
-    });
-
-    it("appends hooks", () => {
-      const base: AppConfig = {
-        providers: [],
-        mcp_servers: [],
-        hooks: [{ event: "a", action: { type: "command" } }],
-      };
-      const override: AppConfig = {
-        providers: [],
-        mcp_servers: [],
-        hooks: [{ event: "b", action: { type: "prompt" } }],
-      };
-      const result = mergeConfig(base, override);
-      expect(result.hooks).toHaveLength(2);
     });
   });
 });

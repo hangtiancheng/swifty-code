@@ -7,6 +7,8 @@ import { THEME } from "./styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
 interface FooterProps {
+  /** Current context occupancy in tokens (not the cumulative session total). */
+  contextTokens: number;
   contextWindow: number;
   inputTokens: number;
   model: string;
@@ -54,7 +56,7 @@ function formatTokens(value: number): string {
   if (value < 1_000_000) {
     return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}k`;
   }
-  return `${(value / 1_000_000).toFixed(1)}m`;
+  return `${(value / 1_000_000).toFixed(1)}M`;
 }
 
 function locationLines(workDir: string, sessionId: string, width: number): string[] {
@@ -74,6 +76,7 @@ function locationLines(workDir: string, sessionId: string, width: number): strin
 
 export function Footer(props: FooterProps) {
   const {
+    contextTokens,
     contextWindow,
     inputTokens,
     model,
@@ -94,8 +97,9 @@ export function Footer(props: FooterProps) {
   const columns = Math.max(1, stdout.columns || 80);
   const padding = columns > 2 ? 1 : 0;
   const width = columns - padding * 2;
-  const used = inputTokens + outputTokens;
-  const percentage = contextWindow > 0 ? (used / contextWindow) * 100 : 0;
+  // Context occupancy, not the cumulative session total: the latter grows
+  // unboundedly across turns and would report well over 100%.
+  const percentage = contextWindow > 0 ? (contextTokens / contextWindow) * 100 : 0;
   const contextColor =
     percentage >= 90 ? THEME.error : percentage >= 70 ? THEME.warning : THEME.dim;
   const tokens = `↑${formatTokens(inputTokens)} ↓${formatTokens(outputTokens)}`;

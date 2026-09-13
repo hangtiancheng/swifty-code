@@ -45,6 +45,8 @@ export interface CommandContext {
   thinkingLevel?: () => ThinkingLevel;
   /** Sets the thinking level for the active client */
   setThinkingLevel?: (level: ThinkingLevel) => void;
+  /** Persists the thinking level to the global config; throws on failure */
+  persistThinkingLevel?: (level: ThinkingLevel) => void;
 }
 
 export interface Command {
@@ -382,6 +384,17 @@ export function createDefaultRegistry(): CommandRegistry {
         return "Thinking level control is not available in this context.";
       }
       ctx.setThinkingLevel(arg);
+      // Persist so the level survives restarts; a persistence failure should not
+      // undo the runtime change, so report it alongside the confirmation.
+      if (ctx.persistThinkingLevel) {
+        try {
+          ctx.persistThinkingLevel(arg);
+          return `Thinking level set to ${arg} and saved.`;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return `Thinking level set to ${arg} for this session, but saving failed: ${message}`;
+        }
+      }
       return `Thinking level set to ${arg}.`;
     },
   });

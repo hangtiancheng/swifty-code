@@ -2,6 +2,7 @@ import { stripVTControlCharacters } from "node:util";
 
 import { Chalk } from "chalk";
 import { renderToString } from "ink";
+import type * as Ink from "ink";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,8 +22,7 @@ import { formatToolOutputPreview } from "@/tui/tool-preview.js";
 const terminal = vi.hoisted(() => ({ columns: 40 }));
 
 vi.mock("ink", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const ink = await importOriginal<typeof import("ink")>();
+  const ink = await importOriginal<typeof Ink>();
   return {
     ...ink,
     useStdout: () => ({ stdout: { columns: terminal.columns, rows: 24 } }),

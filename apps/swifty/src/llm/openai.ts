@@ -75,7 +75,7 @@ export class OpenAIClient implements LLMClient {
     const apiKey = resolveAPIKey(config);
     if (!apiKey) {
       throw new AuthenticationError(
-        "OpenAI API key not found, set OPENAI_API_KEY in .swifty/config.y(a)ml, or via OPENAI_API_KEY env variable.",
+        "OpenAI API key not found, set OPENAI_API_KEY in ~/.swifty/config.yaml, or via OPENAI_API_KEY env variable.",
       );
     }
 
@@ -539,7 +539,7 @@ export class OpenAICompatClient implements LLMClient {
     const apiKey = resolveAPIKey(config);
     if (!apiKey) {
       throw new AuthenticationError(
-        "OpenAI API key not found. Set OPENAI_API_KEY in .swifty/config.y(a)ml, or via OPENAI_API_KEY env variable.",
+        "OpenAI API key not found. Set OPENAI_API_KEY in ~/.swifty/config.yaml, or via OPENAI_API_KEY env variable.",
       );
     }
     this.client = new OpenAI({ apiKey, baseURL: config.base_url });

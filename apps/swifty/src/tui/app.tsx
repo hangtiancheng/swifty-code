@@ -41,7 +41,7 @@ import {
 } from "../commands/commands.js";
 import { loadUserCommands } from "../commands/loader.js";
 import { CommandUsageTracker } from "../commands/usage-tracker.js";
-import { forceCompact } from "../compact/compact.js";
+import { currentContextTokens, forceCompact } from "../compact/compact.js";
 import { RecoveryState } from "../compact/recovery.js";
 import type {
   ProviderConfig,
@@ -55,7 +55,7 @@ import {
   getContextWindow,
   getMaxOutputTokens,
 } from "../config/config.js";
-import { saveLocalProvider } from "../config/provider-login.js";
+import { persistThinkingLevel, saveProvider } from "../config/provider-login.js";
 import { expandAtRefsWithImages } from "../conversation/at-expand.js";
 import { ConversationManager } from "../conversation/conversation.js";
 import { FileHistory } from "../file-history/file-history.js";
@@ -1222,6 +1222,17 @@ export function App({
           clientRef.current?.getThinkingLevel?.() ??
           defaultThinkingLevelFor(selectedProviderRef.current.protocol),
         setThinkingLevel: (level) => clientRef.current?.setThinkingLevel?.(level),
+        persistThinkingLevel: (level) => {
+          persistThinkingLevel(selectedProviderRef.current.name, level);
+          // Keep the in-memory provider in sync, otherwise recreating the
+          // client (provider switch, /login) would revive the stale level.
+          const updated = { ...selectedProviderRef.current, thinking: level };
+          selectedProviderRef.current = updated;
+          setSelectedProvider(updated);
+          setProviders((current) =>
+            current.map((provider) => (provider.name === updated.name ? updated : provider)),
+          );
+        },
       });
       setMessages((prev) => [...prev, { role: "system", content: output }]);
       return true;
@@ -1758,7 +1769,7 @@ export function App({
     environment.model = input.model;
     // Construct before saving so invalid client configuration leaves the form editable.
     const client = await createClient(input, buildSystemPrompt(environment));
-    const saved = saveLocalProvider(workDir, input, providers);
+    const saved = saveProvider(input, providers);
     setProviders(saved.providers);
     setError("");
     if (clientRef.current) {
@@ -1773,7 +1784,7 @@ export function App({
         ...current,
         {
           role: "system",
-          content: `Provider ${saved.provider.name} activated. Saved to .swifty/config.local.yaml.`,
+          content: `Provider ${saved.provider.name} activated. Saved to ~/.swifty/config.yaml.`,
         },
       ]);
     } else {
@@ -1976,6 +1987,7 @@ export function App({
       />
       <Footer
         onHeightChange={setFooterRows}
+        contextTokens={currentContextTokens(convRef.current)}
         contextWindow={contextWindowRef.current}
         inputTokens={inputTokens}
         model={selectedProvider.model}

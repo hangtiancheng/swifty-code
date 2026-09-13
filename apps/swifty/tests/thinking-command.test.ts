@@ -40,4 +40,34 @@ describe("/thinking command", () => {
     expect(setThinkingLevel).not.toHaveBeenCalled();
     expect(output).toContain("Unknown thinking level");
   });
+
+  it("persists the level when a persistence hook is provided", () => {
+    const setThinkingLevel = vi.fn();
+    const persistThinkingLevel = vi.fn();
+    const output = command?.handler({
+      workDir: "/tmp",
+      args: "low",
+      setThinkingLevel,
+      persistThinkingLevel,
+    });
+    expect(setThinkingLevel).toHaveBeenCalledWith("low");
+    expect(persistThinkingLevel).toHaveBeenCalledWith("low");
+    expect(output).toContain("saved");
+  });
+
+  it("keeps the runtime change but reports a persistence failure", () => {
+    const setThinkingLevel = vi.fn();
+    const persistThinkingLevel = vi.fn(() => {
+      throw new Error("boom");
+    });
+    const output = command?.handler({
+      workDir: "/tmp",
+      args: "low",
+      setThinkingLevel,
+      persistThinkingLevel,
+    });
+    expect(setThinkingLevel).toHaveBeenCalledWith("low");
+    expect(output).toContain("saving failed");
+    expect(output).toContain("boom");
+  });
 });

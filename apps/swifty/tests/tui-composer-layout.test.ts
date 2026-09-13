@@ -1,8 +1,10 @@
+import type * as fs from "node:fs";
 import { stripVTControlCharacters } from "node:util";
 
 import chalk from "chalk";
 import { render, renderToString } from "ink";
 import type { Instance, Key } from "ink";
+import type * as Ink from "ink";
 import { act, createElement } from "react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -26,8 +28,7 @@ const terminal = vi.hoisted(() => {
 // Only replace terminal input and dimensions. All layout is rendered by Ink's
 // public renderToString/render APIs; no real CLI, filesystem scan or model runs.
 vi.mock("ink", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const ink = await importOriginal<typeof import("ink")>();
+  const ink = await importOriginal<typeof Ink>();
   const { useEffect } = await import("react");
   return {
     ...ink,
@@ -58,8 +59,7 @@ vi.mock("ink", async (importOriginal) => {
 });
 
 vi.mock("fs", async (importOriginal) => ({
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  ...(await importOriginal<typeof import("fs")>()),
+  ...(await importOriginal<typeof fs>()),
   readdirSync: () => terminal.files,
   statSync: () => ({ isDirectory: () => false }),
 }));
@@ -84,6 +84,7 @@ const commands: Command[] = [
 ];
 
 const footerProps: ComponentProps<typeof Footer> = {
+  contextTokens: 40_000,
   contextWindow: 200_000,
   inputTokens: 1250,
   outputTokens: 230,
@@ -93,7 +94,7 @@ const footerProps: ComponentProps<typeof Footer> = {
   sessionId: "01234567-89ab-cdef-0123-456789abcdef",
   workDir: "/workspace/project",
 };
-const stats = "↑1.3k ↓230 0.7%/200k";
+const stats = "↑1.3k ↓230 20.0%/200k";
 const initialColorLevel = chalk.level;
 let instance: Instance | undefined;
 
@@ -419,7 +420,7 @@ describe("footer priorities", () => {
       outputTokens: 12_500,
       contextWindow: 0,
     });
-    expect(output).toContain("↑1.3m ↓13k 0.0%/0");
+    expect(output).toContain("↑1.3M ↓13k 0.0%/0");
   });
 });
 
