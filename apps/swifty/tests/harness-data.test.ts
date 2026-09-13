@@ -313,8 +313,8 @@ describe("multimodal provider requests", () => {
     }
   });
 
-  it.each([true, false])(
-    "sends valid Anthropic thinking configuration when enabled=%s",
+  it.each(["high", "off"] as const)(
+    "sends valid Anthropic thinking configuration when thinking=%s",
     async (thinking) => {
       let request: unknown;
       vi.stubGlobal(
@@ -375,8 +375,8 @@ describe("multimodal provider requests", () => {
         })
         .parse(request);
       expect(body.max_tokens).toBe(128000);
-      expect(body.thinking.type).toBe(thinking ? "enabled" : "disabled");
-      if (thinking) {
+      expect(body.thinking.type).toBe(thinking === "off" ? "disabled" : "enabled");
+      if (thinking !== "off") {
         expect(body.thinking.budget_tokens).toBeGreaterThanOrEqual(1024);
         expect(body.thinking.budget_tokens).toBeLessThan(body.max_tokens);
       }

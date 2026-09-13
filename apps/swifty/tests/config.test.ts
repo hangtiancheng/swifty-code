@@ -24,7 +24,6 @@ import { describe, it, expect } from "vitest";
 
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
-  defaultThinkingLevelFor,
   forkEnabled,
   getContextWindow,
   getMaxOutputTokens,
@@ -111,37 +110,16 @@ describe("config", () => {
       model: "m",
     } as const;
 
-    it("defaults to high for anthropic when unset", () => {
+    it("defaults to high for every protocol when unset", () => {
       expect(getThinkingLevel({ ...base })).toBe("high");
-      expect(defaultThinkingLevelFor("anthropic")).toBe("high");
-    });
-
-    it("defaults to off for OpenAI protocols when unset", () => {
-      expect(getThinkingLevel({ ...base, protocol: "openai" })).toBe("off");
-      expect(getThinkingLevel({ ...base, protocol: "openai-compat" })).toBe("off");
-      expect(defaultThinkingLevelFor("openai")).toBe("off");
-      expect(defaultThinkingLevelFor("openai-compat")).toBe("off");
-    });
-
-    it("maps legacy boolean true to the protocol default", () => {
-      expect(getThinkingLevel({ ...base, thinking: true })).toBe("high");
-      // Old OpenAI configs wrote `thinking: true` by default; they must keep
-      // omitting reasoning parameters.
-      expect(getThinkingLevel({ ...base, protocol: "openai", thinking: true })).toBe("off");
-      expect(getThinkingLevel({ ...base, protocol: "openai-compat", thinking: true })).toBe("off");
-    });
-
-    it("maps legacy boolean false to off", () => {
-      expect(getThinkingLevel({ ...base, thinking: false })).toBe("off");
+      expect(getThinkingLevel({ ...base, protocol: "openai" })).toBe("high");
+      expect(getThinkingLevel({ ...base, protocol: "openai-compat" })).toBe("high");
     });
 
     it("passes an explicit level through", () => {
       expect(getThinkingLevel({ ...base, thinking: "max" })).toBe("max");
       expect(getThinkingLevel({ ...base, thinking: "off" })).toBe("off");
-    });
-
-    it("keeps an explicit openai level instead of the protocol default", () => {
-      expect(getThinkingLevel({ ...base, protocol: "openai", thinking: "high" })).toBe("high");
+      expect(getThinkingLevel({ ...base, protocol: "openai", thinking: "low" })).toBe("low");
     });
   });
 
@@ -152,9 +130,8 @@ describe("config", () => {
         protocol: "openai",
         base_url: "#",
         model: "m",
-        thinking: true,
       });
-      expect(provider.thinking).toBe("off");
+      expect(provider.thinking).toBe("high");
       expect(provider.context_window).toBe(1000000);
       expect(provider.max_output_tokens).toBe(DEFAULT_MAX_OUTPUT_TOKENS);
     });

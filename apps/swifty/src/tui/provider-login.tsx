@@ -28,7 +28,6 @@ import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
   DEFAULT_THINKING_LEVEL,
-  defaultThinkingLevelFor,
   type ProviderConfig,
   type ThinkingLevel,
   THINKING_LEVELS,
@@ -85,29 +84,18 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   max_output_tokens: "Max output tokens",
 };
 
-function normalizeThinkingLevel(
-  value: ProviderConfig["thinking"],
-  protocol: ProviderConfig["protocol"],
-): ThinkingLevel {
-  if (typeof value === "boolean") {
-    return value ? defaultThinkingLevelFor(protocol) : "off";
-  }
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  if (typeof value === "string" && (THINKING_LEVELS as readonly string[]).includes(value)) {
-    return value;
-  }
-  return defaultThinkingLevelFor(protocol);
+function normalizeThinkingLevel(value: ProviderConfig["thinking"]): ThinkingLevel {
+  return value ?? DEFAULT_THINKING_LEVEL;
 }
 
 function createInitialForm(initialValues?: Partial<ProviderConfig>): FormState {
-  const protocol = initialValues?.protocol ?? "anthropic";
   return {
     name: initialValues?.name ?? "",
-    protocol,
+    protocol: initialValues?.protocol ?? "anthropic",
     base_url: initialValues?.base_url ?? "",
     api_key: initialValues?.api_key ?? "",
     model: initialValues?.model ?? "",
-    thinking: normalizeThinkingLevel(initialValues?.thinking, protocol),
+    thinking: normalizeThinkingLevel(initialValues?.thinking),
     context_window: String(initialValues?.context_window ?? DEFAULT_CONTEXT_WINDOW),
     max_output_tokens: String(initialValues?.max_output_tokens ?? DEFAULT_MAX_OUTPUT_TOKENS),
   };
@@ -318,14 +306,7 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
         const index = PROTOCOLS.indexOf(formRef.current.protocol);
         const next = (index + (key.rightArrow ? 1 : -1) + PROTOCOLS.length) % PROTOCOLS.length;
         const protocol = PROTOCOLS[next] ?? PROTOCOLS[0];
-        // Keep an explicitly chosen level, but move the protocol default along
-        // when the user has not touched the thinking field yet.
-        const previousDefault = defaultThinkingLevelFor(formRef.current.protocol);
-        const thinking =
-          formRef.current.thinking === previousDefault
-            ? defaultThinkingLevelFor(protocol)
-            : formRef.current.thinking;
-        const nextForm = { ...formRef.current, protocol, thinking };
+        const nextForm = { ...formRef.current, protocol };
         formRef.current = nextForm;
         setForm(nextForm);
         setFieldErrors((current) => ({ ...current, protocol: undefined }));

@@ -78,10 +78,17 @@ describe("provider login", () => {
     }
   });
 
-  it("defaults thinking per protocol", () => {
-    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai" }).thinking).toBe("off");
-    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai-compat" }).thinking).toBe("off");
+  it("defaults thinking to high for every protocol", () => {
+    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai" }).thinking).toBe("high");
+    expect(ProviderLoginSchema.parse({ ...input, protocol: "openai-compat" }).thinking).toBe(
+      "high",
+    );
     expect(ProviderLoginSchema.parse({ ...input, protocol: "anthropic" }).thinking).toBe("high");
+  });
+
+  it("rejects the legacy boolean thinking values", () => {
+    expect(ProviderLoginSchema.safeParse({ ...input, thinking: true }).success).toBe(false);
+    expect(ProviderLoginSchema.safeParse({ ...input, thinking: false }).success).toBe(false);
   });
 
   it.each(["-1", "0", "1.5", "NaN", "Infinity", "999999999", "oops"])(
@@ -192,6 +199,16 @@ describe("provider login", () => {
       context_window: 1000000,
       max_output_tokens: 128000,
     });
+  });
+
+  it("reports invalid provider fields instead of dropping the provider", () => {
+    const directory = mkdtempSync(join(tmpdir(), "swifty-invalid-thinking-"));
+    const path = join(directory, "config.yaml");
+    writeFileSync(
+      path,
+      "providers:\n  - name: old\n    protocol: anthropic\n    base_url: https://example.com\n    model: claude-old\n    thinking: true\n",
+    );
+    expect(() => loadConfig(path)).toThrow(/Invalid provider configuration/);
   });
 
   it("points at leftover project configs when the global config is missing", () => {

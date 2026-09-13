@@ -169,7 +169,7 @@ describe("ProviderLogin", () => {
     });
   });
 
-  it("navigates with Tab and follows the protocol default for thinking", async () => {
+  it("navigates with Tab and changes protocol and thinking with arrows", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     mount(validProvider, onSubmit);
 
@@ -185,12 +185,12 @@ describe("ProviderLogin", () => {
       await Promise.resolve();
     });
 
-    // Switching anthropic -> openai moves the untouched default from high to
-    // off; the right arrow then advances off -> minimal.
+    // The protocol switch leaves thinking at its default (high); the right
+    // arrow then advances high -> xhigh.
     expect(onSubmit).toHaveBeenCalledWith({
       ...validProvider,
       protocol: "openai",
-      thinking: "minimal",
+      thinking: "xhigh",
     });
   });
 

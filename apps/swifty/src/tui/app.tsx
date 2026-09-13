@@ -51,7 +51,7 @@ import type {
 } from "../config/config.js";
 import {
   DEFAULT_CONTEXT_WINDOW,
-  defaultThinkingLevelFor,
+  DEFAULT_THINKING_LEVEL,
   getContextWindow,
   getMaxOutputTokens,
 } from "../config/config.js";
@@ -1218,9 +1218,7 @@ export function App({
       const output = cmd.handler({
         workDir,
         args: parsed.args,
-        thinkingLevel: () =>
-          clientRef.current?.getThinkingLevel?.() ??
-          defaultThinkingLevelFor(selectedProviderRef.current.protocol),
+        thinkingLevel: () => clientRef.current?.getThinkingLevel?.() ?? DEFAULT_THINKING_LEVEL,
         setThinkingLevel: (level) => clientRef.current?.setThinkingLevel?.(level),
         persistThinkingLevel: (level) => {
           persistThinkingLevel(selectedProviderRef.current.name, level);

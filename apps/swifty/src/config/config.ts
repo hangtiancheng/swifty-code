@@ -24,7 +24,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { safeParse } from "@modelcontextprotocol/sdk/server/zod-compat.js";
+import { getParseErrorMessage, safeParse } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import yaml from "js-yaml";
 import { z } from "zod";
 
@@ -66,12 +66,6 @@ export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhig
 
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
-/**
- * Accepts a thinking level, or a legacy boolean (`true` → default level,
- * `false` → off) so existing configs keep working.
- */
-const ThinkingConfigSchema = z.union([z.boolean(), z.enum(THINKING_LEVELS)]);
-
 export const ProviderConfigSchema = z.object({
   name: z.string(),
   /**
@@ -81,7 +75,7 @@ export const ProviderConfigSchema = z.object({
   base_url: z.string(),
   model: z.string(),
   api_key: z.string().optional(),
-  thinking: ThinkingConfigSchema.optional(),
+  thinking: z.enum(THINKING_LEVELS).optional(),
   context_window: z.coerce.number().optional(),
   /**
    * The model's output ceiling (PI's `model.maxTokens`). Clamped to the
@@ -119,29 +113,9 @@ export function isValidThinkingLevel(value: string): value is ThinkingLevel {
   return (THINKING_LEVELS as readonly string[]).includes(value);
 }
 
-/**
- * Default thinking level per protocol. Anthropic historically enabled extended
- * thinking by default; the OpenAI protocols never sent a reasoning parameter
- * before, and non-reasoning models reject `reasoning_effort`, so they only opt
- * in when `thinking` is configured explicitly.
- */
-export function defaultThinkingLevelFor(protocol: ProviderConfig["protocol"]): ThinkingLevel {
-  return protocol === "anthropic" ? DEFAULT_THINKING_LEVEL : "off";
-}
-
-/** Normalize the config `thinking` field (level or legacy boolean) to a level. */
+/** Normalize the config `thinking` field to a level; unset means the default. */
 export function getThinkingLevel(provider: ProviderConfig): ThinkingLevel {
-  const thinking = provider.thinking;
-  if (thinking === undefined) {
-    return defaultThinkingLevelFor(provider.protocol);
-  }
-  if (typeof thinking === "boolean") {
-    // The legacy boolean was only meaningful for Anthropic. Map `true` to the
-    // protocol default so old OpenAI configs (which wrote `thinking: true` by
-    // default) keep omitting reasoning parameters.
-    return thinking ? defaultThinkingLevelFor(provider.protocol) : "off";
-  }
-  return thinking;
+  return provider.thinking ?? DEFAULT_THINKING_LEVEL;
 }
 
 /** Thinking token budget for a level; 0 when thinking is off. */
@@ -292,6 +266,12 @@ function loadSingleFile(path: string): AppConfig {
     const parsed = safeParse(z.array(ProviderConfigSchema), raw.providers);
     if (parsed.success) {
       providers = parsed.data.map(withProviderDefaults);
+    } else {
+      // Providers are required for the app to function; surface schema errors
+      // (e.g. a removed legacy field) instead of silently dropping them.
+      throw new ConfigError(
+        `Invalid provider configuration in ${path}: ${getParseErrorMessage(parsed.error)}`,
+      );
     }
   }
   if ("permission_mode" in raw && typeof raw.permission_mode === "string") {
