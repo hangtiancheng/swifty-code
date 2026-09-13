@@ -57,7 +57,7 @@ import type { UsageInfo } from "@/llm/events.js";
 // When the model stops on max_tokens, escalate its output ceiling once to this
 // value, then attempt a bounded number of multi-turn recoveries.
 const MAX_TOKENS_CEILING = 64000;
-const MAX_OUTPUT_TOKENS_RECOVERIES = 3;
+const MAX_TOKENS_RECOVERIES = 3;
 const MAX_RATE_LIMIT_RETRIES = 3;
 const MAX_RETRY_DELAY_MS = 60000;
 // Tool output exceeding this threshold is spilled to disk rather than truncated
@@ -527,7 +527,7 @@ export class Agent {
               }
               yield { type: "retry", reason: "max_tokens escalation", delay: 0 };
               continue;
-            } else if (outputRecoveries < MAX_OUTPUT_TOKENS_RECOVERIES) {
+            } else if (outputRecoveries < MAX_TOKENS_RECOVERIES) {
               outputRecoveries++;
               this.conversation.addAssistantFull(fullText, thinkingBlocks, []);
               this.persistLastMessage();
@@ -544,7 +544,7 @@ export class Agent {
               );
               yield {
                 type: "retry",
-                reason: `max_tokens recovery ${String(outputRecoveries)}/${String(MAX_OUTPUT_TOKENS_RECOVERIES)}`,
+                reason: `max_tokens recovery ${String(outputRecoveries)}/${String(MAX_TOKENS_RECOVERIES)}`,
                 delay: 0,
               };
               continue;

@@ -198,16 +198,10 @@ tsconfig.tsbuildinfo
 target
 **/target
 
-!apps/swifty-agent/app/api/upload
-
 *.local.yaml
 **/*.local.yaml
 
 .swifty/
 **/.swifty/
-
-!apps/swifty/.swifty/
-apps/swifty/.swifty/*
-!apps/swifty/.swifty/config.yaml
 
 .playwright-cli/

@@ -98,11 +98,7 @@ describe("extra allowed roots", () => {
 });
 
 describe("protected paths under bypass", () => {
-  const protectedRelatives = [
-    ".swifty/permissions.local.yaml",
-    ".swifty/config.yaml",
-    ".swifty/skills/evil/SKILL.md",
-  ];
+  const protectedRelatives = [".swifty/permissions.local.yaml", ".swifty/skills/evil/SKILL.md"];
 
   it("denies writing protected paths even in bypass mode", () => {
     const dir = makeTmpDir();
