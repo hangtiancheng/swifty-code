@@ -27,7 +27,7 @@ import { BUILTIN_AGENTS } from "../src/subagent/definition.js";
 
 describe("model alias resolution", () => {
   it("resolves short aliases to full model ids", () => {
-    expect(resolveModelId("haiku")).toBe("claude-haiku-4-5-20251001");
+    expect(resolveModelId("haiku")).toBe("claude-haiku-4-6");
     expect(resolveModelId("sonnet")).toContain("sonnet");
     expect(resolveModelId("opus")).toContain("opus");
   });

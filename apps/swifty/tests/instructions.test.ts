@@ -36,11 +36,11 @@ function makeRepo(prefix: string): string {
 }
 
 describe("instruction file loading", () => {
-  it(".swifty/SWIFTY.md is ordered after SWIFTY.md in the same directory", () => {
+  it(".swifty/AGENTS.md is ordered after AGENTS.md in the same directory", () => {
     const dir = makeRepo("swifty-instr-");
-    writeFileSync(join(dir, "SWIFTY.md"), "plain file");
+    writeFileSync(join(dir, "AGENTS.md"), "plain file");
     mkdirSync(join(dir, ".swifty"), { recursive: true });
-    writeFileSync(join(dir, ".swifty", "SWIFTY.md"), "dotdir file");
+    writeFileSync(join(dir, ".swifty", "AGENTS.md"), "dotdir file");
 
     const out = loadInstructions(dir);
     expect(out).toContain("plain file");
@@ -49,14 +49,14 @@ describe("instruction file loading", () => {
     expect(out.indexOf("plain file")).toBeLessThan(out.indexOf("dotdir file"));
   });
 
-  it(".swifty/SWIFTY.md participates in directory traversal with deeper dirs ordered later", () => {
+  it(".swifty/AGENTS.md participates in directory traversal with deeper dirs ordered later", () => {
     const root = makeRepo("swifty-instr-walk-");
     const sub = join(root, "pkg", "deep");
     mkdirSync(sub, { recursive: true });
     mkdirSync(join(root, ".swifty"), { recursive: true });
-    writeFileSync(join(root, ".swifty", "SWIFTY.md"), "dotdir root");
+    writeFileSync(join(root, ".swifty", "AGENTS.md"), "dotdir root");
     mkdirSync(join(sub, ".swifty"), { recursive: true });
-    writeFileSync(join(sub, ".swifty", "SWIFTY.md"), "dotdir leaf");
+    writeFileSync(join(sub, ".swifty", "AGENTS.md"), "dotdir leaf");
 
     const out = loadInstructions(sub);
     expect(out.indexOf("dotdir root")).toBeLessThan(out.indexOf("dotdir leaf"));

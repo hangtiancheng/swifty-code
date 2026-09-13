@@ -320,7 +320,7 @@ describe("skill download cancellation", () => {
 });
 
 describe("skill catalog reload", () => {
-  it.each([".claude", ".github", ".swifty"])(
+  it.each([".agents", ".swifty"])(
     "watches project and user additions/removals in %s",
     (ecosystem) => {
       for (const base of [workDir, userDir]) {
@@ -342,7 +342,7 @@ describe("skill catalog reload", () => {
   );
 
   it("detects adding and deleting SKILL.md in an existing child directory", () => {
-    const dir = join(workDir, ".github/skills/demo");
+    const dir = join(workDir, ".agents/skills/demo");
     mkdirSync(dir, { recursive: true });
     const catalog = new SkillCatalog();
     catalog.load(workDir);
@@ -361,14 +361,14 @@ describe("skill catalog reload", () => {
 
   it("clears stale entries on repeated loads and retains source precedence", () => {
     writeSkill(userDir, ".swifty", "demo", "global");
-    writeSkill(workDir, ".claude", "demo", "project claude");
+    writeSkill(workDir, ".agents", "demo", "project agents");
     const preferred = writeSkill(workDir, ".swifty", "demo", "project swifty");
     const catalog = new SkillCatalog();
     catalog.load(workDir);
     expect(catalog.get("demo")?.body).toBe("project swifty");
     rmSync(preferred);
     catalog.load(workDir);
-    expect(catalog.get("demo")?.body).toBe("project claude");
+    expect(catalog.get("demo")?.body).toBe("project agents");
     const elsewhere = join(root, "other-project");
     mkdirSync(elsewhere);
     catalog.load(elsewhere);
@@ -382,7 +382,7 @@ describe("skill catalog reload", () => {
     const file = writeSkill(workDir, ".swifty");
     const skillsDir = dirname(dirname(file));
     symlinkSync(join(root, "missing"), join(skillsDir, "aaa-broken"));
-    const linked = writeSkill(root, ".claude", "linked");
+    const linked = writeSkill(root, ".agents", "linked");
     symlinkSync(dirname(linked), join(skillsDir, "linked"));
     const catalog = new SkillCatalog();
     expect(() => catalog.load(workDir)).not.toThrow();

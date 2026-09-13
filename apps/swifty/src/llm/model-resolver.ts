@@ -27,9 +27,9 @@ import { createClient, type LLMClient } from "./client.js";
 // Short aliases the model field of an agent definition may use. Unknown names
 // pass through unchanged so a full model id still works.
 const MODEL_ALIASES: Record<string, string> = {
-  haiku: "claude-haiku-4-5-20251001",
-  sonnet: "claude-sonnet-4-6-20250514",
-  opus: "claude-opus-4-6-20250514",
+  haiku: "claude-haiku-4-6",
+  sonnet: "claude-sonnet-4-6",
+  opus: "claude-opus-4-6",
 };
 
 export function resolveModelId(shortName: string): string {

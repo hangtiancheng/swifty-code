@@ -105,7 +105,7 @@ describe("ConversationManager", () => {
     expect(mgr.getMessages()[1].content).toBe("hello");
   });
 
-  // A project may have no SWIFTY.md and no memories — injection should still happen when only skills are present
+  // A project may have no AGENTS.md and no memories — injection should still happen when only skills are present
   it("injects when only skills are present", () => {
     const mgr = new ConversationManager();
     mgr.injectLongTermMemory("", "", "- /review: review code");
@@ -153,7 +153,10 @@ describe("ConversationManager", () => {
       const mgr = new ConversationManager();
       mgr.addUserMessage([
         { type: "text", text: "Inspect the attachment" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ]);
       mgr.addSystemReminder("Project instructions");
       const before = structuredClone(mgr.getMessages());
@@ -206,7 +209,10 @@ describe("ConversationManager", () => {
       mgr.addUserMessage("first");
       mgr.addUserMessage([
         { type: "text", text: "look at this" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ]);
       const result = buildAnthropicMessages(mgr.getMessages());
       // Consecutive user turns merge into one entry with text + image blocks.
@@ -223,7 +229,10 @@ describe("ConversationManager", () => {
       const mgr = new ConversationManager();
       mgr.addUserMessage([
         { type: "text", text: "with image" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ]);
       mgr.addUserMessage("follow-up");
       const result = buildAnthropicMessages(mgr.getMessages());
@@ -240,7 +249,10 @@ describe("ConversationManager", () => {
       const mgr = new ConversationManager();
       mgr.addToolResultMessage("tu-1", "[Image: shot.png]", false, [
         { type: "text", text: "[Image: shot.png]" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ]);
       const result = buildAnthropicMessages(mgr.getMessages());
       const block = asRecord(result[0].content[0]);
@@ -270,7 +282,10 @@ describe("ConversationManager", () => {
       const mgr = new ConversationManager();
       mgr.addUserMessage([
         { type: "text", text: "prompt" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ]);
       const messages = buildAnthropicMessages(mgr.getMessages());
       markLastUserTailForCache(messages);
@@ -287,7 +302,10 @@ describe("ConversationManager", () => {
         {
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: "QUJD" },
+            },
           ],
         },
       ];

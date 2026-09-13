@@ -109,7 +109,7 @@ export class SkillCatalog {
 
   private skillDirPaths(): string[] {
     return [homedir(), ...(this.workDir ? [this.workDir] : [])].flatMap((root) =>
-      [".claude", ".github", ".swifty"].map((ecosystem) => join(root, ecosystem, "skills")),
+      [".agents", ".swifty"].map((ecosystem) => join(root, ecosystem, "skills")),
     );
   }
 

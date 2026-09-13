@@ -148,7 +148,7 @@ export class ConversationManager {
     const sections: string[] = [];
     if (instructions) {
       sections.push(
-        `# SWIFTY.md
+        `# AGENTS.md
 Codebase and user instructions are shown below. Be sure to adhere to these instructions. IMPORTANT: These instructions OVERRIDE any default behavior and you MUST follow them exactly as written.
 
 ${instructions}`,

@@ -43,7 +43,7 @@ const validProvider: ProviderConfig = {
   protocol: "anthropic",
   base_url: "https://api.anthropic.com/v1/messages",
   api_key: "sk-secret-value",
-  model: "claude-sonnet",
+  model: "claude-sonnet-4-6",
   thinking: "high",
   context_window: 1_000_000,
   max_output_tokens: 128_000,

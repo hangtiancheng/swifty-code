@@ -41,10 +41,9 @@ export interface InstructionSource {
  *
  * Discovery order (later entries take higher precedence — the model attends
  * more to content appearing later):
- *  1. User-global: ~/.swifty/SWIFTY.md, ~/.swifty/AGENTS.md
- *  2. Project: SWIFTY.md, AGENTS.md, and .swifty/SWIFTY.md in every
+ *  1. User-global: ~/.swifty/AGENTS.md
+ *  2. Project: AGENTS.md, and .swifty/AGENTS.md in every
  *     directory from the git root down to workDir
- *  3. workDir/SWIFTY.local.md (local private override)
  *
  * Supports @include directives:
  *  - @./relative/path, @~/home/path, @/absolute/path
@@ -87,7 +86,6 @@ export function discoverInstructions(workDir: string): InstructionSource[] {
   // 1. User-global instructions
   try {
     const home = homedir();
-    addSource(sources, seen, join(home, ".swifty", "SWIFTY.md"));
     addSource(sources, seen, join(home, ".swifty", "AGENTS.md"));
   } catch (err) {
     log.error({ err }, "memory operation failed");
@@ -98,14 +96,10 @@ export function discoverInstructions(workDir: string): InstructionSource[] {
   // 2. Every directory from git root to workDir
   const dirs = projectInstructionDirs(workDir);
   for (const dir of dirs) {
-    addSource(sources, seen, join(dir, "SWIFTY.md"));
     addSource(sources, seen, join(dir, "AGENTS.md"));
     // Same-named file under .swifty/: for projects that want instructions in .gitignore
-    addSource(sources, seen, join(dir, ".swifty", "SWIFTY.md"));
+    addSource(sources, seen, join(dir, ".swifty", "AGENTS.md"));
   }
-
-  // 3. private override
-  addSource(sources, seen, join(workDir, "SWIFTY.local.md"));
 
   return sources;
 }

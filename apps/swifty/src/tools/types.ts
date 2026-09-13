@@ -272,17 +272,13 @@ export interface Tool {
 }
 
 export const SKIP_DIRS = new Set([
-  ".claude", // Claude Code
+  ".agents",
   ".git", // Git
   ".swifty", // Swifty
   ".next", // Next.js
   ".venv", // Python venv
   ".mypy_cache", // Python mypy
-  ".tox", // Python tox
   "__pycache__", // Python
-  "build", // C++
   "dist", // Webpack, Vite
   "node_modules", // Node.js
-  "vendor", // Go
-  "venv", // Python venv
 ]);

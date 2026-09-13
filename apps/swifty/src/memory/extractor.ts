@@ -183,7 +183,7 @@ export class MemoryExtractor {
       `- Code patterns, architecture, file paths — derivable from reading the project`,
       `- Git history — use git log/blame`,
       `- Debugging solutions — the fix is in the code`,
-      `- Anything in CLAUDE.md / SWIFTY.md files`,
+      `- Anything in AGENTS.md files`,
       `- Ephemeral task details, current conversation context`,
       ``,
       `## How to save memories`,
