@@ -57,6 +57,16 @@ export class ToolRegistry {
     this.tools.set(tool.name, tool);
   }
 
+  /**
+   * Removes a tool and forgets its discovery state, so a re-registered tool
+   * with the same name starts deferred again. Used by /mcp reload to drop
+   * tools of servers that disappeared from the config.
+   */
+  unregister(name: string): void {
+    this.tools.delete(name);
+    this.discovered.delete(name);
+  }
+
   get(name: string): Tool | undefined {
     return this.tools.get(name);
   }

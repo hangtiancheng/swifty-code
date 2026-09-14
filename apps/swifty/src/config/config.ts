@@ -428,6 +428,95 @@ function validateProviders(config: AppConfig): void {
   }
 }
 
+/** Project-level MCP config file, compatible with the Claude Code format. */
+const PROJECT_MCP_FILENAME = ".mcp.json";
+
+const McpJsonEntrySchema = z.looseObject({
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  type: z.enum(["stdio", "sse", "http"]).optional(),
+  url: z.string().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
+type McpJsonEntry = z.infer<typeof McpJsonEntrySchema>;
+
+const McpJsonFileSchema = z.looseObject({
+  mcpServers: z.record(z.string(), McpJsonEntrySchema).default({}),
+});
+
+/**
+ * Maps one `.mcp.json` entry onto an MCPServerConfig. An explicit `type` wins;
+ * otherwise stdio is inferred from `command` and http from `url`. Entries that
+ * lack the field their transport needs are rejected (returns null).
+ */
+function mcpServerFromJsonEntry(name: string, entry: McpJsonEntry): MCPServerConfig | null {
+  const transport = entry.type ?? (entry.command !== undefined ? "stdio" : "http");
+  if (transport === "stdio") {
+    if (!entry.command) {
+      return null;
+    }
+    return { name, command: entry.command, args: entry.args, env: entry.env };
+  }
+  if (!entry.url) {
+    return null;
+  }
+  return { name, url: entry.url, transport, headers: entry.headers };
+}
+
+/**
+ * Reads project-level MCP servers from `<workDir>/.mcp.json`. A missing or
+ * malformed file yields [] with a log entry instead of an error: a broken
+ * repo-side config must not prevent Swifty from starting.
+ */
+export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
+  const path = join(workDir, PROJECT_MCP_FILENAME);
+  if (!existsSync(path)) {
+    return [];
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf-8"));
+  } catch (err) {
+    log.error({ err, path }, "invalid .mcp.json");
+    return [];
+  }
+  const parsed = safeParse(McpJsonFileSchema, raw);
+  if (!parsed.success) {
+    log.error({ error: parsed.error, path }, "invalid .mcp.json");
+    return [];
+  }
+  const servers: MCPServerConfig[] = [];
+  for (const [name, entry] of Object.entries(parsed.data.mcpServers)) {
+    const server = mcpServerFromJsonEntry(name, entry);
+    if (server) {
+      servers.push(server);
+    } else {
+      log.warn({ name, path }, "skipping invalid .mcp.json server entry");
+    }
+  }
+  return servers;
+}
+
+/**
+ * Returns a copy of `config` with the servers from `<workDir>/.mcp.json`
+ * appended. User-level (config.yaml) entries win on a name collision: the
+ * project file ships with the repository and is less trusted than the user's
+ * own config.
+ */
+export function withProjectMcpServers(config: AppConfig, workDir: string): AppConfig {
+  const projectServers = loadProjectMcpServers(workDir);
+  if (projectServers.length === 0) {
+    return config;
+  }
+  const known = new Set(config.mcp_servers.map((s) => s.name));
+  return {
+    ...config,
+    mcp_servers: [...config.mcp_servers, ...projectServers.filter((s) => !known.has(s.name))],
+  };
+}
+
 export function loadConfig(
   path?: string,
   options: { allowEmptyProviders?: boolean } = {},

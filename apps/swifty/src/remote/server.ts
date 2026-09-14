@@ -1373,7 +1373,7 @@ export class RemoteServer {
           }
         : undefined,
       persistThinkingLevel: (level) => {
-        persistThinkingLevel(handle.provider.name, level);
+        persistThinkingLevel(handle.provider.base_url, level);
       },
     };
   }

@@ -358,7 +358,7 @@ export function createDefaultRegistry(): CommandRegistry {
     name: "mcp",
     aliases: [],
     type: "local",
-    description: "Show MCP server connection status",
+    description: "Show MCP server status; /mcp reload re-reads the config and reconnects",
     handler: () => "mcp",
   });
 

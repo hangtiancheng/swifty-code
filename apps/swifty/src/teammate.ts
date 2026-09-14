@@ -23,7 +23,12 @@
 import { basename, dirname, join } from "node:path";
 
 import { Agent } from "./agent/agent.js";
-import { getContextWindow, getMaxOutputTokens, loadConfig } from "./config/config.js";
+import {
+  getContextWindow,
+  getMaxOutputTokens,
+  loadConfig,
+  withProjectMcpServers,
+} from "./config/config.js";
 import type { MCPServerConfig } from "./config/config.js";
 import { ConversationManager } from "./conversation/conversation.js";
 import { createClient } from "./llm/client.js";
@@ -227,12 +232,11 @@ export async function runTeammate(args: TeammateArgs): Promise<void> {
 
   let mcpManager: MCPManager | undefined;
   try {
-    const cfg = loadConfig();
+    const workDir = process.cwd();
+    const cfg = withProjectMcpServers(loadConfig(), workDir);
     const provider = args.providerName
       ? (cfg.providers.find((p) => p.name === args.providerName) ?? cfg.providers[0])
       : cfg.providers[0];
-
-    const workDir = process.cwd();
     const conversation = new ConversationManager();
 
     // The skill catalog feeds both the system prompt (so the model knows which

@@ -48,6 +48,7 @@ import type { InteractionSummary } from "@/bootstrap/interaction-summary.js";
 import {
   countMcpTools,
   createToolRegistry,
+  removeMcpTools,
   wireSkillsToRegistry,
   buildComposedToolFilter,
   formatToolArgs,
@@ -72,6 +73,8 @@ import {
   getContextWindow,
   getMaxOutputTokens,
   getSupportedThinkingLevels,
+  loadConfig,
+  withProjectMcpServers,
 } from "@/config/config.js";
 import { persistThinkingLevel, saveProvider } from "@/config/provider-login.js";
 import { expandAtRefsWithImages } from "@/conversation/at-expand.js";
@@ -273,6 +276,9 @@ export function App({
   );
   const usageTrackerRef = useRef(new CommandUsageTracker(workDir));
   const mcpManagerRef = useRef<MCPManager | null>(null);
+  // Current MCP server list. Starts as the prop but /mcp reload replaces it
+  // with the freshly read config, so consumers must read this ref, not the prop.
+  const mcpServersRef = useRef<MCPServerConfig[]>(mcpServers);
   // The MCP load mode is decided once per session; a later retry pass must
   // reapply that decision rather than recompute it.
   const mcpModeDecidedRef = useRef(false);
@@ -388,49 +394,101 @@ export function App({
   // Connects every configured MCP server that has no live connection yet and
   // registers the tools it reports. Safe to call repeatedly: connectAll skips
   // servers that are already up, so /mcp retries only the ones that failed.
-  const connectMcpServers = useCallback(
-    async (mgr: MCPManager, provider: ProviderConfig) => {
-      const result = await mgr.connectAll(mcpServers);
-      for (const { serverName, tool } of result.tools) {
-        const client = mgr.getClient(serverName);
-        if (client) {
-          registryRef.current.register(new MCPToolWrapper(client, serverName, tool));
-        }
+  // Reads the server list from mcpServersRef so /mcp reload takes effect here.
+  const connectMcpServers = useCallback(async (mgr: MCPManager, provider: ProviderConfig) => {
+    const result = await mgr.connectAll(mcpServersRef.current);
+    for (const { serverName, tool } of result.tools) {
+      const client = mgr.getClient(serverName);
+      if (client) {
+        registryRef.current.register(new MCPToolWrapper(client, serverName, tool));
       }
-      if (result.errors.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "system",
-            content: `MCP errors: ${result.errors.map((e) => `${e.serverName}: ${e.error}`).join("; ")}`,
-          },
-        ]);
+    }
+    if (result.errors.length > 0) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "system",
+          content: `MCP errors: ${result.errors.map((e) => `${e.serverName}: ${e.error}`).join("; ")}`,
+        },
+      ]);
+    }
+    setMcpInfo({
+      servers: mgr.connectedServers(),
+      toolCount: countMcpTools(registryRef.current),
+    });
+    if (result.tools.length > 0) {
+      if (mcpModeDecidedRef.current) {
+        // The mode is fixed for the session — re-deciding it now could flip
+        // tools[] mid-flight and break the cache prefix. Reapply the standing
+        // mode so the tools this pass added inherit its defer flag.
+        applyMode(registryRef.current, registryRef.current.mcpLoadingMode);
+      } else {
+        // Only decide the load mode after all tools are registered: it compares total schema size against the context window
+        decideAndApply(registryRef.current, provider.base_url, getContextWindow(provider));
+        mcpModeDecidedRef.current = true;
       }
-      setMcpInfo({
-        servers: mgr.connectedServers(),
-        toolCount: countMcpTools(registryRef.current),
-      });
-      if (result.tools.length > 0) {
-        if (mcpModeDecidedRef.current) {
-          // The mode is fixed for the session — re-deciding it now could flip
-          // tools[] mid-flight and break the cache prefix. Reapply the standing
-          // mode so the tools this pass added inherit its defer flag.
-          applyMode(registryRef.current, registryRef.current.mcpLoadingMode);
-        } else {
-          // Only decide the load mode after all tools are registered: it compares total schema size against the context window
-          decideAndApply(registryRef.current, provider.base_url, getContextWindow(provider));
-          mcpModeDecidedRef.current = true;
-        }
-      }
-      // Inject each server's instructions into the conversation so the
-      // model knows how to use that server's tools.
-      for (const { serverName, text } of result.instructions) {
-        convRef.current.addSystemReminder(`# MCP Server: ${serverName}\n${text}`);
-      }
-      return result;
-    },
-    [mcpServers],
-  );
+    }
+    // Inject each server's instructions into the conversation so the
+    // model knows how to use that server's tools.
+    for (const { serverName, text } of result.instructions) {
+      convRef.current.addSystemReminder(`# MCP Server: ${serverName}\n${text}`);
+    }
+    return result;
+  }, []);
+
+  // /mcp reload — re-reads the MCP server list from disk (config.yaml plus the
+  // project .mcp.json), tears down every live connection and its registered
+  // tools, then connects and registers whatever the fresh config lists.
+  const reloadMcpServers = useCallback(async () => {
+    let servers: MCPServerConfig[];
+    try {
+      servers = withProjectMcpServers(loadConfig(), workDir).mcp_servers;
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: `MCP reload failed: ${asErrorString(err)}` },
+      ]);
+      return;
+    }
+    mcpServersRef.current = servers;
+
+    // Drop the previously registered wrappers first: they hold references to
+    // clients that disconnectAll is about to tear down, and tools of servers
+    // removed from the config must not linger in the registry.
+    removeMcpTools(registryRef.current);
+
+    if (servers.length === 0) {
+      await mcpManagerRef.current?.disconnectAll();
+      mcpManagerRef.current = null;
+      setMcpInfo({ servers: [], toolCount: 0 });
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: "MCP config reloaded: no MCP servers configured." },
+      ]);
+      return;
+    }
+
+    const mgr = mcpManagerRef.current ?? new MCPManager();
+    mcpManagerRef.current = mgr;
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "system",
+        content: `Reloading MCP server(s): ${servers.map((s) => s.name).join(", ")}`,
+      },
+    ]);
+    await mgr.disconnectAll();
+    const result = await connectMcpServers(mgr, selectedProviderRef.current);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "system",
+        content:
+          `MCP reloaded: ${String(result.servers.length)} server(s) connected, ` +
+          `${String(countMcpTools(registryRef.current))} tool(s)`,
+      },
+    ]);
+  }, [workDir, connectMcpServers]);
 
   const initClient = useCallback(
     async (provider: ProviderConfig) => {
@@ -683,15 +741,20 @@ export function App({
       return false;
     }
 
-    // /mcp — show MCP server status, first retrying any server still not connected
+    // /mcp — show MCP server status, first retrying any server still not
+    // connected; /mcp reload re-reads the config from disk and reconnects all.
     if (parsed.name === "mcp") {
       usageTrackerRef.current.record("mcp");
+      if (parsed.args.trim().toLowerCase() === "reload") {
+        await reloadMcpServers();
+        return true;
+      }
       const mgr = mcpManagerRef.current;
       if (!mgr) {
         setMessages((prev) => [...prev, { role: "system", content: "No MCP servers configured." }]);
         return true;
       }
-      const down = mgr.missingServers(mcpServers);
+      const down = mgr.missingServers(mcpServersRef.current);
       if (down.length > 0) {
         setMessages((prev) => [
           ...prev,
@@ -703,7 +766,7 @@ export function App({
         await connectMcpServers(mgr, selectedProvider);
       }
       const connected = mgr.connectedServers();
-      const stillDown = mgr.missingServers(mcpServers);
+      const stillDown = mgr.missingServers(mcpServersRef.current);
       const lines =
         connected.length === 0
           ? ["No MCP servers connected."]
@@ -1239,12 +1302,14 @@ export function App({
               selectedProviderRef.current = updated;
               setSelectedProvider(updated);
               setProviders((current) =>
-                current.map((provider) => (provider.name === updated.name ? updated : provider)),
+                current.map((provider) =>
+                  provider.base_url === updated.base_url ? updated : provider,
+                ),
               );
             }
           : undefined,
         persistThinkingLevel: (level) => {
-          persistThinkingLevel(selectedProviderRef.current.name, level);
+          persistThinkingLevel(selectedProviderRef.current.base_url, level);
         },
       });
       setMessages((prev) => [...prev, { role: "system", content: output }]);
@@ -1788,7 +1853,7 @@ export function App({
         ...current,
         {
           role: "system",
-          content: `Provider ${saved.provider.name} activated. Saved to ~/.swifty/config.yaml.`,
+          content: `Provider ${saved.provider.name} activated. ${saved.replaced ? "Updated" : "Saved to"} ~/.swifty/config.yaml.`,
         },
       ]);
     } else {
@@ -1891,7 +1956,7 @@ export function App({
           providerDialogActive
             ? {
                 providers,
-                currentProviderName: selectedProvider.name,
+                currentBaseUrl: selectedProvider.base_url,
                 reservedRows: footerRows,
                 onCancel: () => {
                   setProviderDialogActive(false);

@@ -26,6 +26,7 @@ export {
   buildComposedToolFilter,
   countMcpTools,
   createToolRegistry,
+  removeMcpTools,
   wireSkillsToRegistry,
 } from "./tool-registry.js";
 

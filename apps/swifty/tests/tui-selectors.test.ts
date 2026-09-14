@@ -117,12 +117,16 @@ function staticFrame(node: ReactNode, columns: number) {
 }
 
 function providers(count = 15): ProviderConfig[] {
-  return Array.from({ length: count }, (_, index) => ({
-    name: `Provider-${String(index + 1).padStart(2, "0")}`,
-    protocol: "openai-compat",
-    base_url: "https://unused.invalid",
-    model: `local-model-${String(index + 1)}`,
-  }));
+  return Array.from({ length: count }, (_, index) => {
+    const id = String(index + 1).padStart(2, "0");
+    return {
+      name: `Provider-${id}`,
+      protocol: "openai-compat",
+      // base_url is the provider identity, so every entry needs a distinct one.
+      base_url: `https://provider-${id}.invalid`,
+      model: `local-model-${String(index + 1)}`,
+    };
+  });
 }
 
 function sessions(count = 15): SessionInfo[] {
@@ -186,7 +190,7 @@ describe("provider selector", () => {
     mount(
       createElement(ProviderSelect, {
         providers: providers(),
-        currentProviderName: "Provider-12",
+        currentBaseUrl: "https://provider-12.invalid",
         onSelect,
       }),
     );
@@ -205,14 +209,25 @@ describe("provider selector", () => {
 
   it("fuzzy searches local names, models and protocols, then clears back to the current item", () => {
     const configured = [
-      { ...providers(1)[0], name: "Development", model: "fast-model", protocol: "openai" },
-      { ...providers(1)[0], name: "Production", model: "reasoning-model" },
+      {
+        ...providers(1)[0],
+        name: "Development",
+        base_url: "https://dev.invalid",
+        model: "fast-model",
+        protocol: "openai",
+      },
+      {
+        ...providers(1)[0],
+        name: "Production",
+        base_url: "https://prod.invalid",
+        model: "reasoning-model",
+      },
     ] satisfies ProviderConfig[];
     const onSelect = vi.fn();
     mount(
       createElement(ProviderSelect, {
         providers: configured,
-        currentProviderName: "Production",
+        currentBaseUrl: "https://prod.invalid",
         onSelect,
       }),
     );
@@ -253,7 +268,7 @@ describe("provider selector", () => {
     const view = (items: ProviderConfig[]) =>
       createElement(ProviderSelect, {
         providers: items,
-        currentProviderName: configured[1].name,
+        currentBaseUrl: configured[1].base_url,
         onSelect,
       });
     mount(view(configured));
@@ -276,12 +291,12 @@ describe("provider selector", () => {
     expect(frame).toContain("3/3");
   });
 
-  it("wraps navigation and uses the first item when the current name is absent", () => {
+  it("wraps navigation and uses the first item when the current provider is absent", () => {
     const onSelect = vi.fn();
     mount(
       createElement(ProviderSelect, {
         providers: providers(3),
-        currentProviderName: "missing",
+        currentBaseUrl: "https://missing.invalid",
         onSelect,
       }),
     );
@@ -461,7 +476,7 @@ describe("selector layout", () => {
         dock(
           createElement(ProviderSelect, {
             providers: providers(),
-            currentProviderName: "Provider-15",
+            currentBaseUrl: "https://provider-15.invalid",
             onSelect: vi.fn(),
           }),
         ),

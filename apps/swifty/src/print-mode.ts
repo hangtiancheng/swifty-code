@@ -24,7 +24,7 @@
 
 import { Agent } from "./agent/agent.js";
 import type { AgentEvent } from "./agent/events.js";
-import { forkEnabled, loadConfig } from "./config/config.js";
+import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/config.js";
 import { getContextWindow, getMaxOutputTokens } from "./config/config.js";
 import { ConversationManager } from "./conversation/conversation.js";
 import { createClient } from "./llm/client.js";
@@ -106,7 +106,7 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
   const workDir = process.cwd();
 
   // Load configuration
-  const cfg = loadConfig();
+  const cfg = withProjectMcpServers(loadConfig(), workDir);
   const provider = cfg.providers[0];
 
   // Build system prompt

@@ -112,8 +112,10 @@ function writeConfigAtomic(path: string, raw: Record<string, unknown>): void {
 }
 
 /**
- * Save a new provider to the single global config ($HOME/.swifty/config.yaml),
- * retaining every currently available provider and suffixing duplicate names.
+ * Save a provider to the single global config ($HOME/.swifty/config.yaml),
+ * retaining every currently available provider. `base_url` is the provider
+ * identity: an entry with the same base_url is replaced in place instead of
+ * appended, and names may repeat freely.
  */
 export function saveProvider(
   input: unknown,
@@ -121,6 +123,8 @@ export function saveProvider(
 ): {
   provider: ProviderConfig;
   providers: ProviderConfig[];
+  /** Whether an existing entry with the same base_url was replaced. */
+  replaced: boolean;
   path: string;
 } {
   const provider = ProviderLoginSchema.parse(input);
@@ -129,40 +133,56 @@ export function saveProvider(
   const existing = z.array(z.record(z.string(), z.unknown())).parse(config.providers ?? []);
   // Retain every currently available provider so an in-memory list never loses
   // entries that are not yet written to the file.
-  const stored = [...existing];
+  const current = [...existing];
   for (const entry of available) {
-    if (!stored.some((existingEntry) => existingEntry.name === entry.name)) {
-      stored.push({ ...entry });
+    if (!current.some((stored) => stored.base_url === entry.base_url)) {
+      current.push({ ...entry });
     }
   }
-  const names = new Set(stored.map((entry) => entry.name));
-  const baseName = provider.name;
-  let suffix = 2;
-  while (names.has(provider.name)) {
-    provider.name = `${baseName}${String(suffix++)}`;
+  const stored: Record<string, unknown>[] = [];
+  let replaced = false;
+  for (const entry of current) {
+    if (entry.base_url !== provider.base_url) {
+      stored.push(entry);
+      continue;
+    }
+    // Replace the first match in place and drop any further duplicates, so one
+    // endpoint keeps exactly one entry even in configs written by the old
+    // name-suffixing strategy.
+    if (replaced) {
+      continue;
+    }
+    replaced = true;
+    stored.push(provider);
   }
-  stored.push(provider);
+  if (!replaced) {
+    stored.push(provider);
+  }
   const providers = stored.map((entry) => ProviderConfigSchema.parse(entry));
   writeConfigAtomic(path, { ...config, providers: stored });
-  return { provider, providers, path };
+  return { provider, providers, replaced, path };
 }
 
 /**
- * Persist a provider's thinking level to the global config. Throws when the
- * named provider is absent so callers can surface a clear error.
+ * Persist a provider's thinking level to the global config. `base_url` is the
+ * provider identity, so every entry for that endpoint is updated. Throws when
+ * the endpoint is absent so callers can surface a clear error.
  */
-export function persistThinkingLevel(providerName: string, level: ThinkingLevel): void {
+export function persistThinkingLevel(baseUrl: string, level: ThinkingLevel): void {
   const path = globalConfigPath();
   const config = readConfigRaw(path);
   const providers = z.array(z.record(z.string(), z.unknown())).parse(config.providers ?? []);
-  const target = providers.find((entry) => entry.name === providerName);
-  if (!target) {
-    throw new Error(`Provider "${providerName}" not found in ${path}.`);
+  const targets = providers.filter((entry) => entry.base_url === baseUrl);
+  if (targets.length === 0) {
+    throw new Error(`Provider with base URL "${baseUrl}" not found in ${path}.`);
   }
+  const changed = targets.filter((entry) => entry.thinking !== level);
   // Avoid rewriting (and reformatting) the file when nothing changes.
-  if (target.thinking === level) {
+  if (changed.length === 0) {
     return;
   }
-  target.thinking = level;
+  for (const entry of changed) {
+    entry.thinking = level;
+  }
   writeConfigAtomic(path, { ...config, providers });
 }

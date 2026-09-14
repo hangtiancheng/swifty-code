@@ -20,7 +20,11 @@
  * SOFTWARE.
  */
 
-import { describe, it, expect } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 
 import {
   clampThinkingLevel,
@@ -31,13 +35,16 @@ import {
   getSupportedThinkingLevels,
   getThinkingLevel,
   isValidThinkingLevel,
+  loadProjectMcpServers,
   ProviderConfigSchema,
   resolveAPIKey,
   THINKING_LEVELS,
   thinkingBudgetForLevel,
   toReasoningEffort,
+  withProjectMcpServers,
   withProviderDefaults,
   type AppConfig,
+  type MCPServerConfig,
   type ProviderConfig,
 } from "@/config/config.js";
 
@@ -296,6 +303,98 @@ describe("config", () => {
     it("disables for real when set to false", () => {
       expect(forkEnabled({ ...bare(), enable_fork: false })).toBe(false);
       expect(forkEnabled({ ...bare(), enable_fork: true })).toBe(true);
+    });
+  });
+
+  // .mcp.json is the project-level, Claude Code-compatible MCP config. It ships
+  // with the repository, so malformed content must degrade to "no servers"
+  // instead of breaking startup, and user-level config wins on name collisions.
+  describe("project .mcp.json", () => {
+    let dir: string;
+
+    const writeMcpJson = (content: string) => {
+      writeFileSync(join(dir, ".mcp.json"), content, "utf-8");
+    };
+
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "swifty-mcp-"));
+    });
+
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true });
+    });
+
+    it("returns [] when the file is absent", () => {
+      expect(loadProjectMcpServers(dir)).toEqual([]);
+    });
+
+    it("maps stdio, http and sse entries onto MCPServerConfig", () => {
+      writeMcpJson(
+        JSON.stringify({
+          mcpServers: {
+            db: { command: "npx", args: ["-y", "db-mcp"], env: { API_KEY: "${DB_KEY}" } },
+            web: { url: "https://example.com/mcp" },
+            legacy: { type: "sse", url: "https://example.com/sse", headers: { A: "b" } },
+          },
+        }),
+      );
+      expect(loadProjectMcpServers(dir)).toEqual([
+        { name: "db", command: "npx", args: ["-y", "db-mcp"], env: { API_KEY: "${DB_KEY}" } },
+        { name: "web", url: "https://example.com/mcp", transport: "http" },
+        {
+          name: "legacy",
+          url: "https://example.com/sse",
+          transport: "sse",
+          headers: { A: "b" },
+        },
+      ]);
+    });
+
+    it("skips entries missing the field their transport needs", () => {
+      writeMcpJson(
+        JSON.stringify({
+          mcpServers: {
+            empty: {},
+            noUrl: { type: "http" },
+            noCommand: { type: "stdio", args: ["x"] },
+            ok: { command: "true" },
+          },
+        }),
+      );
+      expect(loadProjectMcpServers(dir)).toEqual([{ name: "ok", command: "true" }]);
+    });
+
+    it("degrades to [] on malformed JSON or schema violations", () => {
+      writeMcpJson("{not json");
+      expect(loadProjectMcpServers(dir)).toEqual([]);
+
+      writeMcpJson(JSON.stringify({ mcpServers: { bad: { command: 42 } } }));
+      expect(loadProjectMcpServers(dir)).toEqual([]);
+    });
+
+    it("appends project servers and lets user config win on collisions", () => {
+      writeMcpJson(
+        JSON.stringify({
+          mcpServers: {
+            shared: { command: "project-binary" },
+            extra: { command: "extra-binary" },
+          },
+        }),
+      );
+      const user: MCPServerConfig = { name: "shared", command: "user-binary" };
+      const base: AppConfig = { providers: [], mcp_servers: [user], hooks: [] };
+      const merged = withProjectMcpServers(base, dir);
+      expect(merged.mcp_servers).toEqual([
+        { name: "shared", command: "user-binary" },
+        { name: "extra", command: "extra-binary" },
+      ]);
+      // The input config must stay untouched.
+      expect(base.mcp_servers).toEqual([user]);
+    });
+
+    it("returns the config unchanged when there is no .mcp.json", () => {
+      const base: AppConfig = { providers: [], mcp_servers: [], hooks: [] };
+      expect(withProjectMcpServers(base, dir)).toBe(base);
     });
   });
 });

@@ -137,7 +137,7 @@ describe("provider login", () => {
     });
   });
 
-  it("saves to the global config, preserving settings and suffixing duplicate names", () => {
+  it("saves to the global config, preserving settings and overwriting the same base_url", () => {
     mkdirSync(join(homeRef.current, ".swifty"));
     const path = globalConfigPath();
     writeFileSync(
@@ -145,14 +145,14 @@ describe("provider login", () => {
       "permission_mode: plan\nenable_fork: false\nsandbox:\n  enabled: true\ncustom_setting: keep\n",
     );
     const first = saveProvider(input, []);
-    const second = saveProvider(input, first.providers);
+    expect(first.replaced).toBe(false);
+    const second = saveProvider({ ...input, name: "renamed", model: "new-model" }, first.providers);
+    expect(second.replaced).toBe(true);
+    expect(second.provider.name).toBe("renamed");
+    expect(second.providers.map((provider) => provider.name)).toEqual(["renamed"]);
+    expect(second.providers[0]).toMatchObject({ model: "new-model", base_url: input.base_url });
     const third = saveProvider(input, second.providers);
-    expect(third.provider.name).toBe("custom3");
-    expect(third.providers.map((provider) => provider.name)).toEqual([
-      "custom",
-      "custom2",
-      "custom3",
-    ]);
+    expect(third.providers.map((provider) => provider.name)).toEqual(["custom"]);
     const reloaded = loadConfig(path);
     expect(reloaded.providers).toEqual(third.providers);
     expect(reloaded.enable_fork).toBe(false);
@@ -161,6 +161,58 @@ describe("provider login", () => {
     if (process.platform !== "win32") {
       expect(statSync(path).mode & 0o777).toBe(0o600);
     }
+  });
+
+  it("appends providers with distinct base_urls and allows repeated names", () => {
+    const first = saveProvider(input, []);
+    const second = saveProvider(
+      { ...input, base_url: "https://staging.example.com" },
+      first.providers,
+    );
+    expect(second.replaced).toBe(false);
+    expect(second.providers.map((provider) => provider.name)).toEqual(["custom", "custom"]);
+    expect(second.providers.map((provider) => provider.base_url)).toEqual([
+      input.base_url,
+      "https://staging.example.com",
+    ]);
+    expect(loadConfig(second.path).providers.map((provider) => provider.name)).toEqual([
+      "custom",
+      "custom",
+    ]);
+  });
+
+  it("replaces the entry in place and collapses legacy duplicates sharing a base_url", () => {
+    mkdirSync(join(homeRef.current, ".swifty"));
+    const path = globalConfigPath();
+    writeFileSync(
+      path,
+      [
+        "providers:",
+        "  - name: legacy",
+        "    protocol: anthropic",
+        `    base_url: ${input.base_url}`,
+        "    model: old-model",
+        "  - name: other",
+        "    protocol: anthropic",
+        "    base_url: https://other.example.com",
+        "    model: other-model",
+        "  - name: legacy2",
+        "    protocol: anthropic",
+        `    base_url: ${input.base_url}`,
+        "    model: old-model",
+        "",
+      ].join("\n"),
+    );
+    const saved = saveProvider(input, loadConfig(path).providers);
+    expect(saved.replaced).toBe(true);
+    expect(saved.providers.map((provider) => [provider.name, provider.base_url])).toEqual([
+      ["custom", input.base_url],
+      ["other", "https://other.example.com"],
+    ]);
+    expect(loadConfig(path).providers.map((provider) => provider.name)).toEqual([
+      "custom",
+      "other",
+    ]);
   });
 
   it("creates the global config when it does not exist", () => {
@@ -182,15 +234,15 @@ describe("provider login", () => {
   it("persists a thinking level update to the global config", () => {
     saveProvider(input, []);
     const path = globalConfigPath();
-    persistThinkingLevel("custom", "max");
+    persistThinkingLevel(input.base_url, "max");
     expect(loadConfig(path).providers[0].thinking).toBe("max");
   });
 
   it("throws when persisting a thinking level for an unknown provider", () => {
     saveProvider(input, []);
     expect(() => {
-      persistThinkingLevel("nope", "max");
-    }).toThrow();
+      persistThinkingLevel("https://unknown.example.com", "max");
+    }).toThrow(/base URL/);
   });
 
   it("applies defaults to old configuration without model-name inference", () => {
@@ -231,26 +283,36 @@ describe("provider login", () => {
     const saved = saveProvider({ ...input, ...metadata }, []);
     expect(saved.provider).toMatchObject({ ...metadata, thinking: "high" });
     expect(loadConfig(saved.path).providers[0]).toMatchObject(metadata);
-    persistThinkingLevel(saved.provider.name, "low");
+    persistThinkingLevel(saved.provider.base_url, "low");
     expect(loadConfig(saved.path).providers[0]).toMatchObject({
       ...metadata,
       thinking: "low",
     });
-    const duplicate = saveProvider({ ...input, reasoning: false }, saved.providers);
-    expect(duplicate.provider.name).toBe("custom2");
-    expect(duplicate.provider.thinking).toBe("off");
-    expect(duplicate.providers[0]).toMatchObject(metadata);
-    expect(loadConfig(saved.path).providers[0]).toMatchObject(metadata);
+    const overwrite = saveProvider({ ...input, reasoning: false }, saved.providers);
+    expect(overwrite.replaced).toBe(true);
+    expect(overwrite.provider.name).toBe("custom");
+    expect(overwrite.provider.thinking).toBe("off");
+    // base_url is the identity, so the stored entry is replaced wholesale.
+    expect(overwrite.providers).toHaveLength(1);
+    expect(loadConfig(saved.path).providers[0]).toMatchObject({
+      reasoning: false,
+      thinking: "off",
+    });
   });
 
   it("preserves capability fields from available providers not yet on disk", () => {
     const available = ProviderLoginSchema.parse({
       ...input,
       name: "in-memory",
+      base_url: "https://in-memory.example.com",
       reasoning: false,
       future_capability: { retained: true },
     });
     const saved = saveProvider(input, [available]);
+    expect(saved.providers.map((provider) => provider.base_url)).toEqual([
+      "https://in-memory.example.com",
+      input.base_url,
+    ]);
     expect(saved.providers[0]).toMatchObject(available);
     expect(loadConfig(saved.path).providers[0]).toMatchObject(available);
   });

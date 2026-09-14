@@ -139,6 +139,31 @@ The thinking level controls reasoning depth. For `anthropic` it maps to a thinki
 
 API keys are resolved in this order: explicit api_key field, then environment variables (ANTHROPIC_API_KEY for anthropic, OPENAI_API_KEY for openai and openai-compat).
 
+### Project-level MCP servers (.mcp.json)
+
+In addition to `mcp_servers` in `config.yaml`, Swifty reads a project-level `.mcp.json` from the working directory, using the Claude Code-compatible format:
+
+```json
+{
+  "mcpServers": {
+    "database": {
+      "command": "npx",
+      "args": ["-y", "@swifty-db/mcp@latest"],
+      "env": { "API_KEY": "${DATABASE_API_KEY}" }
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://example.com/mcp",
+      "headers": { "Authorization": "Bearer ${TOKEN}" }
+    }
+  }
+}
+```
+
+Each entry takes `command`/`args`/`env` (stdio) or `url`/`headers` with `type` of `http` or `sse`; `${VAR}` / `$VAR` in values expands from the environment. These servers are merged with the user-level `mcp_servers`; on a name collision the user-level entry wins. A malformed `.mcp.json` is ignored (logged) rather than blocking startup.
+
+After editing `.mcp.json` or `config.yaml`, use `/mcp reload` in the TUI to re-read both sources and reconnect all servers without restarting.
+
 ## Usage
 
 ### Interactive TUI Mode
@@ -149,9 +174,9 @@ swifty
 
 Launches the terminal interface. If multiple providers are configured, a provider selection screen appears first.
 
-Use `/login` to configure and activate a provider from the TUI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or cycle the thinking level, Enter to save, and Esc to cancel. Changing the protocol also moves an untouched thinking level to that protocol's default. Duplicate names receive numeric suffixes (`name2`, `name3`, …).
+Use `/login` to configure and activate a provider from the TUI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or cycle the thinking level, Enter to save, and Esc to cancel. Changing the protocol also moves an untouched thinking level to that protocol's default.
 
-The form saves to `~/.swifty/config.yaml`, retaining existing providers and other settings. Context window accepts integers from 1000 to 10000000; max output accepts integers from 1 to 1000000 and must not exceed the context window. Empty optional fields use the defaults above.
+The form saves to `~/.swifty/config.yaml`, retaining existing providers and other settings. `base_url` is the provider identity: saving a provider whose `base_url` already exists replaces that entry in place instead of adding another one, and names may repeat freely. Context window accepts integers from 1000 to 10000000; max output accepts integers from 1 to 1000000 and must not exceed the context window. Empty optional fields use the defaults above.
 
 ### Print Mode (Non-Interactive)
 
@@ -195,6 +220,7 @@ Inside the TUI, these commands are available:
 | /sandbox [1/2/3]        | Configure sandbox (1=on+auto, 2=on+manual, 3=off)                                                                         |
 | /worktree               | List git worktrees                                                                                                        |
 | /mcp                    | Show MCP server status                                                                                                    |
+| /mcp reload             | Re-read MCP config (config.yaml + .mcp.json) and reconnect all servers                                                    |
 | /thinking [level]       | Show or set the thinking level (off, minimal, low, medium, high, xhigh, max); setting persists to `~/.swifty/config.yaml` |
 | /quit                   | Exit the application                                                                                                      |
 

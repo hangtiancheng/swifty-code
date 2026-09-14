@@ -31,7 +31,7 @@ import {
 import { TerminalInput } from "./bootstrap/terminal-input.js";
 import { detectTerminalTheme } from "./bootstrap/terminal-theme.js";
 import { parseResumeArgument } from "./bootstrap/tui-selection.js";
-import { forkEnabled, loadConfig } from "./config/config.js";
+import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/config.js";
 import { initLogger, logger } from "./logger/logger.js";
 import { parsePrintFlags, runPrintMode } from "./print-mode.js";
 import { recover, recordError, recordExit } from "./recover.js";
@@ -82,7 +82,10 @@ async function main() {
 
   let cfg;
   try {
-    cfg = loadConfig(undefined, { allowEmptyProviders: !remoteAddr });
+    cfg = withProjectMcpServers(
+      loadConfig(undefined, { allowEmptyProviders: !remoteAddr }),
+      process.cwd(),
+    );
   } catch (err) {
     console.error(`Error: ${asErrorString(err)}`);
     process.exit(1);

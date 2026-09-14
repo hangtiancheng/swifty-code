@@ -30,7 +30,7 @@ import { updateSelectorQuery } from "./selector-search.js";
 import type { ProviderConfig } from "@/config/config.js";
 
 interface ProviderSelectProps {
-  currentProviderName?: string;
+  currentBaseUrl?: string;
   reservedRows?: number;
   providers: ProviderConfig[];
   onCancel?: () => void;
@@ -38,14 +38,14 @@ interface ProviderSelectProps {
 }
 
 export function ProviderSelect({
-  currentProviderName,
+  currentBaseUrl,
   reservedRows,
   providers,
   onCancel,
   onSelect,
 }: ProviderSelectProps) {
   const [query, setQuery] = useState("");
-  const [focusedName, setFocusedName] = useState(currentProviderName);
+  const [focusedBaseUrl, setFocusedBaseUrl] = useState(currentBaseUrl);
   const fuse = useMemo(
     () =>
       new Fuse(providers, {
@@ -61,7 +61,7 @@ export function ProviderSelect({
   );
   const cursor = Math.max(
     0,
-    matches.findIndex((provider) => provider.name === focusedName),
+    matches.findIndex((provider) => provider.base_url === focusedBaseUrl),
   );
 
   useInput((input, key) => {
@@ -70,7 +70,7 @@ export function ProviderSelect({
     } else if (key.upArrow || key.downArrow) {
       if (matches.length > 0) {
         const next = (cursor + (key.upArrow ? -1 : 1) + matches.length) % matches.length;
-        setFocusedName(matches[next].name);
+        setFocusedBaseUrl(matches[next].base_url);
       }
     } else if (key.return) {
       const provider = matches.at(cursor);
@@ -81,7 +81,7 @@ export function ProviderSelect({
       const nextQuery = updateSelectorQuery(query, input, key);
       if (nextQuery !== query) {
         setQuery(nextQuery);
-        setFocusedName(nextQuery.trim() ? undefined : currentProviderName);
+        setFocusedBaseUrl(nextQuery.trim() ? undefined : currentBaseUrl);
       }
     }
   });
@@ -103,8 +103,8 @@ export function ProviderSelect({
           .slice(start, start + count)
           .map((provider, index) => (
             <SelectorListRow
-              key={provider.name}
-              current={provider.name === currentProviderName}
+              key={provider.base_url}
+              current={provider.base_url === currentBaseUrl}
               description={`${provider.protocol} · ${provider.model}`}
               focused={start + index === cursor}
               label={provider.name}
