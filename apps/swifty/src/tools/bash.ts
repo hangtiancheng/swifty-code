@@ -213,8 +213,6 @@ export class BashTool implements Tool {
       let total = 0;
       let outputTruncated = false;
 
-      const alreadyExited = () => child.exitCode !== null || child.signalCode !== null;
-
       // Kill the child's whole process group; fall back to the direct child
       // when the group is already gone (or group kill is unsupported).
       const killTree = (signal: NodeJS.Signals) => {
@@ -276,18 +274,13 @@ export class BashTool implements Tool {
         appendChunk(chunk, "stderr");
       });
 
+      // `exit` can precede `close` while a descendant still holds inherited pipes.
       const onAbort = () => {
-        if (alreadyExited()) {
-          return;
-        }
         aborted = true;
         terminate();
       };
 
       const timeoutTimer = setTimeout(() => {
-        if (alreadyExited()) {
-          return;
-        }
         timedOut = true;
         terminate();
       }, timeout * 1000);

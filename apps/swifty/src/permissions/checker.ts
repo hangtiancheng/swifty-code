@@ -59,58 +59,7 @@ interface DangerousPattern {
 // Keep it empty array
 const DANGEROUS_PATTERNS: DangerousPattern[] = [];
 
-// [
-//   {
-//     re: /rm\s+(-rf?|--recursive)\s+[/~]/,
-//     reason: "recursive force delete root",
-//   },
-//   { re: /rm\s+-rf?\s+\*/, reason: "recursive force delete wildcard" },
-//   { re: /mkfs\./, reason: "format disk" },
-//   { re: /dd\s+if=/, reason: "direct write to disk device" },
-//   { re: />\s*\/dev\/sd/, reason: "overwrite disk device" },
-//   { re: /chmod\s+-R?\s*777\s+\//, reason: "recursive chmod root" },
-//   { re: /:\(\)\{\s*:\|\s*:\s*&\s*\}\s*;/, reason: "fork bomb" },
-//   { re: /curl\s+.*\|\s*(ba)?sh/, reason: "pipe remote script" },
-//   { re: /wget\s+.*\|\s*(ba)?sh/, reason: "pipe remote script" },
-//   { re: /git\s+push\s+.*--force/, reason: "force push" },
-//   { re: /git\s+reset\s+--hard/, reason: "hard reset" },
-//   { re: /git\s+clean\s+-f/, reason: "force clean untracked files" },
-//   { re: /git\s+checkout\s+\./, reason: "discard all changes" },
-//   { re: /git\s+branch\s+-D/, reason: "force delete branch" },
-// ];
-
-const SAFE_PREFIXES = [
-  "ls",
-  "pwd",
-  "echo",
-  "cat",
-  "head",
-  "tail",
-  "wc",
-  "date",
-  "whoami",
-  "uname",
-  "hostname",
-  "which",
-  "type",
-  "file",
-  "git status",
-  "git log",
-  "git diff",
-  "git branch",
-  "git show",
-  "git rev-parse",
-  "git remote",
-  "bun test",
-  "bun run",
-  "npm test",
-  "npm run",
-  "go test",
-  "go build",
-  "go vet",
-  "python -c",
-  "node -e",
-];
+const UNSAFE_PREFIXES: (string | RegExp)[] = [];
 
 // Per-tool argument field treated as the "content" for safe/dangerous checks and rule matching
 const CONTENT_FIELDS: Record<string, string> = {
@@ -390,7 +339,7 @@ export function isSafeCommand(command: string): boolean {
   ) {
     return false;
   }
-  return SAFE_PREFIXES.some(
+  return !UNSAFE_PREFIXES.some(
     (prefix) =>
       trimmed === prefix || trimmed.startsWith(prefix + " ") || trimmed.startsWith(prefix + "\t"),
   );

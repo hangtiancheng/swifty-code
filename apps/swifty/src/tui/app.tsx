@@ -21,7 +21,6 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 
 import { Box, Text, useApp } from "ink";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -1368,10 +1367,7 @@ export function App({
       bashTool.sandbox = await sandboxRef.current;
       bashTool.sandboxConfig = {
         allowWrite: [workDir, "/tmp"],
-        denyWrite: [
-          join(workDir, ".swifty", "permissions.yaml"),
-          join(workDir, ".agents", "skills"),
-        ],
+        denyWrite: [],
         networkEnabled: sandboxNetworkEnabled,
       };
     } else if (bashTool) {

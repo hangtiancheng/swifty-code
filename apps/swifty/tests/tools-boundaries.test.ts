@@ -217,6 +217,29 @@ describe("shell tool boundaries", () => {
     expect(result.output).toContain("command interrupted");
   }, 5_000);
 
+  it("cancels Bash after the shell exits with inherited pipes still open", async () => {
+    const context = makeContext();
+    const controller = new AbortController();
+    const pending = new BashTool().execute(
+      { ...context, abortSignal: controller.signal },
+      { command: "printf before; sleep 2 &" },
+    );
+    setTimeout(() => controller.abort(), 100);
+    const result = await pending;
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain("before");
+    expect(result.output).toContain("command interrupted");
+  }, 1_000);
+
+  it("times out Bash after the shell exits with inherited pipes still open", async () => {
+    const result = await new BashTool().execute(makeContext(), {
+      command: "sleep 2 &",
+      timeout: 1,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain("command timed out after 1s");
+  }, 2_500);
+
   it("rejects non-positive timeouts before starting either shell", async () => {
     const context = makeContext();
     const expected = {

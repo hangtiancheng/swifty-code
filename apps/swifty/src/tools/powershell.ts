@@ -272,18 +272,13 @@ export class PowerShellTool implements Tool {
         appendChunk(chunk, "stderr");
       });
 
+      // `exit` can precede `close` while a descendant still holds inherited pipes.
       const onAbort = () => {
-        if (alreadyExited()) {
-          return;
-        }
         aborted = true;
         terminate();
       };
 
       const timeoutTimer = setTimeout(() => {
-        if (alreadyExited()) {
-          return;
-        }
         timedOut = true;
         terminate();
       }, timeout * 1000);
