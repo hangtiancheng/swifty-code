@@ -98,7 +98,7 @@ describe("extra allowed roots", () => {
 });
 
 describe("protected paths under bypass", () => {
-  const protectedRelatives = [".swifty/permissions.local.yaml", ".agents/skills/evil/SKILL.md"];
+  const protectedRelatives = [".swifty/permissions.yaml", ".agents/skills/evil/SKILL.md"];
 
   it("denies writing protected paths even in bypass mode", () => {
     const dir = makeTmpDir();
@@ -121,13 +121,30 @@ describe("protected paths under bypass", () => {
   });
 });
 
-// Writes the project-level and local-level rule files separately to verify cross-file merging
-function makeCheckerWithTiers(tmpDir: string, projectRules: string, localRules: string) {
-  const rulesDir = join(tmpDir, ".swifty");
-  mkdirSync(rulesDir, { recursive: true });
-  writeFileSync(join(rulesDir, "permissions.yaml"), projectRules);
-  writeFileSync(join(rulesDir, "permissions.local.yaml"), localRules);
-  return new PermissionChecker(tmpDir, "default");
+// Writes the user-level and project-level rule files separately to verify cross-file merging.
+// homedir() is redirected to a temp dir while constructing the checker so the
+// user-level file never touches the real ~/.swifty/permissions.yaml.
+function makeCheckerWithTiers(userRules: string, projectRules: string) {
+  const home = makeTmpDir();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  try {
+    mkdirSync(join(home, ".swifty"), { recursive: true });
+    writeFileSync(join(home, ".swifty", "permissions.yaml"), userRules);
+    const workDir = makeTmpDir();
+    mkdirSync(join(workDir, ".swifty"), { recursive: true });
+    writeFileSync(join(workDir, ".swifty", "permissions.yaml"), projectRules);
+    return new PermissionChecker(workDir, "default");
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
 }
 
 describe("rule merging across files", () => {
@@ -135,22 +152,22 @@ describe("rule merging across files", () => {
   const deny = '- rule: "Bash(git *)"\n  effect: deny';
   const ask = '- rule: "Bash(git *)"\n  effect: ask';
 
-  it("deny in project beats allow in local", () => {
-    const checker = makeCheckerWithTiers(makeTmpDir(), deny, allow);
+  it("deny in project beats allow in user", () => {
+    const checker = makeCheckerWithTiers(allow, deny);
     expect(checker.check("Bash", "command", { command: "git push origin main" }).effect).toBe(
       "deny",
     );
   });
 
-  it("deny in local beats allow in project", () => {
-    const checker = makeCheckerWithTiers(makeTmpDir(), allow, deny);
+  it("deny in user beats allow in project", () => {
+    const checker = makeCheckerWithTiers(deny, allow);
     expect(checker.check("Bash", "command", { command: "git push origin main" }).effect).toBe(
       "deny",
     );
   });
 
   it("ask beats allow", () => {
-    const checker = makeCheckerWithTiers(makeTmpDir(), allow, ask);
+    const checker = makeCheckerWithTiers(ask, allow);
     expect(checker.check("Bash", "command", { command: "git push origin main" }).effect).toBe(
       "ask",
     );
@@ -177,7 +194,7 @@ describe("rule merging across files", () => {
 
   it("deny beats allow regardless of order in the same file", () => {
     for (const body of [`${allow}\n${deny}`, `${deny}\n${allow}`]) {
-      const checker = makeCheckerWithTiers(makeTmpDir(), body, "");
+      const checker = makeCheckerWithTiers(makeTmpDir(), body);
       expect(checker.check("Bash", "command", { command: "git push origin main" }).effect).toBe(
         "deny",
       );

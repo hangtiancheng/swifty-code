@@ -172,8 +172,7 @@ describe("permission path boundaries", () => {
       checker.check("WriteFile", "write", { file_path: "/workspace/project-neighbor/a.ts" }).effect,
     ).toBe("ask");
     expect(
-      config.checker.check("WriteFile", "write", { file_path: ".swifty/permissions.local.yaml" })
-        .effect,
+      config.checker.check("WriteFile", "write", { file_path: ".swifty/permissions.yaml" }).effect,
     ).toBe("deny");
   });
 

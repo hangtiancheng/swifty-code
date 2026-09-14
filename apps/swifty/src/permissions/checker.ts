@@ -124,7 +124,7 @@ const CONTENT_FIELDS: Record<string, string> = {
   InstallSkill: "source",
 };
 
-const DEFAULT_DENY_WRITE = [".swifty/permissions.local.yaml", ".agents/skills/"];
+const DEFAULT_DENY_WRITE = [".swifty/permissions.yaml", ".agents/skills/"];
 
 export function extractContent(toolName: string, args: Record<string, unknown>): string {
   // The match target for McpCall is not a specific parameter but "which MCP
@@ -294,13 +294,11 @@ interface CachedRules {
 export class RuleEngine {
   private userPath: string;
   private projectPath: string;
-  private localPath: string;
   private cache = new Map<string, CachedRules>();
 
   constructor(workDir: string) {
     this.userPath = join(homedir(), ".swifty", "permissions.yaml");
     this.projectPath = join(workDir, ".swifty", "permissions.yaml");
-    this.localPath = join(workDir, ".swifty", "permissions.local.yaml");
   }
 
   // Read a single rules file; skips disk I/O and parsing on cache hit.
@@ -324,12 +322,12 @@ export class RuleEngine {
     return rules;
   }
 
-  // Return the merged snapshot of all three rules files. Reuses the previous
+  // Return the merged snapshot of both rules files. Reuses the previous
   // parse result when files are unchanged; re-reads only on change, so edits
   // take effect on the next evaluation without redundant parsing. One snapshot
   // is taken per tool call and shared across sub-command checks.
   snapshot(): Rule[] {
-    return [this.userPath, this.projectPath, this.localPath].flatMap((p) => this.rulesFor(p));
+    return [this.userPath, this.projectPath].flatMap((p) => this.rulesFor(p));
   }
 
   // Take a snapshot then adjudicate: reuses the previous parse result when
@@ -341,11 +339,11 @@ export class RuleEngine {
     return evaluateRules(this.snapshot(), toolName, content);
   }
 
-  // Persists a rule to the project-local YAML file in the `Tool(pattern)`
+  // Persists a rule to the project-level YAML file in the `Tool(pattern)`
   // format so "allow always" survives a restart.
-  appendLocalRule(rule: Rule): void {
-    mkdirSync(dirname(this.localPath), { recursive: true });
-    const rules = loadRulesFile(this.localPath);
+  appendProjectRule(rule: Rule): void {
+    mkdirSync(dirname(this.projectPath), { recursive: true });
+    const rules = loadRulesFile(this.projectPath);
     // Deduplicate: skip if an identical {tool, pattern, effect} rule already
     // exists. Without this, every "allow always" click on the same command
     // appends a duplicate entry (the rule engine matches but allowAlways is
@@ -362,7 +360,7 @@ export class RuleEngine {
       rule: `${r.tool}(${r.pattern})`,
       effect: r.effect,
     }));
-    writeFileSync(this.localPath, yaml.dump(entries), "utf-8");
+    writeFileSync(this.projectPath, yaml.dump(entries), "utf-8");
   }
 }
 
@@ -585,7 +583,7 @@ export class PermissionChecker {
       const words = content.trim().split(/\s+/).slice(0, 2);
       pattern = words.join(" ") + "*";
     }
-    this.ruleEngine.appendLocalRule({
+    this.ruleEngine.appendProjectRule({
       tool: toolName,
       pattern,
       effect: "allow",
