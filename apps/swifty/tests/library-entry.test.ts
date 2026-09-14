@@ -51,27 +51,16 @@ describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
       const text = readFileSync(join(libDir, file), "utf-8");
       expect(banned.exec(text), `${file} must not reference TUI modules`).toBeNull();
       if (file.endsWith(".d.ts")) {
-        expect(atAlias.exec(text), `${file} must not leak unresolved @/ type imports`).toBeNull();
+        // JSDoc examples may quote "@/..." specifiers; only real imports count.
+        const code = text.replace(/\/\*[\s\S]*?\*\//g, "");
+        expect(atAlias.exec(code), `${file} must not leak unresolved @/ type imports`).toBeNull();
       }
     }
   });
 
   it("loads in plain node and exposes the agent API", () => {
-    const script = `
-      const m = await import(process.env.SWIFTY_LIB_ENTRY);
-      const symbols = [
-        "Agent", "ToolRegistry", "MCPManager", "PermissionChecker",
-        "loadConfig", "createClient", "buildSystemPrompt", "TeamManager",
-        "TaskCreateTool", "TeamTaskCreateTool", "TaskStopTool", "TaskStore",
-        "recover", "runPrintMode", "RemoteServer", "ComputerUseTool",
-      ];
-      console.log(JSON.stringify({
-        totalExports: Object.keys(m).length,
-        version: m.version,
-        symbols: Object.fromEntries(symbols.map((k) => [k, typeof m[k]])),
-      }));
-    `;
-    const stdout = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+    const scriptFile = fileURLToPath(new URL("./library-entry-script.js", import.meta.url));
+    const stdout = execFileSync(process.execPath, [scriptFile], {
       env: { ...process.env, SWIFTY_LIB_ENTRY: pathToFileURL(libEntry).href },
       encoding: "utf-8",
     });

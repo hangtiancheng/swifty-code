@@ -45,6 +45,6 @@
     "resolveJsonModule": true,
     "plugins": []
   },
-  "include": ["examples", "src", "tests", "rspress.config.ts", "tsup.config.ts"],
+  "include": ["shims.d.ts", "src", "tests", "tsup.config.ts"],
   "exclude": ["node_modules", "dist", "docs", "src/remote/fe"]
 }

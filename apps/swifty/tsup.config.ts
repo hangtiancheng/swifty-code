@@ -21,6 +21,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,6 +64,22 @@ const externalizeNodeBuiltinsPlugin: EsbuildPlugin = {
 };
 
 const tuiDirs = [join(__dirname, "src", "tui") + sep];
+
+// Vite-style `?raw` imports (e.g. "./snippets/macos.swift?raw"): load the file
+// as a default-exported string, mirroring Vite/Vitest behavior.
+const rawImportPlugin: EsbuildPlugin = {
+  name: "raw-import",
+  setup(build) {
+    build.onResolve({ filter: /\?raw$/ }, (args) => ({
+      path: resolve(dirname(args.importer), args.path.replace(/\?raw$/, "")),
+      namespace: "raw-import",
+    }));
+    build.onLoad({ filter: /.*/, namespace: "raw-import" }, async (args) => ({
+      contents: await readFile(args.path, "utf8"),
+      loader: "text",
+    }));
+  },
+};
 
 // Library-build guard: the barrel entry (src/index.ts) must never reach the
 // ink/react TUI layer, neither via bare specifiers nor via a path resolving
@@ -112,7 +129,7 @@ const cliConfig: Options = {
   noExternal: [/.*/],
   define: { __SWIFTY_VERSION__: JSON.stringify(pkg.version) },
   tsconfig: "tsconfig.json",
-  esbuildPlugins: [externalizeNodeBuiltinsPlugin],
+  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin],
 };
 
 // Library entry: keeps dependencies external (consumers resolve them from
@@ -138,7 +155,7 @@ const libConfig: Options = {
   // deliberately NOT external: if the library graph ever reaches them, the
   // ban-tui-and-ink plugin fails the build instead of silently externalizing.
   external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !/^(ink|react)/.test(dep)),
-  esbuildPlugins: [externalizeNodeBuiltinsPlugin, banTuiAndInkPlugin],
+  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin, banTuiAndInkPlugin],
 };
 
 export default defineConfig([cliConfig, libConfig]);

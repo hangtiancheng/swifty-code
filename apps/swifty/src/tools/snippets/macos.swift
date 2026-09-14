@@ -1,5 +1,5 @@
-import ApplicationServices
 import AppKit
+import ApplicationServices
 import Foundation
 
 func fail(_ message: String) -> Never {
@@ -8,10 +8,11 @@ func fail(_ message: String) -> Never {
 }
 
 guard let encoded = ProcessInfo.processInfo.environment["SWIFTY_COMPUTER_INPUT"],
-      let data = Data(base64Encoded: encoded),
-      let object = try? JSONSerialization.jsonObject(with: data),
-      let input = object as? [String: Any],
-      let action = input["action"] as? String else {
+  let data = Data(base64Encoded: encoded),
+  let object = try? JSONSerialization.jsonObject(with: data),
+  let input = object as? [String: Any],
+  let action = input["action"] as? String
+else {
   fail("Invalid computer action payload.")
 }
 
@@ -29,7 +30,7 @@ let keyCodes: [String: CGKeyCode] = [
   "RIGHT": 124, "DOWN": 125, "UP": 126, "HOME": 115, "END": 119,
   "PAGEUP": 116, "PAGEDOWN": 121, "F1": 122, "F2": 120, "F3": 99,
   "F4": 118, "F5": 96, "F6": 97, "F7": 98, "F8": 100, "F9": 101,
-  "F10": 109, "F11": 103, "F12": 111
+  "F10": 109, "F11": 103, "F12": 111,
 ]
 
 func number(_ name: String) -> CGFloat {
@@ -47,7 +48,8 @@ func keyCode(_ name: String) -> CGKeyCode {
 }
 
 func keyEvent(_ name: String, _ down: Bool) {
-  guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode(name), keyDown: down) else {
+  guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode(name), keyDown: down)
+  else {
     fail("Unable to create keyboard event.")
   }
   event.post(tap: .cghidEventTap)
@@ -60,7 +62,10 @@ func withKeys(_ names: [String], _ body: () -> Void) {
 }
 
 func mouseEvent(_ type: CGEventType, _ point: CGPoint, _ button: CGMouseButton, clicks: Int64 = 1) {
-  guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: button) else {
+  guard
+    let event = CGEvent(
+      mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: button)
+  else {
     fail("Unable to create mouse event.")
   }
   event.setIntegerValueField(.mouseEventClickState, value: clicks)
@@ -80,7 +85,9 @@ if action == "cursor_position" {
 }
 
 if !AXIsProcessTrusted() {
-  fail("Accessibility permission is required. Enable it for the terminal running Swifty in System Settings > Privacy & Security > Accessibility.")
+  fail(
+    "Accessibility permission is required. Enable it for the terminal running Swifty in System Settings > Privacy & Security > Accessibility."
+  )
 }
 
 let point = CGPoint(
@@ -98,9 +105,12 @@ case "left_mouse_up":
   mouseEvent(.leftMouseUp, CGEvent(source: nil)?.location ?? point, .left)
 case "mouse_click":
   let buttonName = input["button"] as? String ?? "left"
-  let button: CGMouseButton = buttonName == "right" ? .right : buttonName == "middle" ? .center : .left
-  let downType: CGEventType = button == .right ? .rightMouseDown : button == .center ? .otherMouseDown : .leftMouseDown
-  let upType: CGEventType = button == .right ? .rightMouseUp : button == .center ? .otherMouseUp : .leftMouseUp
+  let button: CGMouseButton =
+    buttonName == "right" ? .right : buttonName == "middle" ? .center : .left
+  let downType: CGEventType =
+    button == .right ? .rightMouseDown : button == .center ? .otherMouseDown : .leftMouseDown
+  let upType: CGEventType =
+    button == .right ? .rightMouseUp : button == .center ? .otherMouseUp : .leftMouseUp
   let count = (input["clicks"] as? NSNumber)?.int64Value ?? 1
   withKeys(heldKeys) {
     mouseEvent(.mouseMoved, point, button)
@@ -124,7 +134,8 @@ case "left_click_drag":
       Thread.sleep(forTimeInterval: 0.02)
     }
     let end = path.last ?? first
-    mouseEvent(.leftMouseUp, CGPoint(x: end["x"]?.doubleValue ?? 0, y: end["y"]?.doubleValue ?? 0), .left)
+    mouseEvent(
+      .leftMouseUp, CGPoint(x: end["x"]?.doubleValue ?? 0, y: end["y"]?.doubleValue ?? 0), .left)
   }
 case "scroll":
   if let x = input["x"] as? NSNumber, let y = input["y"] as? NSNumber {
@@ -133,7 +144,9 @@ case "scroll":
   let horizontal = Int32((input["scrollX"] as? NSNumber)?.intValue ?? 0)
   let vertical = Int32((input["scrollY"] as? NSNumber)?.intValue ?? 0)
   withKeys(heldKeys) {
-    CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: -vertical, wheel2: -horizontal, wheel3: 0)?.post(tap: .cghidEventTap)
+    CGEvent(
+      scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: -vertical,
+      wheel2: -horizontal, wheel3: 0)?.post(tap: .cghidEventTap)
   }
 case "key", "hold_key":
   let names = keys()
@@ -148,7 +161,8 @@ case "type":
   let units = Array(text.utf16)
   units.withUnsafeBufferPointer { buffer in
     guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
-          let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
+      let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false)
+    else {
       fail("Unable to create text input events.")
     }
     down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress)
@@ -158,150 +172,4 @@ case "type":
   }
 default:
   fail("Unsupported action: " + action)
-}
-`;
-
-const WINDOWS_POWERSHELL = String.raw`
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -TypeDefinition @'
-using System;
-using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
-
-public static class SwiftyComputer {
-  [StructLayout(LayoutKind.Sequential)]
-  private struct INPUT { public uint type; public InputUnion value; }
-  [StructLayout(LayoutKind.Explicit)]
-  private struct InputUnion { [FieldOffset(0)] public KEYBDINPUT keyboard; }
-  [StructLayout(LayoutKind.Sequential)]
-  private struct KEYBDINPUT {
-    public ushort virtualKey;
-    public ushort scanCode;
-    public uint flags;
-    public uint time;
-    public UIntPtr extraInfo;
-  }
-
-  [DllImport("user32.dll")]
-  private static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extraInfo);
-  [DllImport("user32.dll", SetLastError = true)]
-  private static extern uint SendInput(uint count, INPUT[] inputs, int size);
-
-  private static void SendKeyboard(ushort virtualKey, ushort scanCode, uint flags) {
-    var inputs = new[] {
-      new INPUT {
-        type = 1,
-        value = new InputUnion {
-          keyboard = new KEYBDINPUT {
-            virtualKey = virtualKey,
-            scanCode = scanCode,
-            flags = flags,
-            extraInfo = UIntPtr.Zero
-          }
-        }
-      }
-    };
-    if (SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT))) != 1) {
-      throw new InvalidOperationException("SendInput failed.");
-    }
-  }
-
-  public static void Move(int x, int y) { Cursor.Position = new Point(x, y); }
-  public static Point Position() { return Cursor.Position; }
-  public static void Mouse(uint flags, int data = 0) { mouse_event(flags, 0, 0, data, UIntPtr.Zero); }
-  public static void Key(int virtualKey, bool down) { SendKeyboard((ushort)virtualKey, 0, down ? 0u : 2u); }
-  public static void Text(string text) {
-    foreach (char value in text) {
-      SendKeyboard(0, value, 4u);
-      SendKeyboard(0, value, 6u);
-    }
-  }
-}
-'@
-
-$payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:SWIFTY_COMPUTER_INPUT)) | ConvertFrom-Json
-function Resolve-Key([string]$name) {
-  switch ($name.ToUpperInvariant()) {
-    'CTRL' { return 0x11 }
-    'CONTROL' { return 0x11 }
-    'SHIFT' { return 0x10 }
-    'ALT' { return 0x12 }
-    'OPTION' { return 0x12 }
-    'CMD' { return 0x5B }
-    'COMMAND' { return 0x5B }
-    'META' { return 0x5B }
-    'WIN' { return 0x5B }
-    'WINDOWS' { return 0x5B }
-    'ENTER' { return 0x0D }
-    'RETURN' { return 0x0D }
-    'ESC' { return 0x1B }
-    'ESCAPE' { return 0x1B }
-    'BACKSPACE' { return 0x08 }
-    'DELETE' { return 0x2E }
-    'TAB' { return 0x09 }
-    'SPACE' { return 0x20 }
-    'LEFT' { return 0x25 }
-    'UP' { return 0x26 }
-    'RIGHT' { return 0x27 }
-    'DOWN' { return 0x28 }
-    'HOME' { return 0x24 }
-    'END' { return 0x23 }
-    'PAGEUP' { return 0x21 }
-    'PAGEDOWN' { return 0x22 }
-    default {
-      if ($name.Length -eq 1) { return [int][char]$name.ToUpperInvariant() }
-      try { return [int]([System.Enum]::Parse([System.Windows.Forms.Keys], $name, $true)) }
-      catch { throw "Unsupported key: $name" }
-    }
-  }
-}
-function Key-Down($keys) { foreach ($key in $keys) { [SwiftyComputer]::Key((Resolve-Key $key), $true) } }
-function Key-Up($keys) { for ($i = $keys.Count - 1; $i -ge 0; $i--) { [SwiftyComputer]::Key((Resolve-Key $keys[$i]), $false) } }
-function Move-To($value) {
-  $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-  [SwiftyComputer]::Move($bounds.X + [int]$value.x, $bounds.Y + [int]$value.y)
-}
-
-$keys = @($payload.keys)
-switch ($payload.action) {
-  'cursor_position' {
-    $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-    $point = [SwiftyComputer]::Position()
-    Write-Output "$(($point.X - $bounds.X)),$(($point.Y - $bounds.Y))"
-  }
-  'mouse_move' { Key-Down $keys; Move-To $payload; Key-Up $keys }
-  'left_mouse_down' { [SwiftyComputer]::Mouse(0x0002) }
-  'left_mouse_up' { [SwiftyComputer]::Mouse(0x0004) }
-  'mouse_click' {
-    Move-To $payload
-    Key-Down $keys
-    $down = switch ($payload.button) { 'right' { 0x0008 } 'middle' { 0x0020 } default { 0x0002 } }
-    $up = switch ($payload.button) { 'right' { 0x0010 } 'middle' { 0x0040 } default { 0x0004 } }
-    for ($i = 0; $i -lt [int]$payload.clicks; $i++) {
-      [SwiftyComputer]::Mouse($down); [SwiftyComputer]::Mouse($up); Start-Sleep -Milliseconds 80
-    }
-    Key-Up $keys
-  }
-  'left_click_drag' {
-    Key-Down $keys
-    Move-To $payload.path[0]
-    [SwiftyComputer]::Mouse(0x0002)
-    foreach ($point in $payload.path | Select-Object -Skip 1) { Move-To $point; Start-Sleep -Milliseconds 20 }
-    [SwiftyComputer]::Mouse(0x0004)
-    Key-Up $keys
-  }
-  'scroll' {
-    if ($null -ne $payload.x -and $null -ne $payload.y) { Move-To $payload }
-    Key-Down $keys
-    [SwiftyComputer]::Mouse(0x0800, -([int]$payload.scrollY * 120))
-    [SwiftyComputer]::Mouse(0x01000, [int]$payload.scrollX * 120)
-    Key-Up $keys
-  }
-  'key' { Key-Down $keys; Key-Up $keys }
-  'hold_key' { Key-Down $keys; Start-Sleep -Milliseconds ([int]([double]$payload.duration * 1000)); Key-Up $keys }
-  'type' { [SwiftyComputer]::Text([string]$payload.text) }
-  default { throw "Unsupported action: $($payload.action)" }
 }
