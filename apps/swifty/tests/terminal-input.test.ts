@@ -65,6 +65,7 @@ let instance: Instance | undefined;
 beforeEach(() => {
   terminal = fakeTerminal();
   input = new TerminalInput(terminal.stdin);
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: true });
   vi.stubEnv("SWIFTY_THEME", "");
   vi.stubEnv("COLORFGBG", "");
@@ -78,6 +79,7 @@ afterEach(() => {
   terminal.stream.destroy();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   if (originalTty) {
     Object.defineProperty(process.stdout, "isTTY", originalTty);
   } else {
