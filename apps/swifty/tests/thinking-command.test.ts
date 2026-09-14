@@ -22,8 +22,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createDefaultRegistry, parse } from "../src/commands/commands.js";
-import type { ThinkingLevel } from "../src/config/config.js";
+import { createDefaultRegistry, parse } from "@/commands/commands.js";
+import type { ThinkingLevel } from "@/config/config.js";
 
 describe("/thinking command", () => {
   const registry = createDefaultRegistry();
@@ -190,9 +190,11 @@ describe("/thinking command", () => {
       const parsed = parse(input);
       expect(parsed?.args.toLowerCase()).toBe("low");
       const setThinkingLevel = vi.fn();
-      registry
-        .find(parsed?.name ?? "")
-        ?.handler({ workDir: "/tmp", args: parsed?.args ?? "", setThinkingLevel });
+      registry.find(parsed?.name ?? "")?.handler({
+        workDir: "/tmp",
+        args: parsed?.args ?? "",
+        setThinkingLevel,
+      });
       expect(setThinkingLevel).toHaveBeenCalledWith("low");
     },
   );

@@ -20,13 +20,13 @@
  * SOFTWARE.
  */
 
-import { RecoveryState } from "../compact/recovery.js";
-import { FileHistory } from "../file-history/file-history.js";
-import { rebuildFromSession } from "../session/session.js";
-import type { SessionMessage } from "../session/session.js";
-import { FileStateCache } from "../tools/file-state-cache.js";
-
 import type { RemoteAgentHandle } from "./server.js";
+
+import { RecoveryState } from "@/compact/recovery.js";
+import { FileHistory } from "@/file-history/file-history.js";
+import { rebuildFromSession } from "@/session/session.js";
+import type { SessionMessage } from "@/session/session.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
 
 type SessionState = Pick<
   RemoteAgentHandle,

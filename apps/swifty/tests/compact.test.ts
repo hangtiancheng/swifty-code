@@ -29,12 +29,12 @@ import {
   computeKeepStartIndex,
   forceCompact,
   type UsageAnchor,
-} from "../src/compact/compact.js";
-import { RecoveryState } from "../src/compact/recovery.js";
-import { ConversationManager, type Message } from "../src/conversation/conversation.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { contentToText } from "../src/utils/index.js";
+} from "@/compact/compact.js";
+import { RecoveryState } from "@/compact/recovery.js";
+import { ConversationManager, type Message } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { contentToText } from "@/utils/index.js";
 
 // A stub LLM that emits a fixed summary and records the text it was asked to
 // summarize, so tests can assert what the summary covered.
@@ -139,7 +139,10 @@ describe("currentContextTokens (real-usage anchoring)", () => {
         content: "x".repeat(7),
         contentBlocks: [
           { type: "text", text: "x".repeat(7) },
-          { type: "image", source: { type: "base64", media_type: "image/png", data: "AA" } },
+          {
+            type: "image",
+            source: { type: "base64", media_type: "image/png", data: "AA" },
+          },
         ],
         isError: false,
       },

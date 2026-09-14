@@ -20,12 +20,11 @@
  * SOFTWARE.
  */
 
-import type { MCPServerConfig } from "../config/config.js";
-import { createChildLogger } from "../logger/logger.js";
-
 import { MCPClient } from "./client.js";
 import type { MCPTool } from "./client.js";
 
+import type { MCPServerConfig } from "@/config/config.js";
+import { createChildLogger } from "@/logger/logger.js";
 import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "mcp" });

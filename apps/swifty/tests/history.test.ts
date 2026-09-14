@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { append, load, MAX_HISTORY_ENTRIES } from "../src/history/history.js";
+import { append, load, MAX_HISTORY_ENTRIES } from "@/history/history.js";
 
 describe("prompt history", () => {
   it("keeps the in-memory return value and file bounded", () => {

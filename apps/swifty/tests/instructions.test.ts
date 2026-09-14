@@ -27,7 +27,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { loadInstructions } from "../src/memory/instructions.js";
+import { loadInstructions } from "@/memory/instructions.js";
 
 function makeRepo(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));

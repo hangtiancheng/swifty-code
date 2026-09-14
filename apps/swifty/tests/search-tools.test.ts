@@ -26,9 +26,9 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { GlobTool } from "../src/tools/glob.js";
-import { GrepTool } from "../src/tools/grep.js";
-import type { ToolContext } from "../src/tools/types.js";
+import { GlobTool } from "@/tools/glob.js";
+import { GrepTool } from "@/tools/grep.js";
+import type { ToolContext } from "@/tools/types.js";
 
 const workDir = mkdtempSync(join(tmpdir(), "swifty-search-tools-"));
 mkdirSync(join(workDir, "src", "js"), { recursive: true });
@@ -91,20 +91,29 @@ describe("GrepTool include filter", () => {
   });
 
   it("matches bare include patterns at any depth and skips node_modules", async () => {
-    const res = await grep.execute(ctx, { pattern: "function|console", include: "*.js" });
+    const res = await grep.execute(ctx, {
+      pattern: "function|console",
+      include: "*.js",
+    });
     expect(res.output).toContain("main.js:1:console.log('entry');");
     expect(res.output).toContain("src/js/curry.js:1:function curry(fn) {}");
     expect(res.output).not.toContain("node_modules");
   });
 
   it("supports brace include patterns", async () => {
-    const res = await grep.execute(ctx, { pattern: "function", include: "*.{js,md}" });
+    const res = await grep.execute(ctx, {
+      pattern: "function",
+      include: "*.{js,md}",
+    });
     expect(res.output).toContain("src/md/notes.md:1:function notes() {}");
     expect(res.output).toContain("src/js/curry.js:1:function curry(fn) {}");
   });
 
   it("matches case-insensitively", async () => {
-    const res = await grep.execute(ctx, { pattern: "CLASS PROMISEV2", include: "*.js" });
+    const res = await grep.execute(ctx, {
+      pattern: "CLASS PROMISEV2",
+      include: "*.js",
+    });
     expect(res.output).toContain("src/js/promise.js:1:class PromiseV2 {}");
   });
 
@@ -123,38 +132,59 @@ describe("GrepTool unicode", () => {
   });
 
   it("supports unicode property escapes", async () => {
-    const res = await grep.execute(ctx, { pattern: "^\\p{Script=Han}+$", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "^\\p{Script=Han}+$",
+      include: "*.txt",
+    });
     expect(res.output).toContain("unicode.txt:1:中文注释");
     expect(res.output).not.toContain("plain ascii only");
   });
 
   it("supports astral character class ranges", async () => {
-    const res = await grep.execute(ctx, { pattern: "[😀-😜]", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "[😀-😜]",
+      include: "*.txt",
+    });
     expect(res.output).toContain("unicode.txt:2:emoji 😄 line");
   });
 
   it("treats \\w and \\b as unicode-aware like ripgrep", async () => {
-    const word = await grep.execute(ctx, { pattern: "^mixed \\w+ end$", include: "*.txt" });
+    const word = await grep.execute(ctx, {
+      pattern: "^mixed \\w+ end$",
+      include: "*.txt",
+    });
     expect(word.output).toContain("unicode.txt:4:mixed 变量名abc end");
 
-    const boundary = await grep.execute(ctx, { pattern: "\\b变量名", include: "*.txt" });
+    const boundary = await grep.execute(ctx, {
+      pattern: "\\b变量名",
+      include: "*.txt",
+    });
     expect(boundary.output).toContain("unicode.txt:4:mixed 变量名abc end");
   });
 
   it("matches full-width digits with \\d", async () => {
-    const res = await grep.execute(ctx, { pattern: "数字\\d{3}", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "数字\\d{3}",
+      include: "*.txt",
+    });
     expect(res.output).toContain("unicode.txt:3:全角数字１２３");
   });
 
   it("supports ripgrep-style \\x{...} hex escapes", async () => {
-    const res = await grep.execute(ctx, { pattern: "[\\x{4e00}-\\x{9fff}]", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "[\\x{4e00}-\\x{9fff}]",
+      include: "*.txt",
+    });
     expect(res.isError).toBe(false);
     expect(res.output).toContain("unicode.txt:1:中文注释");
     expect(res.output).not.toContain("plain ascii only");
   });
 
   it("does not crash on out-of-range \\x{...} values", async () => {
-    const res = await grep.execute(ctx, { pattern: "\\x{110000}", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "\\x{110000}",
+      include: "*.txt",
+    });
     expect(res.isError).toBe(false);
     expect(res.output).toContain("No matches found.");
   });
@@ -166,7 +196,10 @@ describe("GrepTool unicode", () => {
   });
 
   it("rejects patterns invalid in both modes", async () => {
-    const res = await grep.execute(ctx, { pattern: "(unclosed", include: "*.txt" });
+    const res = await grep.execute(ctx, {
+      pattern: "(unclosed",
+      include: "*.txt",
+    });
     expect(res.isError).toBe(true);
     expect(res.output).toContain("invalid regex pattern");
   });

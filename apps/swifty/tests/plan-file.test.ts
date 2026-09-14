@@ -32,8 +32,8 @@ import {
   loadPlan,
   planExists,
   resetPlanPath,
-} from "../src/plan-file/plan-file.js";
-import { buildPlanModeReminder } from "../src/prompt/plan-mode.js";
+} from "@/plan-file/plan-file.js";
+import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
 
 describe("plan-file", () => {
   it("creates, saves, loads, and resets a plan", () => {

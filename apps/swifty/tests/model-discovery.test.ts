@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "../src/config/config.js";
-import { discoverModels, modelListUrl } from "../src/llm/model-discovery.js";
+import type { ProviderConfig } from "@/config/config.js";
+import { discoverModels, modelListUrl } from "@/llm/model-discovery.js";
 
 const protocols: ProviderConfig["protocol"][] = ["anthropic", "openai", "openai-compat"];
 const connection = {
@@ -90,7 +90,10 @@ describe("discoverModels", () => {
               "anthropic-version": "2023-06-01",
               "x-api-key": "secret-key",
             }
-          : { Accept: "application/json", Authorization: "Bearer secret-key" },
+          : {
+              Accept: "application/json",
+              Authorization: "Bearer secret-key",
+            },
       redirect: "error",
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       signal: expect.any(AbortSignal),
@@ -110,7 +113,11 @@ describe("discoverModels", () => {
       Response.json({
         object: "list",
         data: [
-          { id: " model-a ", display_name: "Friendly A", capabilities: ["thinking"] },
+          {
+            id: " model-a ",
+            display_name: "Friendly A",
+            capabilities: ["thinking"],
+          },
           { id: "model-b", name: "Friendly B" },
           { id: "model-a", display_name: "Duplicate" },
           { id: "unknown-model" },
@@ -204,7 +211,9 @@ describe("discoverModels", () => {
 
   it("bounds the complete request with a timeout", async () => {
     stallUntilAborted();
-    const result = expect(discoverModels(connection)).rejects.toMatchObject({ name: "AbortError" });
+    const result = expect(discoverModels(connection)).rejects.toMatchObject({
+      name: "AbortError",
+    });
     await vi.advanceTimersByTimeAsync(5_000);
     await result;
     expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
@@ -235,10 +244,18 @@ describe("discoverModels", () => {
   it("paginates Anthropic with encoded cursors and deduplicates across pages", async () => {
     fetchMock
       .mockResolvedValueOnce(
-        Response.json({ data: [{ id: "a" }], has_more: true, last_id: "a/b & c" }),
+        Response.json({
+          data: [{ id: "a" }],
+          has_more: true,
+          last_id: "a/b & c",
+        }),
       )
       .mockResolvedValueOnce(
-        Response.json({ data: [{ id: "a" }, { id: "b" }], has_more: true, last_id: "b" }),
+        Response.json({
+          data: [{ id: "a" }, { id: "b" }],
+          has_more: true,
+          last_id: "b",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ data: [{ id: "c" }], has_more: false, last_id: "c" }));
     await expect(discoverModels(connection)).resolves.toEqual([

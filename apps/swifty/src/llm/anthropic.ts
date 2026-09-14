@@ -23,6 +23,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { safeParseAsync, z } from "zod";
 
+import type { LLMClient } from "./client.js";
+import {
+  AuthenticationError,
+  ContextTooLongError,
+  LLMError,
+  NetworkError,
+  RateLimitError,
+} from "./errors.js";
+import type { StreamEvent } from "./events.js";
+
 import {
   clampThinkingLevel,
   getMaxOutputTokens,
@@ -35,12 +45,13 @@ import {
   thinkingBudgetForLevel,
   toAnthropicThinkingEffort,
   toReasoningEffort,
-} from "../config/config.js";
-import type { ConversationManager, Message } from "../conversation/conversation.js";
-import { ensureToolPairing } from "../conversation/pairing.js";
-import { createChildLogger } from "../logger/logger.js";
-import { NATIVE_TOOL_USE_BETA } from "../mcp/strategy.js";
-import { normalizeToolResultContentBlock } from "../tools/types.js";
+} from "@/config/config.js";
+import type { ConversationManager, Message } from "@/conversation/conversation.js";
+import { ensureToolPairing } from "@/conversation/pairing.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
+import { normalizeToolResultContentBlock } from "@/tools/types.js";
+import type { ToolSchema } from "@/tools/types.js";
 import {
   asErrorString,
   asRecord,
@@ -48,19 +59,7 @@ import {
   contentToText,
   isRecord,
   strArg,
-} from "../utils/index.js";
-
-import type { LLMClient } from "./client.js";
-import {
-  AuthenticationError,
-  ContextTooLongError,
-  LLMError,
-  NetworkError,
-  RateLimitError,
-} from "./errors.js";
-import type { StreamEvent } from "./events.js";
-
-import type { ToolSchema } from "@/tools/types.js";
+} from "@/utils/index.js";
 
 /**
  * Place the cache breakpoint on the last non-deferred tool.

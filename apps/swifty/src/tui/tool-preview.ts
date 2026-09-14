@@ -22,10 +22,10 @@
 
 import { Chalk } from "chalk";
 
-import { isDiffTool } from "../tools/is-diff-tool.js";
-
 import { THEME } from "./styles.js";
 import { wrapToLines } from "./terminal-text.js";
+
+import { isDiffTool } from "@/tools/is-diff-tool.js";
 
 const colors = new Chalk({ level: 3 });
 

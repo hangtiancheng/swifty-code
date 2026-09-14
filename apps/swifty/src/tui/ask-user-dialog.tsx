@@ -23,10 +23,10 @@
 import { Box, Text, useInput } from "ink";
 import { useReducer } from "react";
 
-import type { Question } from "../tools/ask-user.js";
-
 import { SelectorFrame } from "./selector-frame.js";
 import { ICONS, THEME } from "./styles.js";
+
+import type { Question } from "@/tools/ask-user.js";
 
 interface Props {
   questions: Question[];

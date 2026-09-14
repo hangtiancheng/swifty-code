@@ -26,16 +26,15 @@ import { join } from "node:path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-import { coordinatorReminder } from "../src/prompt/coordinator.js";
+import { coordinatorReminder } from "@/prompt/coordinator.js";
 import {
   isCoordinatorTool,
   coordinatorToolFilter,
   coordinatorActive,
-} from "../src/teams/coordinator.js";
-import { TaskStopTool } from "../src/teams/task-stop.js";
-import { TeamManager } from "../src/teams/team.js";
-import { SyntheticOutputTool } from "../src/tools/synthetic-output.js";
-
+} from "@/teams/coordinator.js";
+import { TaskStopTool } from "@/teams/task-stop.js";
+import { TeamManager } from "@/teams/team.js";
+import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { asString } from "@/utils/index.js";
 
 // The teams directory lives at <home>/.swifty/teams, so the tests redirect the
@@ -175,7 +174,10 @@ describe("SyntheticOutput", () => {
     const res = await new SyntheticOutputTool().execute(ctx, {
       output: { status: "ok", count: 2 },
     });
-    expect(JSON.parse(asString(res.output))).toEqual({ status: "ok", count: 2 });
+    expect(JSON.parse(asString(res.output))).toEqual({
+      status: "ok",
+      count: 2,
+    });
   });
 
   it("rejects output whose shape does not match the schema", async () => {

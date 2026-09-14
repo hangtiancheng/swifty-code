@@ -20,12 +20,16 @@
  * SOFTWARE.
  */
 
-import type { ToolArgs } from "../types";
+import type { ToolArgs } from "@fe/types";
 
 /** Format a token count with K/M suffixes for compact display. */
 export function formatTokens(n: number): string {
-  if (n > 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n > 1000) return `${(n / 1000).toFixed(1)}K`;
+  if (n > 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1)}M`;
+  }
+  if (n > 1000) {
+    return `${(n / 1000).toFixed(1)}K`;
+  }
   return String(n);
 }
 
@@ -39,17 +43,23 @@ export function truncateOutput(output: string, max = 5000): string {
 
 /** Pretty-print tool args as indented JSON, or empty string when absent. */
 export function formatArgs(args: ToolArgs): string {
-  if (!args) return "";
+  if (!args) {
+    return "";
+  }
   return JSON.stringify(args, null, 2);
 }
 
 /** Extract a short, human-readable preview from well-known tool arg fields. */
 export function argsPreview(args: ToolArgs): string {
-  if (!args) return "";
+  if (!args) {
+    return "";
+  }
   const candidates = ["command", "file_path", "pattern", "path"] as const;
   for (const key of candidates) {
     const v = args[key];
-    if (typeof v === "string" && v.length > 0) return v;
+    if (typeof v === "string" && v.length > 0) {
+      return v;
+    }
   }
   return "";
 }

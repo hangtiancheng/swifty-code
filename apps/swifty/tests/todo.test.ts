@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { TaskStore } from "../src/todo/store.js";
-import { TaskList } from "../src/todo/todo.js";
+import { TaskStore } from "@/todo/store.js";
+import { TaskList } from "@/todo/todo.js";
 
 describe("todo store-backed persistence", () => {
   it("persists tasks to a sess-scoped file and reloads them", () => {

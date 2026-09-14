@@ -25,9 +25,6 @@ import { join, resolve } from "path";
 
 import { globIterate } from "glob";
 
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString, strArg } from "../utils/index.js";
-
 import { GLOB_DESCRIPTION } from "./descriptions.js";
 import {
   SKIP_DIRS,
@@ -37,6 +34,9 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { createChildLogger } from "@/logger/logger.js";
+import { asErrorString, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 

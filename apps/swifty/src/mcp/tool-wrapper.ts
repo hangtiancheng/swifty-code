@@ -20,17 +20,16 @@
  * SOFTWARE.
  */
 
-import { createChildLogger } from "../logger/logger.js";
+import type { MCPClient, MCPTool } from "./client.js";
+
+import { createChildLogger } from "@/logger/logger.js";
 import type {
   MCPToolLike,
   ToolResult,
   ToolContext,
   ToolCategory,
   ToolSchema,
-} from "../tools/types.js";
-
-import type { MCPClient, MCPTool } from "./client.js";
-
+} from "@/tools/types.js";
 import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "mcp" });

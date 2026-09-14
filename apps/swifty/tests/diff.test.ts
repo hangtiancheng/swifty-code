@@ -22,7 +22,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { buildDiff } from "../src/tools/diff.js";
+import { buildDiff } from "@/tools/diff.js";
 
 describe("buildDiff", () => {
   it("reports a single-line change with correct counts and markers", () => {

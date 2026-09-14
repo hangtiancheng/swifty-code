@@ -24,6 +24,10 @@ import { Box, Text, useInput, usePaste, useWindowSize } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import { SelectorFrame } from "./selector-frame.js";
+import { THEME } from "./styles.js";
+import { truncateToWidth } from "./terminal-text.js";
+
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
@@ -32,13 +36,9 @@ import {
   getThinkingLevel,
   type ProviderConfig,
   type ThinkingLevel,
-} from "../config/config.js";
-import { ProviderLoginSchema } from "../config/provider-login.js";
-import { discoverModels, modelListUrl, type DiscoveredModel } from "../llm/model-discovery.js";
-
-import { SelectorFrame } from "./selector-frame.js";
-import { THEME } from "./styles.js";
-import { truncateToWidth } from "./terminal-text.js";
+} from "@/config/config.js";
+import { ProviderLoginSchema } from "@/config/provider-login.js";
+import { discoverModels, modelListUrl, type DiscoveredModel } from "@/llm/model-discovery.js";
 
 const PROTOCOLS = ["anthropic", "openai", "openai-compat"] as const;
 const FIELD_KEYS = [
@@ -203,7 +203,10 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [discovery, setDiscovery] = useState<ModelDiscoveryState>({ status: "idle", models: [] });
+  const [discovery, setDiscovery] = useState<ModelDiscoveryState>({
+    status: "idle",
+    models: [],
+  });
   const formRef = useRef(form);
   const fieldRef = useRef<FieldKey>(field);
   const cursorRef = useRef(cursor);
@@ -242,7 +245,11 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
     if (editingConnection || !modelListUrl(form.protocol, form.base_url)) {
       return;
     }
-    const config = { protocol: form.protocol, base_url: form.base_url, api_key: form.api_key };
+    const config = {
+      protocol: form.protocol,
+      base_url: form.base_url,
+      api_key: form.api_key,
+    };
     const generation = discoveryGeneration.current;
     const controller = new AbortController();
     discoveryController.current = controller;

@@ -20,10 +20,6 @@
  * SOFTWARE.
  */
 
-// import { createChildLogger } from "../logger/logger.js";
-
-// const log = createChildLogger({ module: "commands" });
-
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";

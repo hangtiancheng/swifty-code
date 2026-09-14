@@ -27,10 +27,10 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { MemoryExtractor } from "../src/memory/extractor.js";
-import { MemoryManager } from "../src/memory/manager.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { MemoryExtractor } from "@/memory/extractor.js";
+import { MemoryManager } from "@/memory/manager.js";
 
 class MockClient implements LLMClient {
   constructor(private text: string) {}

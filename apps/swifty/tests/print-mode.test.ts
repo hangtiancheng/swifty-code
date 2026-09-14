@@ -27,20 +27,20 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import type { AgentEvent } from "../src/agent/events.js";
-import * as config from "../src/config/config.js";
-import type { AppConfig } from "../src/config/config.js";
-import * as clients from "../src/llm/client.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { OpenAIClient } from "../src/llm/openai.js";
-import { MCPManager } from "../src/mcp/manager.js";
-import { runPrintMode } from "../src/print-mode.js";
-import { AgentTool } from "../src/subagent/agent-tool.js";
-import * as subagents from "../src/subagent/spawn.js";
-import * as backend from "../src/teams/backend.js";
-import type { ToolContext } from "../src/tools/types.js";
-import * as worktrees from "../src/worktree/worktree.js";
+import { Agent } from "@/agent/agent.js";
+import type { AgentEvent } from "@/agent/events.js";
+import * as config from "@/config/config.js";
+import type { AppConfig } from "@/config/config.js";
+import * as clients from "@/llm/client.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { OpenAIClient } from "@/llm/openai.js";
+import { MCPManager } from "@/mcp/manager.js";
+import { runPrintMode } from "@/print-mode.js";
+import { AgentTool } from "@/subagent/agent-tool.js";
+import * as subagents from "@/subagent/spawn.js";
+import * as backend from "@/teams/backend.js";
+import type { ToolContext } from "@/tools/types.js";
+import * as worktrees from "@/worktree/worktree.js";
 
 vi.mock("node:os", async (importOriginal) => ({
   ...(await importOriginal<typeof os>()),
@@ -50,7 +50,12 @@ vi.mock("node:os", async (importOriginal) => ({
 const end: Extract<StreamEvent, { type: "stream_end" }> = {
   type: "stream_end",
   stopReason: "end_turn",
-  usage: { inputTokens: 1, outputTokens: 2, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+  usage: {
+    inputTokens: 1,
+    outputTokens: 2,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+  },
 };
 
 let workDir: string;
@@ -73,7 +78,12 @@ beforeEach(() => {
   process.exitCode = 0;
   cfg = {
     providers: [
-      { name: "test", protocol: "openai", model: "test", base_url: "https://test.invalid" },
+      {
+        name: "test",
+        protocol: "openai",
+        model: "test",
+        base_url: "https://test.invalid",
+      },
     ],
     hooks: [],
     mcp_servers: [{ name: "test", command: "unused" }],
@@ -205,7 +215,9 @@ describe("print mode delegation", () => {
         return Promise.reject(new Error("Missing teammate cancellation signal"));
       }
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new Error("stopped")), { once: true });
+        signal.addEventListener("abort", () => reject(new Error("stopped")), {
+          once: true,
+        });
       });
     });
     let stoppedBeforeDisconnect = false;
@@ -214,7 +226,11 @@ describe("print mode delegation", () => {
       return Promise.resolve();
     });
     turns = [
-      delegate({ team_name: "audit", isolation: "worktree", plan_mode_required: true }),
+      delegate({
+        team_name: "audit",
+        isolation: "worktree",
+        plan_mode_required: true,
+      }),
       [end],
     ];
     await runPrintMode({ prompt: "Parent task", outputFormat: "text" });

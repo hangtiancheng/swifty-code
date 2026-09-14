@@ -20,8 +20,7 @@
  * SOFTWARE.
  */
 
-import type { ToolResultContentBlock } from "../tools/types.js";
-
+import type { ToolResultContentBlock } from "@/tools/types.js";
 import { contentToText } from "@/utils";
 
 export interface ToolUseBlock {

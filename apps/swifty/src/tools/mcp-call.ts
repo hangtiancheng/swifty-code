@@ -48,17 +48,16 @@
  * model than a local type error.
  */
 
+import type { ToolRegistry } from "./registry.js";
+import { MCP_CALL_TOOL_NAME } from "./tool-names.js";
+import type { MCPToolLike, Tool, ToolContext, ToolResult, ToolSchema } from "./types.js";
+
 import {
   MCP_NAME_SEP,
   MCP_TOOL_PREFIX,
   buildMcpToolName,
   sanitizeSegment,
-} from "../mcp/tool-wrapper.js";
-
-import type { ToolRegistry } from "./registry.js";
-import { MCP_CALL_TOOL_NAME } from "./tool-names.js";
-import type { MCPToolLike, Tool, ToolContext, ToolResult, ToolSchema } from "./types.js";
-
+} from "@/mcp/tool-wrapper.js";
 import { asRecord, strArg } from "@/utils/index.js";
 
 /** The dispatcher tool's name; permission rules reference it too. */

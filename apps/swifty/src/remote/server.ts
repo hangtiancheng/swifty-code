@@ -32,41 +32,45 @@ import Koa from "koa";
 import { WebSocketServer, WebSocket } from "ws";
 import z from "zod";
 
-import { Agent } from "../agent/agent.js";
-import type { AgentEvent } from "../agent/events.js";
+import { parseRemoteAddress } from "./address.js";
+import { AgentEventLogger } from "./log.js";
+import { restoreRemoteSession } from "./session-state.js";
+
+import { Agent } from "@/agent/agent.js";
+import type { AgentEvent } from "@/agent/events.js";
 import {
   parse as parseCommand,
   createDefaultRegistry as createCommandRegistry,
   type CommandRegistry,
   type CommandContext,
-} from "../commands/commands.js";
-import { loadUserCommands } from "../commands/loader.js";
-import { forceCompact } from "../compact/compact.js";
-import { RecoveryState } from "../compact/recovery.js";
+} from "@/commands/commands.js";
+import { loadUserCommands } from "@/commands/loader.js";
+import { forceCompact } from "@/compact/compact.js";
+import { RecoveryState } from "@/compact/recovery.js";
 import {
   DEFAULT_THINKING_LEVEL,
   getContextWindow,
   getMaxOutputTokens,
   getSupportedThinkingLevels,
-} from "../config/config.js";
-import type { HookConfig, MCPServerConfig, ProviderConfig } from "../config/config.js";
-import { persistThinkingLevel } from "../config/provider-login.js";
-import { ConversationManager } from "../conversation/conversation.js";
-import { FileHistory } from "../file-history/file-history.js";
-import { HookEngine, validate as validateHooks } from "../hooks/hooks.js";
-import { createClient, type LLMClient } from "../llm/client.js";
-import { resolveModelId } from "../llm/model-resolver.js";
-import { createChildLogger } from "../logger/logger.js";
-import { MCPManager } from "../mcp/manager.js";
-import { decideAndApply } from "../mcp/strategy.js";
-import { MCPToolWrapper } from "../mcp/tool-wrapper.js";
-import { MemoryConsolidator } from "../memory/consolidation.js";
-import { MemoryExtractor } from "../memory/extractor.js";
-import { loadInstructions } from "../memory/instructions.js";
-import { MemoryManager } from "../memory/manager.js";
-import { PermissionChecker, type Decision } from "../permissions/checker.js";
-import { getOrCreatePlanPath } from "../plan-file/plan-file.js";
-import { buildSystemPrompt, detectEnvironment } from "../prompt/builder.js";
+} from "@/config/config.js";
+import type { HookConfig, MCPServerConfig, ProviderConfig } from "@/config/config.js";
+import { persistThinkingLevel } from "@/config/provider-login.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { FileHistory } from "@/file-history/file-history.js";
+import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
+import { createClient, type LLMClient } from "@/llm/client.js";
+import { resolveModelId } from "@/llm/model-resolver.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { MCPManager } from "@/mcp/manager.js";
+import { decideAndApply } from "@/mcp/strategy.js";
+import { MCPToolWrapper } from "@/mcp/tool-wrapper.js";
+import { MemoryConsolidator } from "@/memory/consolidation.js";
+import { MemoryExtractor } from "@/memory/extractor.js";
+import { loadInstructions } from "@/memory/instructions.js";
+import { MemoryManager } from "@/memory/manager.js";
+import { PermissionChecker, type Decision } from "@/permissions/checker.js";
+import { getOrCreatePlanPath } from "@/plan-file/plan-file.js";
+import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
 import {
   newSessionId,
   saveMessage,
@@ -74,44 +78,39 @@ import {
   listSessions,
   loadSession,
   getSessionFilePath,
-} from "../session/session.js";
-import { SkillCatalog, buildSkillSection } from "../skills/catalog.js";
-import { runInline as runSkillInline } from "../skills/executor.js";
-import { LoadSkillTool } from "../skills/load-skill-tool.js";
-import type { SkillForkHost, SkillHost } from "../skills/skill.js";
-import { AgentTool } from "../subagent/agent-tool.js";
-import { spawnSubagent } from "../subagent/spawn.js";
-import { filterToolsForAgent } from "../subagent/tool-filter.js";
-import { coordinatorToolFilter, coordinatorActive } from "../teams/coordinator.js";
-import { TaskStopTool } from "../teams/task-stop.js";
-import { TeamManager, type RunAgent } from "../teams/team.js";
-import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "../teams/tools.js";
-import { TaskStore } from "../todo/store.js";
-import { TaskList } from "../todo/todo.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "../todo/tools.js";
-import { AskUserQuestionTool, type Question, type Asker } from "../tools/ask-user.js";
-import { BashTool } from "../tools/bash.js";
-import { ComputerUseTool } from "../tools/computer-use.js";
-import { EditFileTool } from "../tools/edit-file.js";
-import { EnterWorktreeTool } from "../tools/enter-worktree.js";
-import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
-import { ExitWorktreeTool } from "../tools/exit-worktree.js";
-import { FileStateCache } from "../tools/file-state-cache.js";
-import { GlobTool } from "../tools/glob.js";
-import { GrepTool } from "../tools/grep.js";
-import { McpCallTool } from "../tools/mcp-call.js";
-import { PowerShellTool } from "../tools/powershell.js";
-import { ReadFileTool } from "../tools/read-file.js";
-import { ToolRegistry } from "../tools/registry.js";
-import { SyntheticOutputTool } from "../tools/synthetic-output.js";
-import { ToolSearchTool } from "../tools/tool-search.js";
-import { WriteFileTool } from "../tools/write-file.js";
-
-import { parseRemoteAddress } from "./address.js";
-import { AgentEventLogger } from "./log.js";
-import { restoreRemoteSession } from "./session-state.js";
-
+} from "@/session/session.js";
+import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
+import { runInline as runSkillInline } from "@/skills/executor.js";
+import { LoadSkillTool } from "@/skills/load-skill-tool.js";
+import type { SkillForkHost, SkillHost } from "@/skills/skill.js";
+import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
+import { spawnSubagent } from "@/subagent/spawn.js";
+import { filterToolsForAgent } from "@/subagent/tool-filter.js";
+import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
+import { TaskStopTool } from "@/teams/task-stop.js";
+import { TeamManager, type RunAgent } from "@/teams/team.js";
+import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "@/teams/tools.js";
+import { TaskStore } from "@/todo/store.js";
+import { TaskList } from "@/todo/todo.js";
+import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/todo/tools.js";
+import { AskUserQuestionTool, type Question, type Asker } from "@/tools/ask-user.js";
+import { BashTool } from "@/tools/bash.js";
+import { ComputerUseTool } from "@/tools/computer-use.js";
+import { EditFileTool } from "@/tools/edit-file.js";
+import { EnterWorktreeTool } from "@/tools/enter-worktree.js";
+import { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
+import { ExitWorktreeTool } from "@/tools/exit-worktree.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
+import { GlobTool } from "@/tools/glob.js";
+import { GrepTool } from "@/tools/grep.js";
+import { McpCallTool } from "@/tools/mcp-call.js";
+import { PowerShellTool } from "@/tools/powershell.js";
+import { ReadFileTool } from "@/tools/read-file.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
+import { ToolSearchTool } from "@/tools/tool-search.js";
+import { WriteFileTool } from "@/tools/write-file.js";
 import { contentToText, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "remote" });

@@ -13,7 +13,10 @@
     "skipLibCheck": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@fe/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

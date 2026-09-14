@@ -22,25 +22,6 @@
 
 import OpenAI from "openai";
 
-import {
-  clampThinkingLevel,
-  getMaxOutputTokens,
-  getSupportedThinkingLevels,
-  getThinkingLevel,
-  type ProviderConfig,
-  resolveAPIKey,
-  type ThinkingLevel,
-  toReasoningEffort,
-} from "../config/config.js";
-import type {
-  ConversationManager,
-  Message,
-  ToolResultBlock,
-} from "../conversation/conversation.js";
-import { ensureToolPairing } from "../conversation/pairing.js";
-import { createChildLogger } from "../logger/logger.js";
-import { asRecord, asString, contentToText, isRecord, strArg } from "../utils/index.js";
-
 import type { LLMClient } from "./client.js";
 import {
   AuthenticationError,
@@ -51,7 +32,21 @@ import {
 } from "./errors.js";
 import type { StreamEvent } from "./events.js";
 
+import {
+  clampThinkingLevel,
+  getMaxOutputTokens,
+  getSupportedThinkingLevels,
+  getThinkingLevel,
+  type ProviderConfig,
+  resolveAPIKey,
+  type ThinkingLevel,
+  toReasoningEffort,
+} from "@/config/config.js";
+import type { ConversationManager, Message, ToolResultBlock } from "@/conversation/conversation.js";
+import { ensureToolPairing } from "@/conversation/pairing.js";
+import { createChildLogger } from "@/logger/logger.js";
 import type { ToolSchema } from "@/tools/types.js";
+import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "llm" });
 

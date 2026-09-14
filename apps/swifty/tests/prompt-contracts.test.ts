@@ -4,24 +4,24 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ConversationManager } from "../src/conversation/conversation.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { MemoryConsolidator } from "../src/memory/consolidation.js";
-import { MemoryExtractor } from "../src/memory/extractor.js";
-import { MemoryManager } from "../src/memory/manager.js";
-import { memoryAge, memoryFreshnessText } from "../src/memory/memory-age.js";
-import { buildSystemPrompt, PromptBuilder } from "../src/prompt/builder.js";
-import { coordinatorReminder } from "../src/prompt/coordinator.js";
+import type { ConversationManager } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { MemoryConsolidator } from "@/memory/consolidation.js";
+import { MemoryExtractor } from "@/memory/extractor.js";
+import { MemoryManager } from "@/memory/manager.js";
+import { memoryAge, memoryFreshnessText } from "@/memory/memory-age.js";
+import { buildSystemPrompt, PromptBuilder } from "@/prompt/builder.js";
+import { coordinatorReminder } from "@/prompt/coordinator.js";
 import {
   buildPlanModeExitReminder,
   buildPlanModeReentryReminder,
   buildPlanModeReminder,
-} from "../src/prompt/plan-mode.js";
-import type { EnvironmentContext } from "../src/prompt/sections.js";
-import { buildSkillSection, SkillCatalog } from "../src/skills/catalog.js";
-import { runFork, runInline } from "../src/skills/executor.js";
-import type { Skill, SkillForkHost } from "../src/skills/skill.js";
+} from "@/prompt/plan-mode.js";
+import type { EnvironmentContext } from "@/prompt/sections.js";
+import { buildSkillSection, SkillCatalog } from "@/skills/catalog.js";
+import { runFork, runInline } from "@/skills/executor.js";
+import type { Skill, SkillForkHost } from "@/skills/skill.js";
 import {
   BASH_DESCRIPTION,
   EDIT_FILE_DESCRIPTION,
@@ -30,8 +30,8 @@ import {
   POWERSHELL_DESCRIPTION,
   READ_FILE_DESCRIPTION,
   WRITE_FILE_DESCRIPTION,
-} from "../src/tools/descriptions.js";
-import type { ToolSchema } from "../src/tools/types.js";
+} from "@/tools/descriptions.js";
+import type { ToolSchema } from "@/tools/types.js";
 
 const env: EnvironmentContext = {
   workDir: "/project",
@@ -83,7 +83,12 @@ describe("system prompt contracts", () => {
       expect(prompt).toContain(value);
     }
     expect(prompt).not.toMatch(/<available-skills>|<skill-body>|Active memories:/);
-    const minimal = buildSystemPrompt({ ...env, isGitRepo: false, gitBranch: "", model: "" });
+    const minimal = buildSystemPrompt({
+      ...env,
+      isGitRepo: false,
+      gitBranch: "",
+      model: "",
+    });
     expect(minimal).toContain("Git repository: false");
     expect(minimal).not.toMatch(/Git branch:|Model:/);
   });
@@ -252,7 +257,11 @@ describe("tool description contracts", () => {
 
 describe("skill prompt contracts", () => {
   const skill: Skill = {
-    meta: { name: "demo<&>", description: "Read <file> & inspect\n  safely", mode: "fork" },
+    meta: {
+      name: "demo<&>",
+      description: "Read <file> & inspect\n  safely",
+      mode: "fork",
+    },
     sourceDir: "/skills/<demo>&",
     body: "Run the existing script; do not change it.",
     isDirectory: true,

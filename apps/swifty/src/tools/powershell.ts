@@ -22,8 +22,6 @@
 
 import { execFile, spawn } from "node:child_process";
 
-import { asRecord, intArg, strArg } from "../utils/index.js";
-
 import { POWERSHELL_DESCRIPTION } from "./descriptions.js";
 import { exitCodeHint } from "./exit-code-hints.js";
 import {
@@ -39,6 +37,8 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { asRecord, intArg, strArg } from "@/utils/index.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between the graceful kill and the forced-kill escalation.
@@ -103,7 +103,10 @@ export class PowerShellTool implements Tool {
     const shell = process.platform === "win32" ? "powershell.exe" : "pwsh";
 
     if (ctx.abortSignal?.aborted) {
-      return Promise.resolve({ output: "Error: command interrupted", isError: true });
+      return Promise.resolve({
+        output: "Error: command interrupted",
+        isError: true,
+      });
     }
 
     // Async execution keeps the Node event loop free (see BashTool for details).

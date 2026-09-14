@@ -20,11 +20,10 @@
  * SOFTWARE.
  */
 
-import type { ProviderConfig, ThinkingLevel } from "../config/config.js";
-import type { ConversationManager } from "../conversation/conversation.js";
-
 import type { StreamEvent } from "./events.js";
 
+import type { ProviderConfig, ThinkingLevel } from "@/config/config.js";
+import type { ConversationManager } from "@/conversation/conversation.js";
 import type { ToolSchema } from "@/tools/types.js";
 
 // export interface ToolSchema {

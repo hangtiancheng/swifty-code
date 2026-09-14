@@ -39,7 +39,7 @@ import {
   withProviderDefaults,
   type AppConfig,
   type ProviderConfig,
-} from "../src/config/config.js";
+} from "@/config/config.js";
 
 describe("config", () => {
   describe("getContextWindow", () => {
@@ -100,7 +100,11 @@ describe("config", () => {
 
     it("never exceeds the context window (PI clampMaxTokensToContext)", () => {
       expect(
-        getMaxOutputTokens({ ...base, context_window: 16_000, max_output_tokens: 32_000 }),
+        getMaxOutputTokens({
+          ...base,
+          context_window: 16_000,
+          max_output_tokens: 32_000,
+        }),
       ).toBe(16_000);
       expect(getMaxOutputTokens({ ...base, context_window: 16_000 })).toBe(16_000);
     });
@@ -162,7 +166,12 @@ describe("config", () => {
   });
 
   describe("explicit thinking capabilities", () => {
-    const base: ProviderConfig = { name: "p", base_url: "#", protocol: "openai", model: "m" };
+    const base: ProviderConfig = {
+      name: "p",
+      base_url: "#",
+      protocol: "openai",
+      model: "m",
+    };
 
     it.each(["gpt-4o", "o3", "claude-haiku", "arbitrary-model"])(
       "does not infer capabilities from %s",
@@ -215,7 +224,12 @@ describe("config", () => {
     it("uses partial overrides and clamps down rather than raising a requested level", () => {
       const provider: ProviderConfig = {
         ...base,
-        thinking_level_map: { minimal: null, low: null, high: null, max: "max" },
+        thinking_level_map: {
+          minimal: null,
+          low: null,
+          high: null,
+          max: "max",
+        },
       };
       expect(getSupportedThinkingLevels(provider)).toEqual(["off", "medium", "xhigh", "max"]);
       expect(clampThinkingLevel(provider, "low")).toBe("off");
@@ -269,7 +283,11 @@ describe("config", () => {
   // actually turn it off. Storing it as a required boolean would make "unset"
   // indistinguishable from "set to false", so the latter could never be disabled.
   describe("enable_fork", () => {
-    const bare = (): AppConfig => ({ providers: [], mcp_servers: [], hooks: [] });
+    const bare = (): AppConfig => ({
+      providers: [],
+      mcp_servers: [],
+      hooks: [],
+    });
 
     it("defaults to enabled when unset", () => {
       expect(forkEnabled(bare())).toBe(true);

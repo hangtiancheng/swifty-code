@@ -22,10 +22,9 @@
 
 import { describe, it, expect } from "vitest";
 
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { buildAnthropicMessages, markLastUserTailForCache } from "../src/llm/anthropic.js";
-import { buildOpenAIInput } from "../src/llm/openai.js";
-
+import { ConversationManager } from "@/conversation/conversation.js";
+import { buildAnthropicMessages, markLastUserTailForCache } from "@/llm/anthropic.js";
+import { buildOpenAIInput } from "@/llm/openai.js";
 import { asRecord, strArg } from "@/utils/index.js";
 
 describe("ConversationManager", () => {

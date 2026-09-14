@@ -23,13 +23,13 @@
 import { Box, Text, useStdout } from "ink";
 import React, { useRef } from "react";
 
-import { parseSkillPrompt } from "../skills/executor.js";
-
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown.js";
 import { THEME } from "./styles.js";
 import { wrapToLines } from "./terminal-text.js";
 import { ThinkingBlock } from "./thinking-block.js";
 import { ToolCard } from "./tool-display.js";
+
+import { parseSkillPrompt } from "@/skills/executor.js";
 
 export interface ToolSummaryItem {
   toolName: string;

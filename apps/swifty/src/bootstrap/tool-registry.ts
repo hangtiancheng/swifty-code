@@ -20,27 +20,27 @@
  * SOFTWARE.
  */
 
-import type { Command, CommandRegistry } from "../commands/commands.js";
-import { MCP_TOOL_PREFIX } from "../mcp/tool-wrapper.js";
-import type { SkillCatalog } from "../skills/catalog.js";
-import { runInline as runSkillInline } from "../skills/executor.js";
-import type { SkillHost } from "../skills/skill.js";
-import type { TaskList } from "../todo/todo.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "../todo/tools.js";
-import { BashTool } from "../tools/bash.js";
-import { ComputerUseTool } from "../tools/computer-use.js";
-import { EditFileTool } from "../tools/edit-file.js";
-import { EnterWorktreeTool } from "../tools/enter-worktree.js";
-import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
-import { ExitWorktreeTool } from "../tools/exit-worktree.js";
-import { GlobTool } from "../tools/glob.js";
-import { GrepTool } from "../tools/grep.js";
-import { McpCallTool } from "../tools/mcp-call.js";
-import { PowerShellTool } from "../tools/powershell.js";
-import { ReadFileTool } from "../tools/read-file.js";
-import { ToolRegistry } from "../tools/registry.js";
-import { ToolSearchTool } from "../tools/tool-search.js";
-import { WriteFileTool } from "../tools/write-file.js";
+import type { Command, CommandRegistry } from "@/commands/commands.js";
+import { MCP_TOOL_PREFIX } from "@/mcp/tool-wrapper.js";
+import type { SkillCatalog } from "@/skills/catalog.js";
+import { runInline as runSkillInline } from "@/skills/executor.js";
+import type { SkillHost } from "@/skills/skill.js";
+import type { TaskList } from "@/todo/todo.js";
+import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/todo/tools.js";
+import { BashTool } from "@/tools/bash.js";
+import { ComputerUseTool } from "@/tools/computer-use.js";
+import { EditFileTool } from "@/tools/edit-file.js";
+import { EnterWorktreeTool } from "@/tools/enter-worktree.js";
+import { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
+import { ExitWorktreeTool } from "@/tools/exit-worktree.js";
+import { GlobTool } from "@/tools/glob.js";
+import { GrepTool } from "@/tools/grep.js";
+import { McpCallTool } from "@/tools/mcp-call.js";
+import { PowerShellTool } from "@/tools/powershell.js";
+import { ReadFileTool } from "@/tools/read-file.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import { ToolSearchTool } from "@/tools/tool-search.js";
+import { WriteFileTool } from "@/tools/write-file.js";
 
 export function countMcpTools(registry: ToolRegistry): number {
   return registry.listTools().filter((tool) => tool.name.startsWith(MCP_TOOL_PREFIX)).length;

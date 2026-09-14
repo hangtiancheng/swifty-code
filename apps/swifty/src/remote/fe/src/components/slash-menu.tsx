@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { SlashCommand } from "../types";
+import type { SlashCommand } from "@fe/types";
 
 interface SlashMenuProps {
   commands: SlashCommand[];
@@ -30,7 +30,9 @@ interface SlashMenuProps {
 }
 
 export function SlashMenu({ commands, cursor, onSelect, onHover }: SlashMenuProps) {
-  if (commands.length === 0) return null;
+  if (commands.length === 0) {
+    return null;
+  }
   return (
     <div
       role="listbox"

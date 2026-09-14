@@ -26,14 +26,14 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { RecoveryState } from "../src/compact/recovery.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { FileHistory } from "../src/file-history/file-history.js";
-import { parseRemoteAddress } from "../src/remote/address.js";
-import { RemoteServer } from "../src/remote/server.js";
-import { restoreRemoteSession } from "../src/remote/session-state.js";
-import type { SessionMessage } from "../src/session/session.js";
-import { FileStateCache } from "../src/tools/file-state-cache.js";
+import { RecoveryState } from "@/compact/recovery.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { FileHistory } from "@/file-history/file-history.js";
+import { parseRemoteAddress } from "@/remote/address.js";
+import { RemoteServer } from "@/remote/server.js";
+import { restoreRemoteSession } from "@/remote/session-state.js";
+import type { SessionMessage } from "@/session/session.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
@@ -45,10 +45,22 @@ function deferred<T>() {
 
 describe("remote execution boundaries", () => {
   it("defaults to loopback and preserves explicit network and IPv6 binding", () => {
-    expect(parseRemoteAddress(":18888")).toEqual({ host: "127.0.0.1", port: 18888 });
-    expect(parseRemoteAddress(":9000")).toEqual({ host: "127.0.0.1", port: 9000 });
-    expect(parseRemoteAddress("0.0.0.0:9000")).toEqual({ host: "0.0.0.0", port: 9000 });
-    expect(parseRemoteAddress("[::1]:9000")).toEqual({ host: "::1", port: 9000 });
+    expect(parseRemoteAddress(":18888")).toEqual({
+      host: "127.0.0.1",
+      port: 18888,
+    });
+    expect(parseRemoteAddress(":9000")).toEqual({
+      host: "127.0.0.1",
+      port: 9000,
+    });
+    expect(parseRemoteAddress("0.0.0.0:9000")).toEqual({
+      host: "0.0.0.0",
+      port: 9000,
+    });
+    expect(parseRemoteAddress("[::1]:9000")).toEqual({
+      host: "::1",
+      port: 9000,
+    });
   });
 
   it.each(["localhost:9000oops", ":65536", ":-1", ":0", "::1:9000"])(
@@ -82,7 +94,11 @@ describe("remote execution boundaries", () => {
           content: "read",
           timestamp: 1,
           tool_uses: [
-            { tool_use_id: "read", tool_name: "ReadFile", arguments: { file_path: "image.png" } },
+            {
+              tool_use_id: "read",
+              tool_name: "ReadFile",
+              arguments: { file_path: "image.png" },
+            },
           ],
         },
         {
@@ -90,7 +106,11 @@ describe("remote execution boundaries", () => {
           content: [
             {
               type: "image",
-              source: { type: "base64", media_type: "image/png", data: "aGVsbG8=" },
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "aGVsbG8=",
+              },
             },
             { type: "text", text: "attachment note" },
           ],

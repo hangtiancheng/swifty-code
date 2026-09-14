@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { FileMailbox } from "../src/teams/file-mailbox.js";
+import { FileMailbox } from "@/teams/file-mailbox.js";
 
 describe("FileMailbox", () => {
   it("delivers only unread messages and advances the cursor", async () => {

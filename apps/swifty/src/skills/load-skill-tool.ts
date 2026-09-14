@@ -20,12 +20,11 @@
  * SOFTWARE.
  */
 
-import type { Tool, ToolContext, ToolResult, ToolSchema } from "../tools/types.js";
-
 import type { SkillCatalog } from "./catalog.js";
 import { runFork, runInline } from "./executor.js";
 import type { SkillForkHost, SkillHost } from "./skill.js";
 
+import type { Tool, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
 import { asErrorString, strArg } from "@/utils/index.js";
 
 // On-demand skill activation: returns the full SOP body so it enters the

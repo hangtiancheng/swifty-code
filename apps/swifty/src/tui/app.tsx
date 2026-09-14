@@ -25,92 +25,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { Box, Text, useApp } from "ink";
 import { useState, useEffect, useRef, useCallback } from "react";
 
-import { Agent } from "../agent/agent.js";
-import type { InteractionSummary } from "../bootstrap/interaction-summary.js";
-import {
-  countMcpTools,
-  createToolRegistry,
-  wireSkillsToRegistry,
-  buildComposedToolFilter,
-  formatToolArgs,
-} from "../bootstrap/utils.js";
-import {
-  parse as parseCommand,
-  createDefaultRegistry as createCommandRegistry,
-} from "../commands/commands.js";
-import { loadUserCommands } from "../commands/loader.js";
-import { CommandUsageTracker } from "../commands/usage-tracker.js";
-import { currentContextTokens, forceCompact } from "../compact/compact.js";
-import { RecoveryState } from "../compact/recovery.js";
-import type {
-  ProviderConfig,
-  MCPServerConfig,
-  HookConfig,
-  SandboxYamlConfig,
-} from "../config/config.js";
-import {
-  DEFAULT_CONTEXT_WINDOW,
-  DEFAULT_THINKING_LEVEL,
-  getContextWindow,
-  getMaxOutputTokens,
-  getSupportedThinkingLevels,
-} from "../config/config.js";
-import { persistThinkingLevel, saveProvider } from "../config/provider-login.js";
-import { expandAtRefsWithImages } from "../conversation/at-expand.js";
-import { ConversationManager } from "../conversation/conversation.js";
-import { FileHistory } from "../file-history/file-history.js";
-import type { Snapshot } from "../file-history/file-history.js";
-import * as historyMod from "../history/history.js";
-import { HookEngine, validate as validateHooks } from "../hooks/hooks.js";
-import type { LLMClient } from "../llm/client.js";
-import { createClient } from "../llm/client.js";
-import { createChildLogger } from "../logger/logger.js";
-import { MCPManager } from "../mcp/manager.js";
-import { applyMode, decideAndApply } from "../mcp/strategy.js";
-import { MCPToolWrapper } from "../mcp/tool-wrapper.js";
-import { MemoryExtractor } from "../memory/extractor.js";
-import { loadInstructions } from "../memory/instructions.js";
-import { MemoryManager, type RecallResult } from "../memory/manager.js";
-import { PermissionChecker, type PermissionMode } from "../permissions/checker.js";
-import {
-  getOrCreatePlanPath,
-  loadPlan,
-  planExists,
-  resetPlanPath,
-} from "../plan-file/plan-file.js";
-import { buildSystemPrompt, detectEnvironment } from "../prompt/builder.js";
-import { buildPlanModeExitReminder, buildPlanModeReentryReminder } from "../prompt/plan-mode.js";
-import { createSandbox, type Sandbox } from "../sandbox/index.js";
-import * as sessionMod from "../session/session.js";
-import { SkillCatalog, buildSkillSection } from "../skills/catalog.js";
-import { runFork as runSkillFork } from "../skills/executor.js";
-import { InstallSkillTool } from "../skills/install-tool.js";
-import { LoadSkillTool } from "../skills/load-skill-tool.js";
-import type { SkillHost, SkillForkHost } from "../skills/skill.js";
-import { AgentTool } from "../subagent/agent-tool.js";
-import { BUILTIN_AGENTS } from "../subagent/definition.js";
-import { spawnSubagent } from "../subagent/spawn.js";
-import { coordinatorToolFilter, coordinatorActive } from "../teams/coordinator.js";
-import { TaskStopTool } from "../teams/task-stop.js";
-import type { RunAgent } from "../teams/team.js";
-import { TeamManager } from "../teams/team.js";
-import {
-  TeamCreateTool,
-  SpawnTeammateTool,
-  SendMessageTool,
-  ListTeamsTool,
-  TeamDeleteTool,
-} from "../teams/tools.js";
-import { TaskStore } from "../todo/store.js";
-import { TaskList } from "../todo/todo.js";
-import { toDisplayPreview } from "../tool-result/budget.js";
-import { AskUserQuestionTool, type Question } from "../tools/ask-user.js";
-import type { BashTool } from "../tools/bash.js";
-import type { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
-import { FileStateCache } from "../tools/file-state-cache.js";
-import type { ToolRegistry } from "../tools/registry.js";
-import { SyntheticOutputTool } from "../tools/synthetic-output.js";
-
 import { AgentActivity, type SubagentProgress } from "./agent-activity.js";
 import { ChatView, type ChatMessage, type ToolSummaryItem } from "./chat.js";
 import { Footer } from "./footer.js";
@@ -129,6 +43,86 @@ import { useIdeInput } from "./use-ide-input.js";
 import { useTeammateStates } from "./use-teammate-states.js";
 import { useTerminalControls } from "./use-terminal-controls.js";
 
+import { Agent } from "@/agent/agent.js";
+import type { InteractionSummary } from "@/bootstrap/interaction-summary.js";
+import {
+  countMcpTools,
+  createToolRegistry,
+  wireSkillsToRegistry,
+  buildComposedToolFilter,
+  formatToolArgs,
+} from "@/bootstrap/utils.js";
+import {
+  parse as parseCommand,
+  createDefaultRegistry as createCommandRegistry,
+} from "@/commands/commands.js";
+import { loadUserCommands } from "@/commands/loader.js";
+import { CommandUsageTracker } from "@/commands/usage-tracker.js";
+import { currentContextTokens, forceCompact } from "@/compact/compact.js";
+import { RecoveryState } from "@/compact/recovery.js";
+import type {
+  ProviderConfig,
+  MCPServerConfig,
+  HookConfig,
+  SandboxYamlConfig,
+} from "@/config/config.js";
+import {
+  DEFAULT_CONTEXT_WINDOW,
+  DEFAULT_THINKING_LEVEL,
+  getContextWindow,
+  getMaxOutputTokens,
+  getSupportedThinkingLevels,
+} from "@/config/config.js";
+import { persistThinkingLevel, saveProvider } from "@/config/provider-login.js";
+import { expandAtRefsWithImages } from "@/conversation/at-expand.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { FileHistory } from "@/file-history/file-history.js";
+import type { Snapshot } from "@/file-history/file-history.js";
+import * as historyMod from "@/history/history.js";
+import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
+import type { LLMClient } from "@/llm/client.js";
+import { createClient } from "@/llm/client.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { MCPManager } from "@/mcp/manager.js";
+import { applyMode, decideAndApply } from "@/mcp/strategy.js";
+import { MCPToolWrapper } from "@/mcp/tool-wrapper.js";
+import { MemoryExtractor } from "@/memory/extractor.js";
+import { loadInstructions } from "@/memory/instructions.js";
+import { MemoryManager, type RecallResult } from "@/memory/manager.js";
+import { PermissionChecker, type PermissionMode } from "@/permissions/checker.js";
+import { getOrCreatePlanPath, loadPlan, planExists, resetPlanPath } from "@/plan-file/plan-file.js";
+import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
+import { buildPlanModeExitReminder, buildPlanModeReentryReminder } from "@/prompt/plan-mode.js";
+import { createSandbox, type Sandbox } from "@/sandbox/index.js";
+import * as sessionMod from "@/session/session.js";
+import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
+import { runFork as runSkillFork } from "@/skills/executor.js";
+import { InstallSkillTool } from "@/skills/install-tool.js";
+import { LoadSkillTool } from "@/skills/load-skill-tool.js";
+import type { SkillHost, SkillForkHost } from "@/skills/skill.js";
+import { AgentTool } from "@/subagent/agent-tool.js";
+import { BUILTIN_AGENTS } from "@/subagent/definition.js";
+import { spawnSubagent } from "@/subagent/spawn.js";
+import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
+import { TaskStopTool } from "@/teams/task-stop.js";
+import type { RunAgent } from "@/teams/team.js";
+import { TeamManager } from "@/teams/team.js";
+import {
+  TeamCreateTool,
+  SpawnTeammateTool,
+  SendMessageTool,
+  ListTeamsTool,
+  TeamDeleteTool,
+} from "@/teams/tools.js";
+import { TaskStore } from "@/todo/store.js";
+import { TaskList } from "@/todo/todo.js";
+import { toDisplayPreview } from "@/tool-result/budget.js";
+import { AskUserQuestionTool, type Question } from "@/tools/ask-user.js";
+import type { BashTool } from "@/tools/bash.js";
+import type { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
+import type { ToolRegistry } from "@/tools/registry.js";
+import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { asErrorString, asRecord, contentToText, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tui" });

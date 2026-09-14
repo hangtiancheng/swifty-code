@@ -22,12 +22,12 @@
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
-import type { AgentEvent } from "../agent/events.js";
-import { formatToolArgs } from "../bootstrap/utils.js";
-import { toDisplayPreview } from "../tool-result/budget.js";
-
 import type { ChatMessage, ToolSummaryItem } from "./chat.js";
 import type { ToolBlockInfo } from "./tool-display.js";
+
+import type { AgentEvent } from "@/agent/events.js";
+import { formatToolArgs } from "@/bootstrap/utils.js";
+import { toDisplayPreview } from "@/tool-result/budget.js";
 
 export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[]>>) {
   const [streamingText, setStreamingText] = useState("");
@@ -121,7 +121,12 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
           turnToolCalls.set(event.toolId, undefined);
           setActiveTools((tools) => [
             ...tools,
-            { toolId: event.toolId, toolName: event.toolName, args: event.args, loading: true },
+            {
+              toolId: event.toolId,
+              toolName: event.toolName,
+              args: event.args,
+              loading: true,
+            },
           ]);
           break;
         }

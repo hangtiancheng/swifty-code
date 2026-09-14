@@ -22,11 +22,10 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 
-import type { Decision, PermissionChecker } from "../permissions/checker.js";
-
 import type { FileStateCache } from "./file-state-cache.js";
 
 import type { FileHistory } from "@/file-history/file-history.js";
+import type { Decision, PermissionChecker } from "@/permissions/checker.js";
 
 export type ToolCategory = "read" | "write" | "command";
 
@@ -97,13 +96,21 @@ function normalizeDocumentBlock(value: Record<string, unknown>): DocumentToolRes
     value.source.media_type === "application/pdf" &&
     typeof value.source.data === "string"
   ) {
-    source = { type: "base64", media_type: "application/pdf", data: value.source.data };
+    source = {
+      type: "base64",
+      media_type: "application/pdf",
+      data: value.source.data,
+    };
   } else if (
     value.source.type === "text" &&
     value.source.media_type === "text/plain" &&
     typeof value.source.data === "string"
   ) {
-    source = { type: "text", media_type: "text/plain", data: value.source.data };
+    source = {
+      type: "text",
+      media_type: "text/plain",
+      data: value.source.data,
+    };
   } else if (value.source.type === "content") {
     if (typeof value.source.content === "string") {
       source = { type: "content", content: value.source.content };
@@ -162,7 +169,12 @@ export function normalizeToolResultContentBlock(value: unknown): ToolResultConte
       }
       content.push(block);
     }
-    return { type: "search_result", source: value.source, title: value.title, content };
+    return {
+      type: "search_result",
+      source: value.source,
+      title: value.title,
+      content,
+    };
   }
   return normalizeDocumentBlock(value);
 }

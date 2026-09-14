@@ -20,8 +20,9 @@
  * SOFTWARE.
  */
 
-import { argsPreview, formatArgs, truncateOutput } from "../lib/format";
-import type { ToolItem } from "../types";
+import { argsPreview, formatArgs, truncateOutput } from "@fe/lib/format";
+import type { ToolItem } from "@fe/types";
+
 import { Collapsible } from "./collapsible";
 
 interface ToolBlockProps {

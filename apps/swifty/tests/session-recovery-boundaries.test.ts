@@ -32,7 +32,7 @@ import {
   saveCompactBoundary,
   saveMessage,
   type SessionMessage,
-} from "../src/session/session.js";
+} from "@/session/session.js";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -68,7 +68,10 @@ describe("empty session content arrays", () => {
     expect(loadSession(directory, "session")).toHaveLength(3);
     expect(rebuildFromSession(records)).toHaveLength(3);
 
-    saveCompactBoundary(directory, "session", { summary: "summary", keep: records });
+    saveCompactBoundary(directory, "session", {
+      summary: "summary",
+      keep: records,
+    });
     const restored = rebuildFromSession(loadSession(directory, "session"));
     expect(restored).toHaveLength(4);
     expect(restored[2].toolUses?.[0].toolUseId).toBe("a");

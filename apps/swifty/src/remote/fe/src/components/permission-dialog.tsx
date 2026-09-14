@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { PermissionItem, PermissionResponse } from "../types";
+import type { PermissionItem, PermissionResponse } from "@fe/types";
 
 interface PermissionDialogProps {
   item: PermissionItem;

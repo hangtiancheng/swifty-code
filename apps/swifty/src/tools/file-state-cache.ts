@@ -22,7 +22,7 @@
 
 import { statSync } from "fs";
 
-import { createChildLogger } from "../logger/logger.js";
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "file-state-cache" });
 

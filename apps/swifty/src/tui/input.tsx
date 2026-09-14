@@ -28,9 +28,6 @@ import { Box, Text, useInput, usePaste, useStdout } from "ink";
 import type { Key } from "ink";
 import { useState, useMemo, useRef, useEffect } from "react";
 
-import { THINKING_LEVELS, type ThinkingLevel } from "../config/config.js";
-import { createChildLogger } from "../logger/logger.js";
-
 import { useInputDraft } from "./input-draft.js";
 import type { InputDraft } from "./input-draft.js";
 import { layoutInputRows, locateInputCursor, moveInputVertically } from "./input-navigation.js";
@@ -42,7 +39,9 @@ import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 import type { Command } from "@/commands/commands.js";
 import type { CommandUsageTracker } from "@/commands/usage-tracker.js";
+import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
 import { saveClipboardImage } from "@/images/clipboard.js";
+import { createChildLogger } from "@/logger/logger.js";
 import type { PermissionMode } from "@/permissions/checker.js";
 import { SKIP_DIRS } from "@/tools/types.js";
 
@@ -715,7 +714,10 @@ export function InputBox(props: InputBoxProps) {
         preferred?.width === rowWidth ? preferred.column : undefined,
       );
       if (position) {
-        preferredColumnRef.current = { width: rowWidth, column: position.preferredColumn };
+        preferredColumnRef.current = {
+          width: rowWidth,
+          column: position.preferredColumn,
+        };
         setCursorLine(position.cursorLine);
         setCursorCol(position.cursorCol);
         return;

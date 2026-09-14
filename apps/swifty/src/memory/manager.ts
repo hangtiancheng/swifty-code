@@ -35,11 +35,11 @@ import { join, relative, basename } from "node:path";
 import yaml from "js-yaml";
 import z, { parse } from "zod";
 
-import { ConversationManager } from "../conversation/conversation.js";
-import type { LLMClient } from "../llm/client.js";
-import { createChildLogger } from "../logger/logger.js";
-
 import { memoryAge, memoryFreshnessText } from "./memory-age.js";
+
+import { ConversationManager } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "memory" });
 

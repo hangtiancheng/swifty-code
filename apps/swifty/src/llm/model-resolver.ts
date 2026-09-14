@@ -20,9 +20,9 @@
  * SOFTWARE.
  */
 
-import type { ProviderConfig } from "../config/config.js";
-
 import { createClient, type LLMClient } from "./client.js";
+
+import type { ProviderConfig } from "@/config/config.js";
 
 // Short aliases the model field of an agent definition may use. Unknown names
 // pass through unchanged so a full model id still works.

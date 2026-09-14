@@ -32,21 +32,21 @@ import {
 import { homedir } from "node:os";
 import { join, basename } from "node:path";
 
-import { Agent } from "../agent/agent.js";
-import { ConversationManager } from "../conversation/conversation.js";
-import type { LLMClient } from "../llm/client.js";
-import { createChildLogger } from "../logger/logger.js";
-import { listSessions } from "../session/session.js";
-import { EditFileTool } from "../tools/edit-file.js";
-import { FileStateCache } from "../tools/file-state-cache.js";
-import { GlobTool } from "../tools/glob.js";
-import { GrepTool } from "../tools/grep.js";
-import { ReadFileTool } from "../tools/read-file.js";
-import { ToolRegistry } from "../tools/registry.js";
-import { WriteFileTool } from "../tools/write-file.js";
-
 import { MemoryPermissionChecker } from "./permissions.js";
 import { extractWrittenPaths } from "./written-paths.js";
+
+import { Agent } from "@/agent/agent.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { listSessions } from "@/session/session.js";
+import { EditFileTool } from "@/tools/edit-file.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
+import { GlobTool } from "@/tools/glob.js";
+import { GrepTool } from "@/tools/grep.js";
+import { ReadFileTool } from "@/tools/read-file.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import { WriteFileTool } from "@/tools/write-file.js";
 
 const log = createChildLogger({ module: "memory" });
 

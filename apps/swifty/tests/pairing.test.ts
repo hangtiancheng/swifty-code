@@ -22,8 +22,8 @@
 
 import { describe, it, expect } from "vitest";
 
-import type { Message } from "../src/conversation/conversation.js";
-import { ensureToolPairing, INTERRUPTED_TOOL_RESULT } from "../src/conversation/pairing.js";
+import type { Message } from "@/conversation/conversation.js";
+import { ensureToolPairing, INTERRUPTED_TOOL_RESULT } from "@/conversation/pairing.js";
 
 function assistantWithTool(id: string): Message {
   return {
@@ -34,7 +34,11 @@ function assistantWithTool(id: string): Message {
 }
 
 function resultFor(id: string, content: string): Message {
-  return { role: "user", content: "", toolResults: [{ toolUseId: id, content, isError: false }] };
+  return {
+    role: "user",
+    content: "",
+    toolResults: [{ toolUseId: id, content, isError: false }],
+  };
 }
 
 describe("ensureToolPairing", () => {

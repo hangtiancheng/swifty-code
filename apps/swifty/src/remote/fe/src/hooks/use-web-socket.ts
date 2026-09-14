@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
+import type { ClientMessage, ServerMessage } from "@fe/types";
 import { useEffect, useRef } from "react";
-import type { ClientMessage, ServerMessage } from "../types";
 
 interface UseWebSocketOptions {
   onMessage: (message: ServerMessage) => void;
@@ -60,7 +60,9 @@ export function useWebSocket(opts: UseWebSocketOptions): UseWebSocketResult {
     let disposed = false;
 
     const connect = () => {
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       const url = `${proto}//${window.location.host}/ws`;
       const ws = new WebSocket(url);
@@ -68,7 +70,9 @@ export function useWebSocket(opts: UseWebSocketOptions): UseWebSocketResult {
 
       ws.onopen = () => {
         onOpenRef.current();
-        if (pingRef.current) clearInterval(pingRef.current);
+        if (pingRef.current) {
+          clearInterval(pingRef.current);
+        }
         pingRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "ping", data: {} }));
@@ -93,6 +97,7 @@ export function useWebSocket(opts: UseWebSocketOptions): UseWebSocketResult {
 
       ws.onmessage = (evt: MessageEvent) => {
         try {
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument
           const parsed = JSON.parse(evt.data) as ServerMessage;
           onMessageRef.current(parsed);
         } catch (err) {

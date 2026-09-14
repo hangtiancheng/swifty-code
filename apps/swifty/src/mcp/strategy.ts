@@ -40,12 +40,11 @@
  * cache hit rate from 99.4% to 9.5%, effectively recomputing the whole history.
  */
 
-import type { ToolRegistry } from "../tools/registry.js";
-import type { McpLoadingMode } from "../tools/types.js";
-
 import { MCP_TOOL_PREFIX } from "./tool-wrapper.js";
 
 import { isMcpToolLike } from "@/tools/mcp-call.js";
+import type { ToolRegistry } from "@/tools/registry.js";
+import type { McpLoadingMode } from "@/tools/types.js";
 
 /** Below this share of the context window, skip deferral and load everything eagerly. */
 export const DEFAULT_EAGER_THRESHOLD_PERCENT = 10;

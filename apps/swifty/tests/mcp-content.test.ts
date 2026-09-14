@@ -22,8 +22,8 @@
 
 import { describe, it, expect } from "vitest";
 
-import { mcpContentToToolOutput } from "../src/mcp/client.js";
-import { isRecord } from "../src/utils/index.js";
+import { mcpContentToToolOutput } from "@/mcp/client.js";
+import { isRecord } from "@/utils/index.js";
 
 // Small buffers pass through maybeResizeAndDownsampleImage untouched (sharp is
 // only consulted above the passthrough limit), so fake bytes are fine here.
@@ -46,7 +46,10 @@ describe("mcpContentToToolOutput", () => {
     ]);
     expect(result.output).toBe("screenshot below\n[Image: image/png]");
     expect(result.output).not.toContain(DATA);
-    expect(result.contentBlocks?.[0]).toEqual({ type: "text", text: "screenshot below" });
+    expect(result.contentBlocks?.[0]).toEqual({
+      type: "text",
+      text: "screenshot below",
+    });
     expect(result.contentBlocks?.[1]?.type).toBe("image");
     const source = isRecord(result.contentBlocks?.[1]) ? result.contentBlocks[1].source : null;
     expect(isRecord(source) ? source.media_type : null).toBe("image/png");

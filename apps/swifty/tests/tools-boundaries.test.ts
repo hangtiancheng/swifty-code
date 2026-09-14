@@ -34,15 +34,15 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { BashTool } from "../src/tools/bash.js";
-import { EditFileTool } from "../src/tools/edit-file.js";
-import { withFileMutationQueue } from "../src/tools/file-mutation-queue.js";
-import { FileStateCache } from "../src/tools/file-state-cache.js";
-import { PowerShellTool } from "../src/tools/powershell.js";
-import { ReadFileTool } from "../src/tools/read-file.js";
-import { formatShellOutput, takeUtf8Prefix, utf8ByteLength } from "../src/tools/shell-output.js";
-import type { ToolContext } from "../src/tools/types.js";
-import { WriteFileTool } from "../src/tools/write-file.js";
+import { BashTool } from "@/tools/bash.js";
+import { EditFileTool } from "@/tools/edit-file.js";
+import { withFileMutationQueue } from "@/tools/file-mutation-queue.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
+import { PowerShellTool } from "@/tools/powershell.js";
+import { ReadFileTool } from "@/tools/read-file.js";
+import { formatShellOutput, takeUtf8Prefix, utf8ByteLength } from "@/tools/shell-output.js";
+import type { ToolContext } from "@/tools/types.js";
+import { WriteFileTool } from "@/tools/write-file.js";
 
 function makeContext(): ToolContext {
   return {
@@ -60,14 +60,19 @@ describe("file tool boundaries", () => {
       Array.from({ length: 1_000 }, (_, i) => `${String(i)} ${"界".repeat(30)}`).join("\n"),
     );
 
-    const result = await new ReadFileTool().execute(context, { file_path: path });
+    const result = await new ReadFileTool().execute(context, {
+      file_path: path,
+    });
     expect(result.isError).toBe(false);
     expect(result.output).toContain("more lines in file");
     expect(result.output).toContain("Use offset=");
     const returnedContent = result.output.split("\n[")[0] ?? result.output;
     expect(utf8ByteLength(returnedContent)).toBeLessThanOrEqual(50 * 1024);
 
-    const beyond = await new ReadFileTool().execute(context, { file_path: path, offset: 1_000 });
+    const beyond = await new ReadFileTool().execute(context, {
+      file_path: path,
+      offset: 1_000,
+    });
     expect(beyond.isError).toBe(true);
     expect(beyond.output).toContain("is beyond end of file");
   });
@@ -75,8 +80,13 @@ describe("file tool boundaries", () => {
   it("rejects missing write content and missing edit replacement", async () => {
     const context = makeContext();
     const path = join(context.workDir, "file.txt");
-    const write = await new WriteFileTool().execute(context, { file_path: path });
-    expect(write).toEqual({ output: "Error: content is required", isError: true });
+    const write = await new WriteFileTool().execute(context, {
+      file_path: path,
+    });
+    expect(write).toEqual({
+      output: "Error: content is required",
+      isError: true,
+    });
 
     writeFileSync(path, "before");
     await new ReadFileTool().execute(context, { file_path: path });
@@ -84,7 +94,10 @@ describe("file tool boundaries", () => {
       file_path: path,
       old_string: "before",
     });
-    expect(edit).toEqual({ output: "Error: new_string is required", isError: true });
+    expect(edit).toEqual({
+      output: "Error: new_string is required",
+      isError: true,
+    });
     expect(readFileSync(path, "utf-8")).toBe("before");
   });
 
@@ -159,7 +172,10 @@ describe("file tool boundaries", () => {
     release();
     await blocker;
     const result = await pending;
-    expect(result).toEqual({ output: "Error: operation interrupted", isError: true });
+    expect(result).toEqual({
+      output: "Error: operation interrupted",
+      isError: true,
+    });
     expect(readFileSync(path, "utf-8")).toBe("before");
   });
 
@@ -189,7 +205,9 @@ describe("shell tool boundaries", () => {
   });
 
   it("reports non-zero Bash exits as tool errors", async () => {
-    const result = await new BashTool().execute(makeContext(), { command: "exit 7" });
+    const result = await new BashTool().execute(makeContext(), {
+      command: "exit 7",
+    });
     expect(result.isError).toBe(true);
     expect(result.output).toContain("Exit code 7");
   });
@@ -250,7 +268,10 @@ describe("shell tool boundaries", () => {
       expected,
     );
     await expect(
-      new PowerShellTool().execute(context, { command: "Write-Output ok", timeout: -1 }),
+      new PowerShellTool().execute(context, {
+        command: "Write-Output ok",
+        timeout: -1,
+      }),
     ).resolves.toEqual(expected);
   });
 });

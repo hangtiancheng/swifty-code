@@ -35,8 +35,8 @@ import {
   rebuildFromSession,
   toolResultsToRecords,
   COMPACT_BOUNDARY,
-} from "../src/session/session.js";
-import { asString, contentToText } from "../src/utils/index.js";
+} from "@/session/session.js";
+import { asString, contentToText } from "@/utils/index.js";
 
 const t0 = Math.floor(Date.now() / 1000);
 const t1 = t0 + 1;
@@ -61,7 +61,11 @@ describe("session save/load round-trip", () => {
                 { type: "text", text: "image task" },
                 {
                   type: "image",
-                  source: { type: "base64", media_type: "image/png", data: "QUJD" },
+                  source: {
+                    type: "base64",
+                    media_type: "image/png",
+                    data: "QUJD",
+                  },
                 },
               ],
             },
@@ -69,13 +73,21 @@ describe("session save/load round-trip", () => {
         }),
       },
       { role: "assistant", content: "after boundary", timestamp: t2 },
-      { role: "system", type: COMPACT_BOUNDARY, timestamp: t3, content: "{broken" },
+      {
+        role: "system",
+        type: COMPACT_BOUNDARY,
+        timestamp: t3,
+        content: "{broken",
+      },
       { role: "user", content: "latest task", timestamp: t4 },
     ]);
     expect(contentToText(restored[0].content)).toContain("valid summary");
     expect(restored[1].content).toEqual([
       { type: "text", text: "image task" },
-      { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+      {
+        type: "image",
+        source: { type: "base64", media_type: "image/png", data: "QUJD" },
+      },
     ]);
     expect(restored.slice(2).map((m) => m.content)).toEqual(["after boundary", "latest task"]);
   });
@@ -84,7 +96,12 @@ describe("session save/load round-trip", () => {
     const restored = rebuildFromSession([
       { role: "user", content: "original task", timestamp: t0 },
       { role: "assistant", content: "original answer", timestamp: t1 },
-      { role: "system", type: COMPACT_BOUNDARY, content: "not json", timestamp: t2 },
+      {
+        role: "system",
+        type: COMPACT_BOUNDARY,
+        content: "not json",
+        timestamp: t2,
+      },
     ]);
     expect(restored.map((m) => m.content)).toEqual(["original task", "original answer"]);
   });
@@ -137,7 +154,10 @@ describe("session save/load round-trip", () => {
       role: "user",
       content: [
         { type: "text", text: "look at @shot.png" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data },
+        },
       ],
       timestamp: t0,
     });
@@ -175,7 +195,10 @@ describe("session save/load round-trip", () => {
           content: "screenshot\n[Image: image/png]",
           contentBlocks: [
             { type: "text", text: "screenshot" },
-            { type: "image", source: { type: "base64", media_type: "image/png", data } },
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data },
+            },
           ],
           isError: false,
         },
@@ -190,7 +213,10 @@ describe("session save/load round-trip", () => {
       content: "screenshot\n[Image: image/png]",
       contentBlocks: [
         { type: "text", text: "screenshot" },
-        { type: "image", source: { type: "base64", media_type: "image/png", data } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data },
+        },
       ],
       isError: false,
     });
@@ -203,7 +229,10 @@ describe("session save/load round-trip", () => {
     mkdirSync(dir, { recursive: true });
     const blocks = [
       { type: "text", text: "legacy screenshot" },
-      { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+      {
+        type: "image",
+        source: { type: "base64", media_type: "image/png", data: "QUJD" },
+      },
       { type: "tool_reference", tool_name: "mcp__legacy__tool" },
       { type: "thinking", thinking: "must not enter tool_result content" },
     ];
@@ -329,7 +358,11 @@ describe("rebuildFromSession (compacted-state resume)", () => {
               contentBlocks: [
                 {
                   type: "image",
-                  source: { type: "base64", media_type: "image/png", data: "QUJD" },
+                  source: {
+                    type: "base64",
+                    media_type: "image/png",
+                    data: "QUJD",
+                  },
                 },
               ],
               isError: false,

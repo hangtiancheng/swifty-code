@@ -22,14 +22,14 @@
 
 import { describe, it, expect } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent, UsageInfo } from "../src/llm/events.js";
-import type { RecallResult } from "../src/memory/manager.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import type { Tool } from "../src/tools/types.js";
+import { Agent } from "@/agent/agent.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent, UsageInfo } from "@/llm/events.js";
+import type { RecallResult } from "@/memory/manager.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { Tool } from "@/tools/types.js";
 
 const USAGE: UsageInfo = {
   inputTokens: 1,
@@ -112,7 +112,12 @@ describe("memory recall wiring", () => {
     const { injected, surfaced } = await run(
       [
         [
-          { type: "tool_call_complete", toolId: "t1", toolName: "Echo", arguments: {} },
+          {
+            type: "tool_call_complete",
+            toolId: "t1",
+            toolName: "Echo",
+            arguments: {},
+          },
           end("tool_use"),
         ],
         [{ type: "text_delta", text: "done" }, end()],

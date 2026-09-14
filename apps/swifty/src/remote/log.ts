@@ -26,7 +26,7 @@
 // Routine progress events (tool_use, streamed text, turn/loop completion,
 // usage, permission requests) are intentionally not logged.
 
-import type { AgentEvent } from "../agent/events.js";
+import type { AgentEvent } from "@/agent/events.js";
 
 /** Minimal pino Logger shape (warn/error) to keep this module generic. */
 export interface EventLogger {

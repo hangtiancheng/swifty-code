@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
+import type { AskUserItem, Question } from "@fe/types";
 import { useState } from "react";
-import type { AskUserItem, Question } from "../types";
 
 interface QuestionDraft {
   /** Selected option labels (at most one for single-select questions). */

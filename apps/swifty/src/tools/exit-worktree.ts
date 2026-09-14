@@ -20,11 +20,6 @@
  * SOFTWARE.
  */
 
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString } from "../utils/index.js";
-import { strArg } from "../utils/index.js";
-import { hasWorktreeChanges, removeAgentWorktree } from "../worktree/worktree.js";
-
 import {
   type Tool,
   type ToolCategory,
@@ -32,6 +27,11 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { createChildLogger } from "@/logger/logger.js";
+import { asErrorString } from "@/utils/index.js";
+import { strArg } from "@/utils/index.js";
+import { hasWorktreeChanges, removeAgentWorktree } from "@/worktree/worktree.js";
 
 const log = createChildLogger({ module: "tools" });
 export class ExitWorktreeTool implements Tool {

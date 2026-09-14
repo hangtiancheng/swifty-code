@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { loadUserCommands, renderBody } from "../src/commands/loader.js";
+import { loadUserCommands, renderBody } from "@/commands/loader.js";
 
 function cmdDir(): string {
   const workDir = mkdtempSync(join(tmpdir(), "swifty-cmd-"));

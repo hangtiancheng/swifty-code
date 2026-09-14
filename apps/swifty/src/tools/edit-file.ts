@@ -23,10 +23,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString } from "../utils/index.js";
-import { boolArg, strArg } from "../utils/index.js";
-
 import { EDIT_FILE_DESCRIPTION } from "./descriptions.js";
 import { buildDiff } from "./diff.js";
 import { withFileMutationQueue } from "./file-mutation-queue.js";
@@ -37,6 +33,10 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { createChildLogger } from "@/logger/logger.js";
+import { boolArg, strArg } from "@/utils/index.js";
+import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 

@@ -1,14 +1,11 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import sharp from "sharp";
 import { safeParse, z } from "zod";
-
-import { maybeResizeAndDownsampleImage } from "../images/image.js";
-import { asErrorString } from "../utils/index.js";
 
 import type {
   Tool,
@@ -18,6 +15,9 @@ import type {
   ToolResultContentBlock,
   ToolSchema,
 } from "./types.js";
+
+import { maybeResizeAndDownsampleImage } from "@/images/image.js";
+import { asErrorString } from "@/utils/index.js";
 
 const ACTIONS = [
   "key",
@@ -248,7 +248,7 @@ function keysFor(input: ComputerUseInput): string[] {
 
 function normalizeAction(
   input: ComputerUseInput,
-): NativeInput | "screenshot" | { region: number[] } {
+): NativeInput | "screenshot" | { region: number[] } | { action: "wait"; duration: number } {
   switch (input.action) {
     case "screenshot":
       return "screenshot";
@@ -263,7 +263,7 @@ function normalizeAction(
       return { region: input.region };
     }
     case "wait":
-      return { action: "hold_key", duration: input.duration ?? 1, keys: [] };
+      return { action: "wait", duration: input.duration ?? 1 };
     case "cursor_position":
       return { action: "cursor_position" };
     case "type":
@@ -329,7 +329,13 @@ function normalizeAction(
                 : (input.button ?? "left")
               : "left";
       const clicks = input.action === "double_click" ? 2 : input.action === "triple_click" ? 3 : 1;
-      return { action: "mouse_click", button, clicks, ...point, keys: keysFor(input) };
+      return {
+        action: "mouse_click",
+        button,
+        clicks,
+        ...point,
+        keys: keysFor(input),
+      };
     }
     case "scroll": {
       const point = input.coordinate
@@ -701,6 +707,7 @@ export class ComputerUseTool implements Tool {
   private readonly run: CommandRunner;
   private coordinateScaleX = 1;
   private coordinateScaleY = 1;
+  private macHelperPromise?: Promise<string>;
 
   constructor(options: ComputerUseToolOptions = {}) {
     this.platform = options.platform ?? process.platform;
@@ -767,8 +774,16 @@ export class ComputerUseTool implements Tool {
             type: "string",
             description: "Text to type, or a '+'-separated key combination.",
           },
-          x: { type: "integer", minimum: 0, description: "OpenAI-style x coordinate." },
-          y: { type: "integer", minimum: 0, description: "OpenAI-style y coordinate." },
+          x: {
+            type: "integer",
+            minimum: 0,
+            description: "OpenAI-style x coordinate.",
+          },
+          y: {
+            type: "integer",
+            minimum: 0,
+            description: "OpenAI-style y coordinate.",
+          },
           button: {
             type: "string",
             enum: ["left", "right", "wheel", "middle", "back", "forward"],
@@ -795,8 +810,14 @@ export class ComputerUseTool implements Tool {
             maxItems: 200,
             description: "OpenAI-style drag path.",
           },
-          scroll_x: { type: "number", description: "OpenAI-style horizontal scroll delta." },
-          scroll_y: { type: "number", description: "OpenAI-style vertical scroll delta." },
+          scroll_x: {
+            type: "number",
+            description: "OpenAI-style horizontal scroll delta.",
+          },
+          scroll_y: {
+            type: "number",
+            description: "OpenAI-style vertical scroll delta.",
+          },
         },
         required: ["action"],
         additionalProperties: false,
@@ -807,7 +828,10 @@ export class ComputerUseTool implements Tool {
   async execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
     const parsed = safeParse(ComputerUseInputSchema, args);
     if (!parsed.success) {
-      return { output: `Error: ${z.prettifyError(parsed.error)}`, isError: true };
+      return {
+        output: `Error: ${z.prettifyError(parsed.error)}`,
+        isError: true,
+      };
     }
 
     try {
@@ -819,8 +843,10 @@ export class ComputerUseTool implements Tool {
       if ("region" in action) {
         return await this.screenshot(ctx.abortSignal, action.region);
       }
-      if (parsed.data.action === "wait") {
-        await delay((action.duration ?? 1) * 1000, undefined, { signal: ctx.abortSignal });
+      if (action.action === "wait") {
+        await delay((action.duration ?? 1) * 1000, undefined, {
+          signal: ctx.abortSignal,
+        });
         return { output: "Wait completed.", isError: false };
       }
 
@@ -869,21 +895,64 @@ export class ComputerUseTool implements Tool {
   }
 
   private async executeMac(action: NativeInput, signal?: AbortSignal): Promise<string> {
-    const result = await this.run("/usr/bin/swift", ["-e", MACOS_SWIFT], {
+    return this.runMacPayload(
+      action,
+      signal,
+      action.action === "hold_key"
+        ? Math.max(COMMAND_TIMEOUT_MS, (action.duration ?? 0) * 1000 + 5_000)
+        : COMMAND_TIMEOUT_MS,
+    );
+  }
+
+  private async runMacPayload(
+    payload: object,
+    signal?: AbortSignal,
+    timeoutMs = COMMAND_TIMEOUT_MS,
+  ): Promise<string> {
+    const helper = await this.getMacHelper(signal);
+    const result = await this.run(helper, [], {
       env: {
         ...process.env,
-        SWIFTY_COMPUTER_INPUT: Buffer.from(JSON.stringify(action)).toString("base64"),
+        SWIFTY_COMPUTER_INPUT: Buffer.from(JSON.stringify(payload)).toString("base64"),
       },
       signal,
-      timeoutMs:
-        action.action === "hold_key"
-          ? Math.max(COMMAND_TIMEOUT_MS, (action.duration ?? 0) * 1000 + 5_000)
-          : COMMAND_TIMEOUT_MS,
+      timeoutMs,
     });
     if (result.code !== 0) {
-      throw commandError("swift", result);
+      throw commandError("macOS computer helper", result);
     }
     return result.stdout.toString("utf8").trim();
+  }
+
+  private async getMacHelper(signal?: AbortSignal): Promise<string> {
+    this.macHelperPromise ??= this.compileMacHelper(signal);
+    try {
+      return await this.macHelperPromise;
+    } catch (err) {
+      this.macHelperPromise = undefined;
+      throw err;
+    }
+  }
+
+  private async compileMacHelper(signal?: AbortSignal): Promise<string> {
+    const directory = await mkdtemp(join(tmpdir(), "swifty-computer-helper-"));
+    const sourcePath = join(directory, "main.swift");
+    const executablePath = join(directory, "computer-helper");
+    try {
+      await writeFile(sourcePath, MACOS_SWIFT, "utf8");
+      const result = await this.run(
+        "/usr/bin/xcrun",
+        ["swiftc", "-O", sourcePath, "-o", executablePath],
+        { signal, timeoutMs: 120_000 },
+      );
+      if (result.code !== 0) {
+        throw commandError("swiftc", result);
+      }
+      return executablePath;
+    } catch (err) {
+      await rm(directory, { recursive: true, force: true });
+      throw err;
+    }
   }
 
   private async executeWindows(action: NativeInput, signal?: AbortSignal): Promise<string> {
@@ -1126,22 +1195,7 @@ export class ComputerUseTool implements Tool {
           if (capture.code !== 0) {
             throw commandError("screencapture", capture);
           }
-          const size = await this.run("/usr/bin/swift", ["-e", MACOS_SWIFT], {
-            env: {
-              ...process.env,
-              SWIFTY_COMPUTER_INPUT: Buffer.from(
-                JSON.stringify({ action: "screen_size" }),
-              ).toString("base64"),
-            },
-            signal,
-          })
-            .then((result) => {
-              if (result.code !== 0) {
-                throw commandError("swift", result);
-              }
-              return result.stdout.toString("utf8").trim();
-            })
-            .catch(() => "");
+          const size = await this.runMacPayload({ action: "screen_size" }, signal).catch(() => "");
           const [width, height] = size.split(",").map(Number);
           const bytes = await readFile(screenshotPath);
           const metadata = await sharp(bytes).metadata();

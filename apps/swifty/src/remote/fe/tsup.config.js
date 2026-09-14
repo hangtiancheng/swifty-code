@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+// @ts-check
+
 import { copyFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 

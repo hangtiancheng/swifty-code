@@ -22,7 +22,7 @@
 
 import { describe, test, expect, afterEach } from "vitest";
 
-import { detectBackend, detectBackendFromEnv } from "../src/teams/backend.js";
+import { detectBackend, detectBackendFromEnv } from "@/teams/backend.js";
 
 const origTmux = process.env.TMUX;
 const origIterm = process.env.ITERM_SESSION_ID;

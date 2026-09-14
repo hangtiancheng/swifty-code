@@ -20,16 +20,6 @@
  * SOFTWARE.
  */
 
-import { ConversationManager } from "../conversation/conversation.js";
-import type { Message } from "../conversation/conversation.js";
-import type { LLMClient } from "../llm/client.js";
-import { ContextTooLongError } from "../llm/errors.js";
-import {
-  type CompactBoundaryPayload,
-  toolUsesToRecords,
-  toolResultsToRecords,
-} from "../session/session.js";
-
 import {
   buildCompactionSummaryMessage,
   buildSummaryInstructions,
@@ -37,6 +27,15 @@ import {
 } from "./prompts.js";
 import type { RecoveryState } from "./recovery.js";
 
+import { ConversationManager } from "@/conversation/conversation.js";
+import type { Message } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import { ContextTooLongError } from "@/llm/errors.js";
+import {
+  type CompactBoundaryPayload,
+  toolUsesToRecords,
+  toolResultsToRecords,
+} from "@/session/session.js";
 import type { ToolResultContentBlock, ToolSchema } from "@/tools/types.js";
 import { asErrorString, contentToText, strArg } from "@/utils/index.js";
 

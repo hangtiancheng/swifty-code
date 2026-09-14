@@ -21,8 +21,10 @@
  */
 
 import { createRoot } from "react-dom/client";
+
 import { App } from "./app";
-// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
 import "./main.css";
 
 const rootEl = document.getElementById("root");

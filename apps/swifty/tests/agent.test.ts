@@ -22,17 +22,17 @@
 
 import { describe, it, expect } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import type { AgentEvent } from "../src/agent/events.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { HookEngine } from "../src/hooks/hooks.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent, UsageInfo } from "../src/llm/events.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { ExitPlanModeTool } from "../src/tools/exit-plan-mode.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import type { Tool } from "../src/tools/types.js";
-import { contentToText } from "../src/utils/index.js";
+import { Agent } from "@/agent/agent.js";
+import type { AgentEvent } from "@/agent/events.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { HookEngine } from "@/hooks/hooks.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent, UsageInfo } from "@/llm/events.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { Tool } from "@/tools/types.js";
+import { contentToText } from "@/utils/index.js";
 
 const USAGE: UsageInfo = {
   inputTokens: 1,
@@ -161,7 +161,12 @@ describe("Agent loop", () => {
 
   it("returns an error result for unknown tools and keeps looping", async () => {
     const unknownTurn = (id: string): StreamEvent[] => [
-      { type: "tool_call_complete", toolId: id, toolName: "Nope", arguments: {} },
+      {
+        type: "tool_call_complete",
+        toolId: id,
+        toolName: "Nope",
+        arguments: {},
+      },
       end("tool_use"),
     ];
     // After 3 consecutive wrong tool guesses, switch to plain text on round 4 and let the model handle the loop termination.
@@ -255,7 +260,12 @@ describe("Agent loop", () => {
     exitPlan.isPlanMode = () => false;
     const client = new MockClient([
       [
-        { type: "tool_call_complete", toolId: "p1", toolName: "ExitPlanMode", arguments: {} },
+        {
+          type: "tool_call_complete",
+          toolId: "p1",
+          toolName: "ExitPlanMode",
+          arguments: {},
+        },
         end("tool_use"),
       ],
       [{ type: "text_delta", text: "recovered" }, end()],
@@ -278,7 +288,12 @@ describe("Agent loop", () => {
     exitPlan.planExists = () => true;
     const client = new MockClient([
       [
-        { type: "tool_call_complete", toolId: "p1", toolName: "ExitPlanMode", arguments: {} },
+        {
+          type: "tool_call_complete",
+          toolId: "p1",
+          toolName: "ExitPlanMode",
+          arguments: {},
+        },
         end("tool_use"),
       ],
     ]);

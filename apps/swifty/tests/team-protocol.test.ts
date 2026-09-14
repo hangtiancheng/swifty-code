@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import type { FileMailMessage } from "../src/teams/file-mailbox.js";
+import type { FileMailMessage } from "@/teams/file-mailbox.js";
 import {
   MSG_PLAN_APPROVAL_REQUEST,
   MSG_PLAN_APPROVAL_RESPONSE,
@@ -39,9 +39,9 @@ import {
   planApprovalResponse,
   shutdownRequest,
   shutdownResponse,
-} from "../src/teams/protocol.js";
-import { TeamManager } from "../src/teams/team.js";
-import { SendMessageTool } from "../src/teams/tools.js";
+} from "@/teams/protocol.js";
+import { TeamManager } from "@/teams/team.js";
+import { SendMessageTool } from "@/teams/tools.js";
 
 const plain = (from: string, text: string): FileMailMessage => ({
   from,

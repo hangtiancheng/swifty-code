@@ -23,11 +23,10 @@
 import { safeParseAsync } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import z from "zod";
 
-import type { Tool, ToolResult, ToolContext, ToolSchema } from "../tools/types.js";
-
 import type { TaskStatus } from "./store.js";
 import type { TaskList } from "./todo.js";
 
+import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
 import { asErrorString, strArg } from "@/utils/index.js";
 
 export class TaskCreateTool implements Tool {

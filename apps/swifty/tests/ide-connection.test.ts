@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { connectToIde } from "../src/vscode/ide-client.js";
-import { detectIde } from "../src/vscode/lockfile.js";
+import { connectToIde } from "@/vscode/ide-client.js";
+import { detectIde } from "@/vscode/lockfile.js";
 
-vi.mock("../src/vscode/lockfile.js", () => ({ detectIde: vi.fn().mockResolvedValue(null) }));
+vi.mock("../src/vscode/lockfile.js", () => ({
+  detectIde: vi.fn().mockResolvedValue(null),
+}));
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -15,7 +17,11 @@ describe("IDE discovery lifetime", () => {
     const controller = new AbortController();
     controller.abort();
     expect(
-      await connectToIde({ cwd: "/tmp", onAtMentioned: vi.fn(), signal: controller.signal }),
+      await connectToIde({
+        cwd: "/tmp",
+        onAtMentioned: vi.fn(),
+        signal: controller.signal,
+      }),
     ).toBeNull();
     expect(detectIde).not.toHaveBeenCalled();
   });

@@ -23,9 +23,9 @@
 import { Text } from "ink";
 import React, { useEffect, useRef, useState } from "react";
 
-import { randomVerb } from "../utils/verbs.js";
-
 import { THEME } from "./styles.js";
+
+import { randomVerb } from "@/utils/verbs.js";
 
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 

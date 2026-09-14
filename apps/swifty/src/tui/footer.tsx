@@ -25,10 +25,10 @@ import { homedir } from "node:os";
 import { Box, Text, useBoxMetrics, useStdout, type DOMElement } from "ink";
 import { useLayoutEffect, useRef } from "react";
 
-import type { ThinkingLevel } from "../config/config.js";
-
 import { THEME, thinkingLevelColor } from "./styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
+
+import type { ThinkingLevel } from "@/config/config.js";
 
 interface FooterProps {
   /** Current context occupancy in tokens (not the cumulative session total). */

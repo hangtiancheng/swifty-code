@@ -40,7 +40,6 @@ export default defineConfig(
     "eslint.config.js",
     "tsup.config.ts",
     "vitest.config.ts",
-    "src/remote/fe",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

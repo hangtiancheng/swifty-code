@@ -27,15 +27,15 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import type { AgentEvent } from "../src/agent/events.js";
-import * as config from "../src/config/config.js";
-import * as clients from "../src/llm/client.js";
-import { OpenAIClient } from "../src/llm/openai.js";
-import * as logger from "../src/logger/logger.js";
-import { MCPManager } from "../src/mcp/manager.js";
-import { runTeammate } from "../src/teammate.js";
-import { FileMailbox } from "../src/teams/file-mailbox.js";
+import { Agent } from "@/agent/agent.js";
+import type { AgentEvent } from "@/agent/events.js";
+import * as config from "@/config/config.js";
+import * as clients from "@/llm/client.js";
+import { OpenAIClient } from "@/llm/openai.js";
+import * as logger from "@/logger/logger.js";
+import { MCPManager } from "@/mcp/manager.js";
+import { runTeammate } from "@/teammate.js";
+import { FileMailbox } from "@/teams/file-mailbox.js";
 
 vi.mock("node:os", async (importOriginal) => ({
   ...(await importOriginal<typeof os>()),

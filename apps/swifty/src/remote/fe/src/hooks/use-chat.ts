@@ -20,7 +20,6 @@
  * SOFTWARE.
  */
 
-import { useCallback, useReducer } from "react";
 import type {
   ChatItem,
   ConnectionStatus,
@@ -30,8 +29,9 @@ import type {
   ThinkingItem,
   ToolItem,
   UsagePayload,
-} from "../types";
-import { toolKey } from "../types";
+} from "@fe/types";
+import { toolKey } from "@fe/types";
+import { useCallback, useReducer } from "react";
 
 /** Monotonic id generator for newly created chat items. */
 let idCounter = 0;
@@ -76,7 +76,9 @@ type Action =
   | { kind: "markAskAnswered"; id: string };
 
 function finalizeCurrentThinking(state: ChatState): ChatState {
-  if (state.currentThinkingId === null) return state;
+  if (state.currentThinkingId === null) {
+    return state;
+  }
   const id = state.currentThinkingId;
   return {
     ...state,
@@ -88,7 +90,9 @@ function finalizeCurrentThinking(state: ChatState): ChatState {
 }
 
 function finalizeAssistant(state: ChatState): ChatState {
-  if (state.currentAssistantId === null) return state;
+  if (state.currentAssistantId === null) {
+    return state;
+  }
   const id = state.currentAssistantId;
   return {
     ...state,
@@ -234,7 +238,9 @@ function applyMessage(state: ChatState, msg: ServerMessage): ChatState {
       const exists = next.items.some(
         (it) => it.kind === "tool" && toolKey(it.toolName, it.toolId) === key,
       );
-      if (exists) return next;
+      if (exists) {
+        return next;
+      }
       const item: ToolItem = {
         kind: "tool",
         id: nextId("tool"),
@@ -265,7 +271,9 @@ function applyMessage(state: ChatState, msg: ServerMessage): ChatState {
         }
         return it;
       });
-      if (updated) return { ...state, items };
+      if (updated) {
+        return { ...state, items };
+      }
       const item: ToolItem = {
         kind: "tool",
         id: nextId("tool"),

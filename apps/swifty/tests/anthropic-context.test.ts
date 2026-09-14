@@ -22,8 +22,8 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import type { ProviderConfig } from "../src/config/config.js";
-import { fetchModelContextWindow } from "../src/llm/anthropic.js";
+import type { ProviderConfig } from "@/config/config.js";
+import { fetchModelContextWindow } from "@/llm/anthropic.js";
 
 const anthropicProvider = (over: Partial<ProviderConfig> = {}): ProviderConfig => ({
   name: "p",

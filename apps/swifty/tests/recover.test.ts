@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import { record, recordError, recordExit } from "../src/recover.js";
+import { record, recordError, recordExit } from "@/recover.js";
 
 // The crash log is always written under cwd; tests chdir into a temp directory and restore afterward
 const originalCwd = process.cwd();

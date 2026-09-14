@@ -22,21 +22,20 @@
 
 import { randomBytes } from "node:crypto";
 
-import type { ConversationManager } from "../conversation/conversation.js";
-import { createChildLogger } from "../logger/logger.js";
-import { PermissionChecker } from "../permissions/checker.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "../teams/task-tools.js";
-import type { TeamManager, RunAgent } from "../teams/team.js";
-import { SendMessageTool } from "../teams/tools.js";
-import { ToolRegistry } from "../tools/registry.js";
-import type { Tool, ToolResult, ToolContext, ToolSchema } from "../tools/types.js";
-import { buildWorktreeNotice, createAgentWorktree } from "../worktree/worktree.js";
-
 import type { AgentDefinition } from "./definition.js";
 import { loadAgentDefinitions } from "./loader.js";
 import { SUBAGENT_DISALLOWED_TOOLS, TEAMMATE_DISALLOWED_TOOLS } from "./tool-filter.js";
 
+import type { ConversationManager } from "@/conversation/conversation.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/teams/task-tools.js";
+import type { TeamManager, RunAgent } from "@/teams/team.js";
+import { SendMessageTool } from "@/teams/tools.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
 import { asErrorString, boolArg, strArg } from "@/utils/index.js";
+import { buildWorktreeNotice, createAgentWorktree } from "@/worktree/worktree.js";
 
 const log = createChildLogger({ module: "subagent" });
 /** Fallback target when subagent_type is omitted and fork is disabled */

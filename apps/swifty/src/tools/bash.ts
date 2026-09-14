@@ -22,9 +22,6 @@
 
 import { spawn } from "node:child_process";
 
-import { isSafeCommand } from "../permissions/checker.js";
-import { intArg, strArg } from "../utils/index.js";
-
 import { BASH_DESCRIPTION } from "./descriptions.js";
 import { exitCodeHint } from "./exit-code-hints.js";
 import {
@@ -41,7 +38,9 @@ import {
   type ToolSchema,
 } from "./types.js";
 
+import { isSafeCommand } from "@/permissions/checker.js";
 import type { Sandbox, SandboxConfig } from "@/sandbox/index.js";
+import { intArg, strArg } from "@/utils/index.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between SIGTERM and the SIGKILL escalation when terminating a command.
@@ -131,7 +130,10 @@ export class BashTool implements Tool {
     }
 
     if (ctx.abortSignal?.aborted) {
-      return Promise.resolve({ output: "Error: command interrupted", isError: true });
+      return Promise.resolve({
+        output: "Error: command interrupted",
+        isError: true,
+      });
     }
 
     // Async execution keeps the Node event loop free: with spawnSync the TUI

@@ -36,7 +36,9 @@ export function useAutoScroll<T extends HTMLElement>(dep: unknown) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: `dep` (the items array) intentionally triggers a re-scroll even though the effect body only reads DOM properties.
   useEffect(() => {
     const el = ref.current;
-    if (!el || !autoScroll) return;
+    if (!el || !autoScroll) {
+      return;
+    }
     // requestAnimationFrame ensures layout has settled before scrolling.
     const raf = requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
@@ -46,7 +48,9 @@ export function useAutoScroll<T extends HTMLElement>(dep: unknown) {
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const onScroll = () => {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       setAutoScroll(distanceFromBottom < 60);

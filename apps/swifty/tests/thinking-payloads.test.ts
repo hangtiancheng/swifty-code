@@ -6,12 +6,12 @@ import {
   THINKING_LEVELS,
   thinkingBudgetForLevel,
   type ProviderConfig,
-} from "../src/config/config.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { AnthropicClient } from "../src/llm/anthropic.js";
-import type { LLMClient } from "../src/llm/client.js";
-import { OpenAIClient, OpenAICompatClient } from "../src/llm/openai.js";
-import type { ToolSchema } from "../src/tools/types.js";
+} from "@/config/config.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { AnthropicClient } from "@/llm/anthropic.js";
+import type { LLMClient } from "@/llm/client.js";
+import { OpenAIClient, OpenAICompatClient } from "@/llm/openai.js";
+import type { ToolSchema } from "@/tools/types.js";
 
 const protocols: ProviderConfig["protocol"][] = ["anthropic", "openai", "openai-compat"];
 const openAIProtocols: ProviderConfig["protocol"][] = ["openai", "openai-compat"];
@@ -80,7 +80,12 @@ function terminalEvents(protocol: ProviderConfig["protocol"]): Record<string, un
       },
     ];
   }
-  return [{ type: "chunk", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }];
+  return [
+    {
+      type: "chunk",
+      choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+    },
+  ];
 }
 
 // Exercise real SDK serialization at the HTTP boundary, without calling a provider.
@@ -154,7 +159,11 @@ describe.each(protocols)("%s explicit capabilities", (protocol) => {
     async (level) => {
       // This is configured capability, not inference from a familiar model name.
       const client = createClient(
-        provider(protocol, { model: "reasoning-max-model", reasoning: false, thinking: level }),
+        provider(protocol, {
+          model: "reasoning-max-model",
+          reasoning: false,
+          thinking: level,
+        }),
       );
       expect(client.getSupportedThinkingLevels()).toEqual(["off"]);
       expect(client.getThinkingLevel()).toBe("off");
@@ -172,7 +181,10 @@ describe.each(protocols)("%s explicit capabilities", (protocol) => {
     expect(client.getThinkingLevel()).toBe("low");
     const payload = await request(client, protocol);
     if (protocol === "anthropic") {
-      expect(payload.thinking).toEqual({ type: "enabled", budget_tokens: 8192 });
+      expect(payload.thinking).toEqual({
+        type: "enabled",
+        budget_tokens: 8192,
+      });
     } else if (protocol === "openai") {
       expect(payload.reasoning).toEqual({ effort: "medium", summary: "auto" });
     } else {
@@ -192,7 +204,10 @@ describe.each(protocols)("%s explicit capabilities", (protocol) => {
     expect(client.setThinkingLevel("high")).toBe("medium");
     const payload = await request(client, protocol);
     if (protocol === "anthropic") {
-      expect(payload.thinking).toEqual({ type: "enabled", budget_tokens: 8192 });
+      expect(payload.thinking).toEqual({
+        type: "enabled",
+        budget_tokens: 8192,
+      });
     } else if (protocol === "openai") {
       expect(payload.reasoning).toEqual({ effort: "medium", summary: "auto" });
     } else {
@@ -257,7 +272,9 @@ describe("Anthropic thinking modes", () => {
     );
     const payload = await request(client, "anthropic");
     expect(client.getThinkingLevel()).toBe(thinking);
-    expect(payload.thinking).toEqual({ type: thinking === "off" ? "disabled" : "adaptive" });
+    expect(payload.thinking).toEqual({
+      type: thinking === "off" ? "disabled" : "adaptive",
+    });
     if (effort === null) {
       expect(payload).not.toHaveProperty("output_config");
     } else {
@@ -275,18 +292,28 @@ describe("Anthropic thinking modes", () => {
     );
     expect(client.getSupportedThinkingLevels()).not.toContain("high");
     expect(client.getThinkingLevel()).toBe("medium");
-    expect((await request(client, "anthropic")).output_config).toEqual({ effort: "medium" });
+    expect((await request(client, "anthropic")).output_config).toEqual({
+      effort: "medium",
+    });
     expect(client.setThinkingLevel("xhigh")).toBe("xhigh");
-    expect((await request(client, "anthropic")).output_config).toEqual({ effort: "xhigh" });
+    expect((await request(client, "anthropic")).output_config).toEqual({
+      effort: "xhigh",
+    });
     expect(client.setThinkingLevel("max")).toBe("max");
-    expect((await request(client, "anthropic")).output_config).toEqual({ effort: "low" });
+    expect((await request(client, "anthropic")).output_config).toEqual({
+      effort: "low",
+    });
   });
 
   it.each([1, 1024, 1151, 1152, 2048, 4096])(
     "keeps budget thinking inside a %i-token output ceiling",
     async (cap) => {
       const client = new AnthropicClient(
-        provider("anthropic", { thinking_mode: "budget", thinking: "max", max_output_tokens: cap }),
+        provider("anthropic", {
+          thinking_mode: "budget",
+          thinking: "max",
+          max_output_tokens: cap,
+        }),
         "system",
       );
       const payload = await request(client, "anthropic");
@@ -311,7 +338,9 @@ describe("Anthropic thinking modes", () => {
     client.setMaxOutputTokens(1151);
     expect(client.getSupportedThinkingLevels()).toEqual(["off"]);
     expect(client.getThinkingLevel()).toBe("off");
-    expect((await request(client, "anthropic")).thinking).toEqual({ type: "disabled" });
+    expect((await request(client, "anthropic")).thinking).toEqual({
+      type: "disabled",
+    });
     client.setMaxOutputTokens(8192);
     expect(client.getSupportedThinkingLevels()).toEqual(THINKING_LEVELS);
     expect(client.setThinkingLevel("high")).toBe("high");
@@ -325,11 +354,16 @@ describe("Anthropic thinking modes", () => {
 
   it("does not apply the budget minimum to adaptive thinking", async () => {
     const client = new AnthropicClient(
-      provider("anthropic", { thinking_mode: "adaptive", max_output_tokens: 1024 }),
+      provider("anthropic", {
+        thinking_mode: "adaptive",
+        max_output_tokens: 1024,
+      }),
       "system",
     );
     expect(client.getThinkingLevel()).toBe("high");
-    expect((await request(client, "anthropic")).thinking).toEqual({ type: "adaptive" });
+    expect((await request(client, "anthropic")).thinking).toEqual({
+      type: "adaptive",
+    });
   });
 });
 

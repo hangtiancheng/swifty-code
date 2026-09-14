@@ -32,7 +32,7 @@ marked.setOptions({ breaks: true, gfm: true });
  * from the local agent — the model may echo untrusted file contents.
  */
 export function renderMarkdown(text: string): string {
-  const raw = marked.parse(text, { async: false }) as string;
+  const raw = marked.parse(text, { async: false });
   return DOMPurify.sanitize(raw, {
     ALLOWED_TAGS: [
       "p",

@@ -23,11 +23,11 @@
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 
-import type { TeammateUIState } from "../teams/progress.js";
-import { formatTokens } from "../teams/progress.js";
-
 import { SelectorFrame } from "./selector-frame.js";
 import { THEME } from "./styles.js";
+
+import type { TeammateUIState } from "@/teams/progress.js";
+import { formatTokens } from "@/teams/progress.js";
 
 interface Props {
   teammates: TeammateUIState[];

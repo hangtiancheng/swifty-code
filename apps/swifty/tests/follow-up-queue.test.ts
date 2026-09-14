@@ -2,7 +2,7 @@ import { render, type Instance } from "ink";
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useFollowUpQueue } from "../src/tui/use-follow-up-queue.js";
+import { useFollowUpQueue } from "@/tui/use-follow-up-queue.js";
 
 type Queue = ReturnType<typeof useFollowUpQueue>;
 let current: Queue | undefined;

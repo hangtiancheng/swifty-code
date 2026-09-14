@@ -21,6 +21,7 @@
  */
 
 import { useCallback } from "react";
+
 import { InputArea } from "./components/input-area";
 import { MessageList } from "./components/message-list";
 import { StatusBar } from "./components/status-bar";

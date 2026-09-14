@@ -1,4 +1,4 @@
-import type { AgentDefinition } from "../subagent/definition.js";
+import type { AgentDefinition } from "@/subagent/definition.js";
 
 export function buildSubagentInstructions(definition: AgentDefinition): string {
   return [

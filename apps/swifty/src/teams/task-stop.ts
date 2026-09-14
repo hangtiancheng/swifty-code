@@ -20,10 +20,9 @@
  * SOFTWARE.
  */
 
-import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "../tools/types.js";
-
 import type { TeamManager } from "./team.js";
 
+import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
 import { strArg } from "@/utils";
 
 /**

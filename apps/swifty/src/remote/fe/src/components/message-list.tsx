@@ -20,8 +20,9 @@
  * SOFTWARE.
  */
 
-import { useAutoScroll } from "../hooks/use-auto-scroll";
-import type { ChatItem } from "../types";
+import { useAutoScroll } from "@fe/hooks/use-auto-scroll";
+import type { ChatItem } from "@fe/types";
+
 import { AskUserDialog } from "./ask-user-dialog";
 import { AssistantMessage } from "./assistant-message";
 import { DoneIndicator } from "./done-indicator";

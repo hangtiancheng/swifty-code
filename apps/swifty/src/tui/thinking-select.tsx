@@ -2,12 +2,12 @@ import { Box, Text, measureElement, useBoxMetrics, useInput, useWindowSize } fro
 import type { DOMElement } from "ink";
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { THINKING_LEVELS, type ThinkingLevel } from "../config/config.js";
-
 import { getListWindowStart } from "./list-window.js";
 import { SelectorFrame } from "./selector-frame.js";
 import { ICONS, THEME, thinkingLevelColor } from "./styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
+
+import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
 
 interface ThinkingSelectProps {
   currentLevel: ThinkingLevel;

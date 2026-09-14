@@ -35,12 +35,12 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ExitWorktreeTool } from "../src/tools/exit-worktree.js";
+import { ExitWorktreeTool } from "@/tools/exit-worktree.js";
 import {
   createAgentWorktree,
   hasWorktreeChanges,
   removeAgentWorktree,
-} from "../src/worktree/worktree.js";
+} from "@/worktree/worktree.js";
 
 const temporaryDirectories: string[] = [];
 

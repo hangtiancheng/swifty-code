@@ -26,13 +26,13 @@ import { join } from "node:path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-import { TeamManager } from "../src/teams/team.js";
+import { TeamManager } from "@/teams/team.js";
 import {
   TeamCreateTool,
   SpawnTeammateTool,
   SendMessageTool,
   ListTeamsTool,
-} from "../src/teams/tools.js";
+} from "@/teams/tools.js";
 
 // The teams directory lives at <home>/.swifty/teams, so the tests redirect the
 // entire home directory to a temp dir to avoid leaving residue in the real

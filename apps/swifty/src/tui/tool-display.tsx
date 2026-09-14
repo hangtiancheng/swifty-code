@@ -22,13 +22,13 @@
 
 import { Box, Text, useStdout } from "ink";
 
-import { formatToolArgs } from "../bootstrap/utils.js";
-import { isDiffTool } from "../tools/is-diff-tool.js";
-
 import { DiffLines } from "./diff-render.js";
 import { THEME } from "./styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 import { formatToolOutputPreview } from "./tool-preview.js";
+
+import { formatToolArgs } from "@/bootstrap/utils.js";
+import { isDiffTool } from "@/tools/is-diff-tool.js";
 
 export interface ToolBlockInfo {
   toolId: string;

@@ -30,14 +30,13 @@
 // when the pool changes; re-injected after history is compacted.
 import { describe, it, expect } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent, UsageInfo } from "../src/llm/events.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import type { Tool } from "../src/tools/types.js";
-
+import { Agent } from "@/agent/agent.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent, UsageInfo } from "@/llm/events.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { Tool } from "@/tools/types.js";
 import { contentToText } from "@/utils/index.js";
 
 const MARKER = "The following deferred tools are available via ToolSearch.";
@@ -89,7 +88,11 @@ function deferredStub(name: string): Tool {
     description: name,
     category: "read",
     deferred: true,
-    schema: () => ({ name, description: "", input_schema: { type: "object", properties: {} } }),
+    schema: () => ({
+      name,
+      description: "",
+      input_schema: { type: "object", properties: {} },
+    }),
     execute: () => Promise.resolve({ output: "ok", isError: false }),
   };
 }

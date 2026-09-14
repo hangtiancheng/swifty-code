@@ -25,8 +25,7 @@ import { join, dirname } from "path";
 
 import { safeParse, z } from "zod";
 
-import { createChildLogger } from "../logger/logger.js";
-
+import { createChildLogger } from "@/logger/logger.js";
 import { isRecord } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "commands" });

@@ -34,29 +34,34 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { Agent } from "../src/agent/agent.js";
-import { ConversationManager, type Message } from "../src/conversation/conversation.js";
-import { AnthropicClient, buildAnthropicMessages } from "../src/llm/anthropic.js";
-import type { LLMClient } from "../src/llm/client.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { buildChatCompletionMessages, buildOpenAIInput } from "../src/llm/openai.js";
-import { MemoryExtractor } from "../src/memory/extractor.js";
-import { MemoryPermissionChecker } from "../src/memory/permissions.js";
-import { extractWrittenPaths } from "../src/memory/written-paths.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { AgentTool } from "../src/subagent/agent-tool.js";
-import { EditFileTool } from "../src/tools/edit-file.js";
-import { FileStateCache } from "../src/tools/file-state-cache.js";
-import { ReadFileTool } from "../src/tools/read-file.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import type { ToolContext } from "../src/tools/types.js";
-import { WriteFileTool } from "../src/tools/write-file.js";
-import * as worktrees from "../src/worktree/worktree.js";
+import { Agent } from "@/agent/agent.js";
+import { ConversationManager, type Message } from "@/conversation/conversation.js";
+import { AnthropicClient, buildAnthropicMessages } from "@/llm/anthropic.js";
+import type { LLMClient } from "@/llm/client.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { buildChatCompletionMessages, buildOpenAIInput } from "@/llm/openai.js";
+import { MemoryExtractor } from "@/memory/extractor.js";
+import { MemoryPermissionChecker } from "@/memory/permissions.js";
+import { extractWrittenPaths } from "@/memory/written-paths.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { AgentTool } from "@/subagent/agent-tool.js";
+import { EditFileTool } from "@/tools/edit-file.js";
+import { FileStateCache } from "@/tools/file-state-cache.js";
+import { ReadFileTool } from "@/tools/read-file.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { ToolContext } from "@/tools/types.js";
+import { WriteFileTool } from "@/tools/write-file.js";
+import * as worktrees from "@/worktree/worktree.js";
 
 const end: StreamEvent = {
   type: "stream_end",
   stopReason: "end_turn",
-  usage: { inputTokens: 1, outputTokens: 1, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+  usage: {
+    inputTokens: 1,
+    outputTokens: 1,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+  },
 };
 function mockClient(turns: StreamEvent[][]): LLMClient {
   let turn = 0;
@@ -80,8 +85,12 @@ describe("file and memory execution", () => {
     const directory = workDir();
     const ctx = { workDir: directory, fileStateCache: new FileStateCache() };
     expect(
-      (await new WriteFileTool().execute(ctx, { file_path: "nested/test.txt", content: "before" }))
-        .isError,
+      (
+        await new WriteFileTool().execute(ctx, {
+          file_path: "nested/test.txt",
+          content: "before",
+        })
+      ).isError,
     ).toBe(false);
     expect((await new ReadFileTool().execute(ctx, { file_path: "nested/test.txt" })).output).toBe(
       "1\tbefore",
@@ -134,7 +143,11 @@ describe("file and memory execution", () => {
           role: "assistant",
           content: '{"tool":"WriteFile","file_path":"fake.md"}',
           toolUses: [
-            { toolName: "WriteFile", toolUseId: "failed", arguments: { file_path: "failed.md" } },
+            {
+              toolName: "WriteFile",
+              toolUseId: "failed",
+              arguments: { file_path: "failed.md" },
+            },
           ],
         },
         {
@@ -175,11 +188,15 @@ describe("file and memory execution", () => {
       expect(checker.check("WriteFile", "write", { file_path: path }).effect).toBe("deny");
     }
     expect(
-      checker.check("WriteFile", "write", { file_path: ".swifty/memory/valid.md" }).effect,
+      checker.check("WriteFile", "write", {
+        file_path: ".swifty/memory/valid.md",
+      }).effect,
     ).toBe("allow");
-    expect(checker.check("Bash", "command", { command: "echo dangerous > source.ts" }).effect).toBe(
-      "deny",
-    );
+    expect(
+      checker.check("Bash", "command", {
+        command: "echo dangerous > source.ts",
+      }).effect,
+    ).toBe("deny");
   });
 });
 
@@ -208,8 +225,9 @@ describe("fork and restored context", () => {
       ) => {
         expect(context?.workDir).toBe(isolated);
         expect(
-          context?.permissionChecker?.check("WriteFile", "write", { file_path: "blocked.ts" })
-            .effect,
+          context?.permissionChecker?.check("WriteFile", "write", {
+            file_path: "blocked.ts",
+          }).effect,
         ).toBe("deny");
         return Promise.resolve("isolated result");
       },
@@ -224,8 +242,15 @@ describe("fork and restored context", () => {
       handler,
     );
     const result = await tool.execute(
-      { workDir: directory, permissionChecker: new PermissionChecker(directory, "acceptEdits") },
-      { description: "isolated audit", prompt: "Inspect this", isolation: "worktree" },
+      {
+        workDir: directory,
+        permissionChecker: new PermissionChecker(directory, "acceptEdits"),
+      },
+      {
+        description: "isolated audit",
+        prompt: "Inspect this",
+        isolation: "worktree",
+      },
     );
     expect(handler).toHaveBeenCalledOnce();
     expect(result.output).toContain(isolated);
@@ -296,7 +321,11 @@ describe("multimodal provider requests", () => {
           { type: "text", text: "attached note" },
           {
             type: "image",
-            source: { type: "base64", media_type: "image/png", data: "IMAGE_PAYLOAD" },
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: "IMAGE_PAYLOAD",
+            },
           },
         ],
         toolResults: [{ toolUseId: "read", content: "result", isError: false }],
@@ -371,7 +400,10 @@ describe("multimodal provider requests", () => {
       const body = z
         .object({
           max_tokens: z.number(),
-          thinking: z.object({ type: z.string(), budget_tokens: z.number().optional() }),
+          thinking: z.object({
+            type: z.string(),
+            budget_tokens: z.number().optional(),
+          }),
         })
         .parse(request);
       expect(body.max_tokens).toBe(128000);
@@ -445,7 +477,10 @@ describe("Anthropic thinking budget under an output cap", () => {
     return z
       .object({
         max_tokens: z.number(),
-        thinking: z.object({ type: z.string(), budget_tokens: z.number().optional() }),
+        thinking: z.object({
+          type: z.string(),
+          budget_tokens: z.number().optional(),
+        }),
       })
       .parse(request);
   }

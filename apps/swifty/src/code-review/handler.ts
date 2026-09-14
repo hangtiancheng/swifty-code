@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-import type { CommandContext } from "../commands/commands.js";
-import { createChildLogger } from "../logger/logger.js";
-
 import type { CodeReviewManager } from "./manager.js";
 import { asCriticEvaluation, type ReviewSession } from "./session.js";
+
+import type { CommandContext } from "@/commands/commands.js";
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "code-review" });
 

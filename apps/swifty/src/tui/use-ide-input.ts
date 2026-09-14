@@ -24,7 +24,7 @@ import { relative } from "node:path";
 
 import { useEffect, useRef } from "react";
 
-import { connectToIde, type IdeConnection } from "../vscode/ide-client.js";
+import { connectToIde, type IdeConnection } from "@/vscode/ide-client.js";
 
 export function useIdeInput(workDir: string) {
   const insertInputTextRef = useRef<((text: string) => void) | null>(null);

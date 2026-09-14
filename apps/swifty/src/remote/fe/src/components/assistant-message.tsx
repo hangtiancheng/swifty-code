@@ -20,8 +20,9 @@
  * SOFTWARE.
  */
 
-import { isOpenThinking, splitThinking, stripThinkOpen } from "../lib/format";
-import { renderMarkdown } from "../lib/markdown";
+import { isOpenThinking, splitThinking, stripThinkOpen } from "@fe/lib/format";
+import { renderMarkdown } from "@fe/lib/markdown";
+
 import { StreamingCursor } from "./streaming-cursor";
 import { ThinkingBlock } from "./thinking-block";
 

@@ -22,21 +22,26 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Agent, type AgentConfig } from "../src/agent/agent.js";
-import type { AgentEvent } from "../src/agent/events.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { HookEngine } from "../src/hooks/hooks.js";
-import type { LLMClient } from "../src/llm/client.js";
-import { NetworkError, RateLimitError } from "../src/llm/errors.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import { contentToText } from "../src/utils/index.js";
+import { Agent, type AgentConfig } from "@/agent/agent.js";
+import type { AgentEvent } from "@/agent/events.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { HookEngine } from "@/hooks/hooks.js";
+import type { LLMClient } from "@/llm/client.js";
+import { NetworkError, RateLimitError } from "@/llm/errors.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import { contentToText } from "@/utils/index.js";
 
 const end: StreamEvent = {
   type: "stream_end",
   stopReason: "end_turn",
-  usage: { inputTokens: 1, outputTokens: 1, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
+  usage: {
+    inputTokens: 1,
+    outputTokens: 1,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+  },
 };
 
 function fixture(stream: LLMClient["stream"], options: Partial<AgentConfig> = {}) {
@@ -68,7 +73,12 @@ describe("agent lifecycle and retry boundaries", () => {
     const config = fixture(async function* () {
       await Promise.resolve();
       yield { type: "text_delta", text: "Partial evidence" };
-      yield { type: "tool_call_complete", toolId: "pending", toolName: "WriteFile", arguments: {} };
+      yield {
+        type: "tool_call_complete",
+        toolId: "pending",
+        toolName: "WriteFile",
+        arguments: {},
+      };
       throw new NetworkError("stream ended early");
     });
     const events = await collect(config);
@@ -82,7 +92,10 @@ describe("agent lifecycle and retry boundaries", () => {
 
   it("injects pre-send output before the first request and ends a text-only turn", async () => {
     const engine = new HookEngine([
-      { event: "pre_send", action: { type: "prompt", prompt: "CURRENT_REQUEST_NOTE" } },
+      {
+        event: "pre_send",
+        action: { type: "prompt", prompt: "CURRENT_REQUEST_NOTE" },
+      },
       { event: "turn_end", action: { type: "agent", prompt: "end" } },
     ]);
     const finished = vi.fn(() => Promise.resolve(""));
@@ -123,7 +136,10 @@ describe("agent lifecycle and retry boundaries", () => {
       },
       { onPermissionRequest: () => Promise.reject(new Error("dialog closed")) },
     );
-    vi.spyOn(config.checker, "check").mockReturnValue({ effect: "ask", reason: "approval" });
+    vi.spyOn(config.checker, "check").mockReturnValue({
+      effect: "ask",
+      reason: "approval",
+    });
     const execute = vi.fn(() => Promise.resolve({ output: "written", isError: false }));
     config.registry.register({
       name: "WriteFile",
@@ -139,7 +155,11 @@ describe("agent lifecycle and retry boundaries", () => {
     const events = await collect(config);
     expect(execute).not.toHaveBeenCalled();
     const result = events.find((event) => event.type === "tool_result");
-    expect(result).toMatchObject({ type: "tool_result", toolId: "write", isError: true });
+    expect(result).toMatchObject({
+      type: "tool_result",
+      toolId: "write",
+      isError: true,
+    });
     expect(result?.type === "tool_result" ? result.output : "").toContain("dialog closed");
     expect(config.conversation.getMessages().flatMap((m) => m.toolResults ?? [])).toHaveLength(1);
     expect(calls).toBe(2);
@@ -216,7 +236,10 @@ describe("agent lifecycle and retry boundaries", () => {
     const events = await running;
     expect(calls).toBe(4);
     expect(events.filter((e) => e.type === "retry")).toHaveLength(3);
-    expect(events.at(-1)).toMatchObject({ type: "error", error: { message: "quota exhausted" } });
+    expect(events.at(-1)).toMatchObject({
+      type: "error",
+      error: { message: "quota exhausted" },
+    });
     expect(hookCalls).toEqual(Array.from({ length: 4 }, () => ["turn_start", "turn_end"]).flat());
   });
 
@@ -240,7 +263,11 @@ describe("agent lifecycle and retry boundaries", () => {
     const running = collect(config);
     await vi.runAllTimersAsync();
     const events = await running;
-    expect(events).toContainEqual({ type: "retry", reason: "rate limited", delay });
+    expect(events).toContainEqual({
+      type: "retry",
+      reason: "rate limited",
+      delay,
+    });
     expect(calls).toBe(2);
   });
 });

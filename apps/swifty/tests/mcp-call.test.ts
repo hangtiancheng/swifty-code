@@ -22,26 +22,25 @@
 
 import { describe, expect, test } from "vitest";
 
-import { needsToolSearchBeta } from "../src/llm/anthropic.js";
+import { needsToolSearchBeta } from "@/llm/anthropic.js";
 import {
   applyMode,
   decideMode,
   isOfficialAnthropicEndpoint,
   measureSchemaChars,
-} from "../src/mcp/strategy.js";
-import { buildMcpToolName, mcpToolNamePrefix } from "../src/mcp/tool-wrapper.js";
-import { extractContent } from "../src/permissions/checker.js";
-import { McpCallTool, coerceBySchema, mcpCallPermissionContent } from "../src/tools/mcp-call.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import { ToolSearchTool } from "../src/tools/tool-search.js";
+} from "@/mcp/strategy.js";
+import { buildMcpToolName, mcpToolNamePrefix } from "@/mcp/tool-wrapper.js";
+import { extractContent } from "@/permissions/checker.js";
+import { McpCallTool, coerceBySchema, mcpCallPermissionContent } from "@/tools/mcp-call.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import { ToolSearchTool } from "@/tools/tool-search.js";
 import type {
   McpLoadingMode,
   MCPToolLike,
   ToolContext,
   ToolResult,
   ToolSchema,
-} from "../src/tools/types.js";
-
+} from "@/tools/types.js";
 import { asRecord, strArg } from "@/utils/index.js";
 
 const toolContext: ToolContext = { workDir: process.cwd() };
@@ -256,8 +255,13 @@ describe("McpCall tool name resolution", () => {
     registry.register(new ToolSearchTool(registry));
     for (const name of ["ToolSearch", "McpCall"]) {
       expect(
-        (await dispatcher.execute(toolContext, { server: "linear", tool: name, arguments: {} }))
-          .isError,
+        (
+          await dispatcher.execute(toolContext, {
+            server: "linear",
+            tool: name,
+            arguments: {},
+          })
+        ).isError,
       ).toBe(true);
     }
   });
@@ -492,7 +496,10 @@ describe("per-mode tool selection", () => {
       });
 
       expect(result.output).toContain(tool.name);
-      expect(result.contentBlocks).toContainEqual({ type: "tool_reference", tool_name: tool.name });
+      expect(result.contentBlocks).toContainEqual({
+        type: "tool_reference",
+        tool_name: tool.name,
+      });
     },
   );
 

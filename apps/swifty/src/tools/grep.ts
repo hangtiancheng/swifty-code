@@ -26,9 +26,6 @@ import { join, relative, resolve, sep } from "node:path";
 
 import { Minimatch } from "minimatch";
 
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString, strArg } from "../utils/index.js";
-
 import { GREP_DESCRIPTION } from "./descriptions.js";
 import {
   SKIP_DIRS,
@@ -38,6 +35,9 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { createChildLogger } from "@/logger/logger.js";
+import { asErrorString, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 

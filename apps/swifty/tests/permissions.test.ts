@@ -27,11 +27,10 @@ import { join } from "path";
 
 import { describe, it, expect, vi } from "vitest";
 
-import { Agent } from "../src/agent/agent.js";
-import type { LLMClient } from "../src/llm/client.js";
-import { PermissionChecker } from "../src/permissions/checker.js";
-
+import { Agent } from "@/agent/agent.js";
+import type { LLMClient } from "@/llm/client.js";
 import { MemoryConsolidator } from "@/memory/consolidation.js";
+import { PermissionChecker } from "@/permissions/checker.js";
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), "swifty-test-"));
@@ -126,7 +125,10 @@ describe("protected paths under bypass", () => {
 // user-level file never touches the real ~/.swifty/permissions.yaml.
 function makeCheckerWithTiers(userRules: string, projectRules: string) {
   const home = makeTmpDir();
-  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  const saved = {
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+  };
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   try {
@@ -206,14 +208,17 @@ describe("memory background agent sandbox", () => {
   it("opens the user-level memory dir for the consolidation sub-agent", async () => {
     // Intercept the sub-agent run to capture its permission checker without issuing a real LLM request
     const captured: PermissionChecker[] = [];
-    // eslint-disable-next-line require-yield, @typescript-eslint/require-await
-    const spy = vi.spyOn(Agent.prototype, "run").mockImplementation(async function* (this: Agent) {
-      const checker: unknown = Reflect.get(this, "checker");
-      if (!(checker instanceof PermissionChecker)) {
-        throw new Error("Agent checker was not a PermissionChecker");
-      }
-      captured.push(checker);
-    });
+
+    const spy = vi.spyOn(Agent.prototype, "run").mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/require-await, require-yield
+      async function* (this: Agent) {
+        const checker: unknown = Reflect.get(this, "checker");
+        if (!(checker instanceof PermissionChecker)) {
+          throw new Error("Agent checker was not a PermissionChecker");
+        }
+        captured.push(checker);
+      },
+    );
 
     try {
       const dir = makeTmpDir();

@@ -23,8 +23,6 @@
 import { execSync } from "node:child_process";
 import { platform, arch } from "node:os";
 
-import { createChildLogger } from "../logger/logger.js";
-
 import type { Section, EnvironmentContext } from "./sections.js";
 import {
   identitySection,
@@ -36,6 +34,8 @@ import {
   outputEfficiencySection,
   environmentSection,
 } from "./sections.js";
+
+import { createChildLogger } from "@/logger/logger.js";
 const log = createChildLogger({ module: "prompt" });
 
 export class PromptBuilder {

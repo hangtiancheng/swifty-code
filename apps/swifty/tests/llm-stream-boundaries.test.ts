@@ -22,13 +22,13 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "../src/config/config.js";
-import { ConversationManager } from "../src/conversation/conversation.js";
-import { AnthropicClient } from "../src/llm/anthropic.js";
-import type { LLMClient } from "../src/llm/client.js";
-import { ContextTooLongError, LLMError, NetworkError, RateLimitError } from "../src/llm/errors.js";
-import type { StreamEvent } from "../src/llm/events.js";
-import { OpenAIClient, OpenAICompatClient } from "../src/llm/openai.js";
+import type { ProviderConfig } from "@/config/config.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { AnthropicClient } from "@/llm/anthropic.js";
+import type { LLMClient } from "@/llm/client.js";
+import { ContextTooLongError, LLMError, NetworkError, RateLimitError } from "@/llm/errors.js";
+import type { StreamEvent } from "@/llm/events.js";
+import { OpenAIClient, OpenAICompatClient } from "@/llm/openai.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -123,7 +123,9 @@ describe("Responses terminal events", () => {
       },
     ]);
     const events = await collect(new OpenAIClient(config("openai"), "system"));
-    expect(events[0]).toMatchObject({ usage: { inputTokens: 20, cacheReadInputTokens: 0 } });
+    expect(events[0]).toMatchObject({
+      usage: { inputTokens: 20, cacheReadInputTokens: 0 },
+    });
   });
 
   it("reports content filtering instead of a successful end or token retry", async () => {
@@ -131,7 +133,10 @@ describe("Responses terminal events", () => {
       {
         type: "response.incomplete",
         sequence_number: 0,
-        response: { status: "incomplete", incomplete_details: { reason: "content_filter" } },
+        response: {
+          status: "incomplete",
+          incomplete_details: { reason: "content_filter" },
+        },
       },
     ]);
     const events: StreamEvent[] = [];
@@ -148,7 +153,10 @@ describe("Responses terminal events", () => {
         {
           type: "response.failed",
           sequence_number: 0,
-          response: { status: "failed", error: { code, message: "provider failure" } },
+          response: {
+            status: "failed",
+            error: { code, message: "provider failure" },
+          },
         },
       ]);
       await expect(collect(new OpenAIClient(config("openai"), "system"))).rejects.toBeInstanceOf(
@@ -173,7 +181,13 @@ describe("Responses terminal events", () => {
   });
 
   it("rejects an EOF after partial output", async () => {
-    mockStream([{ type: "response.output_text.delta", delta: "partial", sequence_number: 0 }]);
+    mockStream([
+      {
+        type: "response.output_text.delta",
+        delta: "partial",
+        sequence_number: 0,
+      },
+    ]);
     const events: StreamEvent[] = [];
     await expect(
       collect(new OpenAIClient(config("openai"), "system"), events),
@@ -199,7 +213,10 @@ describe("Chat Completions terminal boundaries", () => {
 
   it("retains a trailing usage-only chunk after the finish reason", async () => {
     mockStream([
-      { type: "chunk", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] },
+      {
+        type: "chunk",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+      },
       {
         type: "chunk",
         choices: [],
@@ -288,7 +305,9 @@ describe("provider rate-limit headers", () => {
         vi.fn(() =>
           Promise.resolve(
             new Response(
-              JSON.stringify({ error: { type: "rate_limit_error", message: "slow down" } }),
+              JSON.stringify({
+                error: { type: "rate_limit_error", message: "slow down" },
+              }),
               {
                 status: 429,
                 headers: {

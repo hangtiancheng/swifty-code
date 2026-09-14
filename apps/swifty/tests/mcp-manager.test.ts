@@ -22,8 +22,8 @@
 
 import { describe, expect, test } from "vitest";
 
-import type { MCPServerConfig } from "../src/config/config.js";
-import { MCPManager } from "../src/mcp/manager.js";
+import type { MCPServerConfig } from "@/config/config.js";
+import { MCPManager } from "@/mcp/manager.js";
 
 // Neither `command` nor `url`, so MCPClient.connect rejects before touching the
 // network or spawning anything — a deterministic stand-in for a server that is down.

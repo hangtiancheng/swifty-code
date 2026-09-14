@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import type { ToolResultBlock } from "../src/conversation/conversation.js";
-import { applyBudget, isSpillReadback, persistLargeResult } from "../src/tool-result/budget.js";
+import type { ToolResultBlock } from "@/conversation/conversation.js";
+import { applyBudget, isSpillReadback, persistLargeResult } from "@/tool-result/budget.js";
 function batch(...sizes: number[]): ToolResultBlock[] {
   return sizes.map((n, i) => ({
     toolUseId: `t${String(i + 1)}`,
@@ -121,7 +121,10 @@ describe("tool result budget", () => {
       content: "x".repeat(250_000),
       contentBlocks: [
         { type: "text", text: "x".repeat(250_000) },
-        { type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD" } },
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "QUJD" },
+        },
       ],
       isError: false,
     };
@@ -129,7 +132,10 @@ describe("tool result budget", () => {
     applyBudget([result], workDir, "s");
 
     expect(result.content).toContain("<persisted-output>");
-    expect(result.contentBlocks?.[0]).toEqual({ type: "text", text: result.content });
+    expect(result.contentBlocks?.[0]).toEqual({
+      type: "text",
+      text: result.content,
+    });
     expect(result.contentBlocks?.[1]?.type).toBe("image");
     expect(
       readFileSync(join(workDir, ".swifty", "sessions", "s", "tool-results", "rich.txt"), "utf-8"),

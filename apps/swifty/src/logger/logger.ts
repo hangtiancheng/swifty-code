@@ -207,7 +207,7 @@ const silentFallback = pino({ level: "silent" });
 /**
  * Global logger export. Modules can import and use it at file top level:
  * ```ts
- * import { logger } from "../logger/logger.js";
+ * import { logger } from "@/logger/logger.js";
  * logger.warn({ module: "app" }, "something looks off");
  * ```
  * Before initLogger(), calls fall back to the silent target (pre-init logs

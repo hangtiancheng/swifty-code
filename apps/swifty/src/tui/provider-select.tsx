@@ -24,10 +24,10 @@ import Fuse from "fuse.js";
 import { useInput } from "ink";
 import { useMemo, useState } from "react";
 
-import type { ProviderConfig } from "../config/config.js";
-
 import { SelectorList, SelectorListRow } from "./selector-list.js";
 import { updateSelectorQuery } from "./selector-search.js";
+
+import type { ProviderConfig } from "@/config/config.js";
 
 interface ProviderSelectProps {
   currentProviderName?: string;

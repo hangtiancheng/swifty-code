@@ -25,7 +25,7 @@ import { access, cp, mkdir, readFile, realpath, stat, symlink } from "fs/promise
 import { dirname, isAbsolute, join } from "path";
 import { promisify } from "util";
 
-import { createChildLogger } from "../logger/logger.js";
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "worktree" });
 
@@ -354,7 +354,9 @@ export async function removeAgentWorktree(
 ): Promise<void> {
   // Git rechecks for dirty/locked worktrees at removal time. If removal fails,
   // stop here; if the branch has unmerged commits, -d leaves its tip intact.
-  await execFileAsync("git", ["worktree", "remove", "--", path], { cwd: gitRoot });
+  await execFileAsync("git", ["worktree", "remove", "--", path], {
+    cwd: gitRoot,
+  });
   await execFileAsync("git", ["branch", "-d", "--", branch], { cwd: gitRoot });
 }
 

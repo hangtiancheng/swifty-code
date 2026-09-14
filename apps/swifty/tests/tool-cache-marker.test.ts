@@ -28,8 +28,7 @@
 // tool — we cannot simply mark the last element.
 import { describe, it, expect } from "vitest";
 
-import { markToolsForCache } from "../src/llm/anthropic.js";
-
+import { markToolsForCache } from "@/llm/anthropic.js";
 import type { ToolSchema } from "@/tools/types.js";
 
 function marked(tools: ToolSchema[]): string[] {

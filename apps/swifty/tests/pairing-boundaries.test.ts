@@ -22,16 +22,20 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { Message } from "../src/conversation/conversation.js";
-import { ensureToolPairing, INTERRUPTED_TOOL_RESULT } from "../src/conversation/pairing.js";
-import { buildAnthropicMessages, markLastUserTailForCache } from "../src/llm/anthropic.js";
-import { buildChatCompletionMessages, buildOpenAIInput } from "../src/llm/openai.js";
+import type { Message } from "@/conversation/conversation.js";
+import { ensureToolPairing, INTERRUPTED_TOOL_RESULT } from "@/conversation/pairing.js";
+import { buildAnthropicMessages, markLastUserTailForCache } from "@/llm/anthropic.js";
+import { buildChatCompletionMessages, buildOpenAIInput } from "@/llm/openai.js";
 
 function call(...ids: string[]): Message {
   return {
     role: "assistant",
     content: "",
-    toolUses: ids.map((toolUseId) => ({ toolUseId, toolName: "ReadFile", arguments: {} })),
+    toolUses: ids.map((toolUseId) => ({
+      toolUseId,
+      toolName: "ReadFile",
+      arguments: {},
+    })),
   };
 }
 

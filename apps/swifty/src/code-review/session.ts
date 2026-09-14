@@ -20,9 +20,9 @@
  * SOFTWARE.
  */
 
-import { createChildLogger } from "../logger/logger.js";
-
 import type { CodeReviewManager, CodeReviewMember } from "./manager.js";
+
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "code-review" });
 

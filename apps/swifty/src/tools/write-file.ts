@@ -23,10 +23,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
 
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString } from "../utils/index.js";
-import { strArg } from "../utils/index.js";
-
 import { WRITE_FILE_DESCRIPTION } from "./descriptions.js";
 import { withFileMutationQueue } from "./file-mutation-queue.js";
 import {
@@ -36,6 +32,10 @@ import {
   type ToolResult,
   type ToolSchema,
 } from "./types.js";
+
+import { createChildLogger } from "@/logger/logger.js";
+import { asErrorString } from "@/utils/index.js";
+import { strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 
@@ -93,7 +93,10 @@ export class WriteFileTool implements Tool {
     const filePath = resolve(ctx.workDir, requestedPath);
     return withFileMutationQueue<ToolResult>(filePath, () => {
       if (ctx.abortSignal?.aborted) {
-        return Promise.resolve({ output: "Error: operation interrupted", isError: true });
+        return Promise.resolve({
+          output: "Error: operation interrupted",
+          isError: true,
+        });
       }
       // Gate: read-before-write enforcement (skip for genuinely new files).
       if (ctx.fileStateCache && (existsSync(filePath) || ctx.fileStateCache.has(filePath))) {

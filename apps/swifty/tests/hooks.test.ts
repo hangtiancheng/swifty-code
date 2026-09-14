@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { HookConfig } from "../src/config/config.js";
-import { HookEngine } from "../src/hooks/hooks.js";
+import type { HookConfig } from "@/config/config.js";
+import { HookEngine } from "@/hooks/hooks.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -64,7 +64,10 @@ describe("hook execution boundaries", () => {
       rejected: true,
       reason: "blocked",
     });
-    expect(await engine.firePreToolHooks("ReadFile", {})).toEqual({ rejected: false, reason: "" });
+    expect(await engine.firePreToolHooks("ReadFile", {})).toEqual({
+      rejected: false,
+      reason: "",
+    });
   });
 
   it.each([
@@ -123,8 +126,15 @@ describe("hook execution boundaries", () => {
 
   it("applies on_error to agent hook failures and stops the rejected chain", async () => {
     const engine = new HookEngine([
-      { event: "pre_tool_use", on_error: "reject", action: { type: "agent", prompt: "inspect" } },
-      { event: "pre_tool_use", action: { type: "command", command: "should-never-run" } },
+      {
+        event: "pre_tool_use",
+        on_error: "reject",
+        action: { type: "agent", prompt: "inspect" },
+      },
+      {
+        event: "pre_tool_use",
+        action: { type: "command", command: "should-never-run" },
+      },
     ]);
     expect((await engine.firePreToolHooks("WriteFile", {})).rejected).toBe(true);
     engine.agentRunner = () => Promise.reject(new Error("runner failed"));
@@ -137,7 +147,11 @@ describe("hook execution boundaries", () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response("finished"));
     vi.stubGlobal("fetch", fetchMock);
     const engine = new HookEngine([
-      { event: "pre_send", async: true, action: { type: "http", url: "https://hooks.invalid" } },
+      {
+        event: "pre_send",
+        async: true,
+        action: { type: "http", url: "https://hooks.invalid" },
+      },
     ]);
     const controller = new AbortController();
     controller.abort();

@@ -25,8 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, it, expect } from "vitest";
 
-import { AskUserQuestionTool, type Question } from "../src/tools/ask-user.js";
-
+import { AskUserQuestionTool, type Question } from "@/tools/ask-user.js";
 import type { ToolContext } from "@/tools/types.js";
 
 const __filename = fileURLToPath(import.meta.url);

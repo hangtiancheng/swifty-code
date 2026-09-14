@@ -28,7 +28,7 @@ import { getParseErrorMessage, safeParse } from "@modelcontextprotocol/sdk/serve
 import yaml from "js-yaml";
 import { z } from "zod";
 
-import { createChildLogger } from "../logger/logger.js";
+import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "config" });
 

@@ -20,9 +20,6 @@
  * SOFTWARE.
  */
 
-import { MCP_TOOL_PREFIX } from "../mcp/tool-wrapper.js";
-import { intArg, strArg } from "../utils/index.js";
-
 import type { ToolRegistry } from "./registry.js";
 import { TOOL_SEARCH_TOOL_NAME } from "./tool-names.js";
 import {
@@ -33,6 +30,9 @@ import {
   type ToolResultContentBlock,
   type ToolSchema,
 } from "./types.js";
+
+import { MCP_TOOL_PREFIX } from "@/mcp/tool-wrapper.js";
+import { intArg, strArg } from "@/utils/index.js";
 
 export class ToolSearchTool implements Tool {
   name = TOOL_SEARCH_TOOL_NAME;
@@ -91,7 +91,10 @@ export class ToolSearchTool implements Tool {
         )
       : this.registry.searchDeferred(query, Math.max(1, Math.min(maxResults, 50)));
     if (tools.length === 0) {
-      return Promise.resolve({ output: "No deferred tools matched the query.", isError: false });
+      return Promise.resolve({
+        output: "No deferred tools matched the query.",
+        isError: false,
+      });
     }
 
     const mcp = tools.filter((tool) => tool.name.startsWith(MCP_TOOL_PREFIX));

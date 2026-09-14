@@ -23,8 +23,8 @@
 import { describe, it, expect } from "vitest";
 import z, { parse, safeParse } from "zod";
 
-import type { Message } from "../src/conversation/conversation.js";
-import { buildChatCompletionMessages, buildOpenAIInput } from "../src/llm/openai.js";
+import type { Message } from "@/conversation/conversation.js";
+import { buildChatCompletionMessages, buildOpenAIInput } from "@/llm/openai.js";
 
 describe("openai-compat chat message building", () => {
   it("attaches reasoning_content to the assistant message alongside tool_calls", () => {
@@ -33,10 +33,18 @@ describe("openai-compat chat message building", () => {
         role: "assistant",
         content: "",
         thinkingBlocks: [{ thinking: "Check the file first", signature: "" }],
-        toolUses: [{ toolUseId: "r1", toolName: "ReadFile", arguments: { file_path: "a.ts" } }],
+        toolUses: [
+          {
+            toolUseId: "r1",
+            toolName: "ReadFile",
+            arguments: { file_path: "a.ts" },
+          },
+        ],
       },
     ]);
-    expect(messages[0]).toMatchObject({ reasoning_content: "Check the file first" });
+    expect(messages[0]).toMatchObject({
+      reasoning_content: "Check the file first",
+    });
     expect(messages[0]).toMatchObject({ tool_calls: [{ id: "r1" }] });
   });
   it("preserves assistant tool_calls and tool-result turns", () => {
@@ -107,7 +115,13 @@ describe("image tool results over OpenAI endpoints", () => {
     {
       role: "assistant",
       content: "",
-      toolUses: [{ toolUseId: "c1", toolName: "ReadFile", arguments: { file_path: "a.png" } }],
+      toolUses: [
+        {
+          toolUseId: "c1",
+          toolName: "ReadFile",
+          arguments: { file_path: "a.png" },
+        },
+      ],
     },
     {
       role: "user",
@@ -118,7 +132,10 @@ describe("image tool results over OpenAI endpoints", () => {
           content: "[Image: a.png]",
           contentBlocks: [
             { type: "text", text: "[Image: a.png]" },
-            { type: "image", source: { type: "base64", media_type: "image/png", data: DATA } },
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: DATA },
+            },
           ],
           isError: false,
         },
@@ -178,11 +195,18 @@ describe("image tool results over OpenAI endpoints", () => {
             toolUseId: "c-rich",
             content: "image and document",
             contentBlocks: [
-              { type: "image", source: { type: "url", url: "https://example.com/image.png" } },
+              {
+                type: "image",
+                source: { type: "url", url: "https://example.com/image.png" },
+              },
               {
                 type: "document",
                 title: "report",
-                source: { type: "base64", media_type: "application/pdf", data: "QUJD" },
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: "QUJD",
+                },
               },
             ],
             isError: false,
@@ -196,7 +220,11 @@ describe("image tool results over OpenAI endpoints", () => {
       "output" in responses[0] && Array.isArray(responses[0].output) ? responses[0].output : [];
     expect(responseOutput).toEqual([
       { type: "input_text", text: "image and document" },
-      { type: "input_image", image_url: "https://example.com/image.png", detail: "auto" },
+      {
+        type: "input_image",
+        image_url: "https://example.com/image.png",
+        detail: "auto",
+      },
       { type: "input_file", file_data: "QUJD", filename: "report.pdf" },
     ]);
 
@@ -206,7 +234,10 @@ describe("image tool results over OpenAI endpoints", () => {
     );
     expect(synthetic && Array.isArray(synthetic.content) ? synthetic.content : []).toEqual([
       { type: "text", text: "[Rich content returned by tool call c-rich]" },
-      { type: "image_url", image_url: { url: "https://example.com/image.png" } },
+      {
+        type: "image_url",
+        image_url: { url: "https://example.com/image.png" },
+      },
       { type: "file", file: { file_data: "QUJD", filename: "report.pdf" } },
     ]);
   });
@@ -243,7 +274,10 @@ describe("image tool results over OpenAI endpoints", () => {
         role: "user",
         content: [
           { type: "text", text: "what is this?" },
-          { type: "image", source: { type: "base64", media_type: "image/png", data: DATA } },
+          {
+            type: "image",
+            source: { type: "base64", media_type: "image/png", data: DATA },
+          },
         ],
       },
     ];

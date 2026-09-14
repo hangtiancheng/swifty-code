@@ -23,11 +23,6 @@
 import { existsSync, readFileSync, statSync } from "fs";
 import { basename, resolve } from "path";
 
-import { isImagePath, loadImageAttachment } from "../images/image.js";
-import { createChildLogger } from "../logger/logger.js";
-import { asErrorString } from "../utils/index.js";
-import { intArg, strArg } from "../utils/index.js";
-
 import { READ_FILE_DESCRIPTION } from "./descriptions.js";
 import { utf8ByteLength } from "./shell-output.js";
 import {
@@ -38,6 +33,11 @@ import {
   type ToolResultContentBlock,
   type ToolSchema,
 } from "./types.js";
+
+import { isImagePath, loadImageAttachment } from "@/images/image.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { asErrorString } from "@/utils/index.js";
+import { intArg, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 const DEFAULT_LIMIT = 2000;

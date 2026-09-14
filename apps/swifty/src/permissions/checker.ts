@@ -27,10 +27,10 @@ import { join, resolve, dirname } from "node:path";
 import yaml from "js-yaml";
 import z, { parse } from "zod";
 
-import { createChildLogger } from "../logger/logger.js";
-import { MCP_CALL_TOOL_NAME, mcpCallPermissionContent } from "../tools/mcp-call.js";
-import { strArg } from "../utils/index.js";
-import { canonicalPath, isPathWithin } from "../utils/paths.js";
+import { createChildLogger } from "@/logger/logger.js";
+import { MCP_CALL_TOOL_NAME, mcpCallPermissionContent } from "@/tools/mcp-call.js";
+import { strArg } from "@/utils/index.js";
+import { canonicalPath, isPathWithin } from "@/utils/paths.js";
 
 const log = createChildLogger({ module: "permissions" });
 

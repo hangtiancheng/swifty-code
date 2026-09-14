@@ -4,16 +4,16 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "../src/config/config.js";
-import type { ConversationManager } from "../src/conversation/conversation.js";
-import * as clients from "../src/llm/client.js";
-import type { LLMClient } from "../src/llm/client.js";
-import { OpenAIClient } from "../src/llm/openai.js";
-import { buildSubagentInstructions, buildTeammatePrompt } from "../src/prompt/delegation.js";
-import { AgentTool } from "../src/subagent/agent-tool.js";
-import { spawnSubagent } from "../src/subagent/spawn.js";
-import { ToolRegistry } from "../src/tools/registry.js";
-import type { Tool } from "../src/tools/types.js";
+import type { ProviderConfig } from "@/config/config.js";
+import type { ConversationManager } from "@/conversation/conversation.js";
+import * as clients from "@/llm/client.js";
+import type { LLMClient } from "@/llm/client.js";
+import { OpenAIClient } from "@/llm/openai.js";
+import { buildSubagentInstructions, buildTeammatePrompt } from "@/prompt/delegation.js";
+import { AgentTool } from "@/subagent/agent-tool.js";
+import { spawnSubagent } from "@/subagent/spawn.js";
+import { ToolRegistry } from "@/tools/registry.js";
+import type { Tool } from "@/tools/types.js";
 
 const directories: string[] = [];
 function workDir(): string {
@@ -70,7 +70,11 @@ describe("delegated prompt contracts", () => {
     });
     const setSystemPrompt = vi.spyOn(client, "setSystemPrompt");
     const output = await spawnSubagent(
-      { name: "auditor", description: "Read-only audit", initialPrompt: "Return exact file paths" },
+      {
+        name: "auditor",
+        description: "Read-only audit",
+        initialPrompt: "Return exact file paths",
+      },
       "Inspect the parser",
       client,
       new ToolRegistry(),

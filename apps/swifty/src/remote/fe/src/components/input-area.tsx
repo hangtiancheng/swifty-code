@@ -20,8 +20,9 @@
  * SOFTWARE.
  */
 
+import type { SlashCommand } from "@fe/types";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SlashCommand } from "../types";
+
 import { SlashMenu } from "./slash-menu";
 
 interface InputAreaProps {
@@ -56,19 +57,25 @@ export function InputArea({ streaming, commands, onSend, onCancel }: InputAreaPr
   // biome-ignore lint/correctness/useExhaustiveDependencies: `value` is the trigger — when it changes we re-measure scrollHeight.
   useEffect(() => {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
   }, [value]);
 
   // Focus on mount and whenever streaming flips back to false.
   useEffect(() => {
-    if (!streaming) textareaRef.current?.focus();
+    if (!streaming) {
+      textareaRef.current?.focus();
+    }
   }, [streaming]);
 
   const selectSlash = (index: number) => {
     const cmd = filtered[index];
-    if (!cmd) return;
+    if (!cmd) {
+      return;
+    }
     setValue(`/${cmd.name} `);
     setSlashOpen(false);
     textareaRef.current?.focus();
@@ -76,7 +83,9 @@ export function InputArea({ streaming, commands, onSend, onCancel }: InputAreaPr
 
   const send = () => {
     const text = value.trim();
-    if (!text || streaming) return;
+    if (!text || streaming) {
+      return;
+    }
     onSend(text);
     setValue("");
     setSlashOpen(false);

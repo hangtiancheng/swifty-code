@@ -20,9 +20,6 @@
  * SOFTWARE.
  */
 
-import { createChildLogger } from "../logger/logger.js";
-import type { Tool, ToolContext, ToolResult, ToolSchema } from "../tools/types.js";
-
 import {
   MSG_PLAN_APPROVAL_RESPONSE,
   MSG_SHUTDOWN_REQUEST,
@@ -35,6 +32,8 @@ import {
 import { getNameRegistry } from "./registry.js";
 import type { TeamManager, RunAgent, Team } from "./team.js";
 
+import { createChildLogger } from "@/logger/logger.js";
+import type { Tool, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
 import { asErrorString, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "teams" });

@@ -20,9 +20,9 @@
  * SOFTWARE.
  */
 
-import { ToolRegistry } from "../tools/registry.js";
-
 import type { AgentTool } from "./agent-tool.js";
+
+import { ToolRegistry } from "@/tools/registry.js";
 
 type AllTools =
   | "InstallSkill"
@@ -57,12 +57,14 @@ type AllTools =
   | "Grep"
   | "McpCall";
 
+export const MAIN_AGENT_ONLY_TOOLS = new Set<AllTools>(["ComputerUse"]);
+
 // Global list of tools disallowed for subagents — prevents recursive Agent calls or using main-thread-only tools
 export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
   "ExitPlanMode",
   "Agent", // Prevents recursive spawning of subagents
   "AskUserQuestion",
-  "ComputerUse",
+  ...MAIN_AGENT_ONLY_TOOLS,
   "TaskStop",
 ]);
 
@@ -180,7 +182,8 @@ export function cloneRegistryForFork(registry: ToolRegistry): ToolRegistry {
   const forked = new ToolRegistry();
   forked.mcpLoadingMode = registry.mcpLoadingMode;
   for (const tool of registry.listTools()) {
-    if (tool.name === "ComputerUse") {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    if ((MAIN_AGENT_ONLY_TOOLS as Set<string>).has(tool.name)) {
       continue;
     }
     if (tool.name === "Agent" && "querySource" in tool) {

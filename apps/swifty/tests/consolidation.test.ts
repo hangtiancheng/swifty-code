@@ -33,9 +33,8 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { MemoryConsolidator } from "../src/memory/consolidation.js";
-
 import type { LLMClient } from "@/llm/client.js";
+import { MemoryConsolidator } from "@/memory/consolidation.js";
 
 function makeTempDir(): string {
   return mkdtempSync(join(tmpdir(), "consolidation-test-"));

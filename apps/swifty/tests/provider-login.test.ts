@@ -27,13 +27,13 @@ import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDefaultRegistry } from "../src/commands/commands.js";
-import { globalConfigPath, loadConfig } from "../src/config/config.js";
+import { createDefaultRegistry } from "@/commands/commands.js";
+import { globalConfigPath, loadConfig } from "@/config/config.js";
 import {
   persistThinkingLevel,
   ProviderLoginSchema,
   saveProvider,
-} from "../src/config/provider-login.js";
+} from "@/config/provider-login.js";
 
 // Redirect $HOME to a temp dir so saveProvider/persistThinkingLevel write to an
 // isolated global config instead of the real ~/.swifty/config.yaml.
@@ -120,7 +120,11 @@ describe("provider login", () => {
         context_window: "10000",
         max_output_tokens: "2048",
       }),
-    ).toMatchObject({ thinking: "off", context_window: 10000, max_output_tokens: 2048 });
+    ).toMatchObject({
+      thinking: "off",
+      context_window: 10000,
+      max_output_tokens: 2048,
+    });
   });
 
   it("validates the thinking level", () => {
@@ -226,7 +230,10 @@ describe("provider login", () => {
     expect(saved.provider).toMatchObject({ ...metadata, thinking: "high" });
     expect(loadConfig(saved.path).providers[0]).toMatchObject(metadata);
     persistThinkingLevel(saved.provider.name, "low");
-    expect(loadConfig(saved.path).providers[0]).toMatchObject({ ...metadata, thinking: "low" });
+    expect(loadConfig(saved.path).providers[0]).toMatchObject({
+      ...metadata,
+      thinking: "low",
+    });
     const duplicate = saveProvider({ ...input, reasoning: false }, saved.providers);
     expect(duplicate.provider.name).toBe("custom2");
     expect(duplicate.provider.thinking).toBe("off");
@@ -250,7 +257,10 @@ describe("provider login", () => {
     expect(ProviderLoginSchema.parse({ ...input, reasoning: false }).thinking).toBe("off");
     expect(ProviderLoginSchema.parse({ ...input, max_output_tokens: 1024 }).thinking).toBe("off");
     expect(
-      ProviderLoginSchema.parse({ ...input, thinking_level_map: { high: null } }).thinking,
+      ProviderLoginSchema.parse({
+        ...input,
+        thinking_level_map: { high: null },
+      }).thinking,
     ).toBe("medium");
   });
 
