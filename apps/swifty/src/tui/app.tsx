@@ -1359,7 +1359,7 @@ export function App({
       bashTool.sandboxConfig = {
         allowWrite: [workDir, "/tmp"],
         denyWrite: [
-          join(workDir, ".swifty", "permissions.local.yaml"),
+          join(workDir, ".swifty", "permissions.yaml"),
           join(workDir, ".agents", "skills"),
         ],
         networkEnabled: sandboxNetworkEnabled,

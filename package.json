@@ -1,6 +1,7 @@
 {
   "name": "swifty-code",
   "version": "0.0.1",
+  "type": "module",
   "description": "swifty-code",
   "private": true,
   "scripts": {

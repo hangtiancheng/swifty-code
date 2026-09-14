@@ -1,8 +1,5 @@
 # Swifty runtime artifacts (auto-generated, not committed)
 
-# Local permission overrides — personal, not shared with team
-.swifty/permissions.local.yaml
-
 # Session transcripts & file history snapshots (per-session, runtime)
 .swifty/sessions/
 .swifty/file-history/

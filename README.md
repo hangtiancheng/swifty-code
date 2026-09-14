@@ -62,7 +62,7 @@ swifty --remote                     # browser chat UI on http://localhost:18888
 
 ### Configuration
 
-Swifty reads YAML config from `~/.swifty/config.yaml`, `.swifty/config.yaml` and `.swifty/config.local.yaml` (merged in that order). At least one provider is required:
+Swifty reads a single global YAML config file: `~/.swifty/config.yaml`. At least one provider is required:
 
 ```yaml
 providers:

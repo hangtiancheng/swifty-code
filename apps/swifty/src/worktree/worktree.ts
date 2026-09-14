@@ -408,8 +408,7 @@ async function performPostCreationSetup(repoRoot: string, wtPath: string): Promi
  * copying the whole directory targets a subdirectory of its own source and
  * Node's cp rejects that with EINVAL.
  */
-const SHARED_SWIFTY_ENTRIES = ["permissions.yaml", "permissions.local.yaml", "agents", "memory"];
-
+const SHARED_SWIFTY_ENTRIES = ["permissions.yaml", "agents", "memory"];
 const SHARED_AGENTS_ENTRIES = ["AGENTS.md", "skills"];
 
 /** Copy shared .swifty/ settings from the main repo to the worktree. */

@@ -357,18 +357,7 @@ export function loadConfig(
     if (options.allowEmptyProviders) {
       return { providers: [], mcp_servers: [], hooks: [] };
     }
-    // Point at leftover project-level configs: Swifty used to merge them, so
-    // upgrading users would otherwise just see "no config file found".
-    const legacy = [
-      join(process.cwd(), ".swifty/config.yaml"),
-      join(process.cwd(), ".swifty/config.local.yaml"),
-    ]
-      .filter((legacyPath) => existsSync(legacyPath))
-      .join(", ");
-    throw new ConfigError(
-      `No config file found, expected ${candidate}.` +
-        (legacy ? ` Found project config at ${legacy}; move it to ${candidate}.` : ""),
-    );
+    throw new ConfigError(`No config file found, expected ${candidate}.`);
   }
 
   const config = loadSingleFile(candidate);

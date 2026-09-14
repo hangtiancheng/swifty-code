@@ -211,15 +211,7 @@ describe("provider login", () => {
     expect(() => loadConfig(path)).toThrow(/Invalid provider configuration/);
   });
 
-  it("points at leftover project configs when the global config is missing", () => {
-    const projectDir = mkdtempSync(join(tmpdir(), "swifty-project-"));
-    mkdirSync(join(projectDir, ".swifty"));
-    writeFileSync(join(projectDir, ".swifty", "config.local.yaml"), "providers: []\n");
-    const cwd = vi.spyOn(process, "cwd").mockReturnValue(projectDir);
-    try {
-      expect(() => loadConfig()).toThrow(/Found project config/);
-    } finally {
-      cwd.mockRestore();
-    }
+  it("reports a missing global config file with a clean error", () => {
+    expect(() => loadConfig()).toThrow(/No config file found/);
   });
 });
