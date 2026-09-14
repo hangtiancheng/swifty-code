@@ -29,7 +29,7 @@ import z, { parse } from "zod";
 
 import { createChildLogger } from "@/logger/logger.js";
 import { MCP_CALL_TOOL_NAME, mcpCallPermissionContent } from "@/tools/mcp-call.js";
-import { strArg } from "@/utils/index.js";
+import { isRecord, strArg } from "@/utils/index.js";
 import { canonicalPath, isPathWithin } from "@/utils/paths.js";
 
 const log = createChildLogger({ module: "permissions" });
@@ -271,7 +271,19 @@ export function extractContent(toolName: string, args: Record<string, unknown>):
     return "";
   }
   const v = args[field];
-  return typeof v === "string" ? v : "";
+  if (typeof v === "string") {
+    return v;
+  }
+  // ComputerUse also accepts the OpenAI batched form (actions[] instead of
+  // action); summarize the action types so rule matching and prompts still see
+  // what the call does.
+  if (toolName === "ComputerUse" && Array.isArray(args.actions)) {
+    return args.actions
+      .map((item) => (isRecord(item) ? strArg(item, "type") : ""))
+      .filter(Boolean)
+      .join(",");
+  }
+  return "";
 }
 
 export class PathSandbox {

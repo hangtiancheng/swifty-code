@@ -89,6 +89,7 @@ export function wireSkillsToRegistry(
       aliases: [],
       type: skill.meta.mode === "fork" ? "skill_fork" : "prompt",
       description: `${meta.description} [skill]`,
+      isSkill: true,
       handler:
         skill.meta.mode === "fork"
           ? () => ""

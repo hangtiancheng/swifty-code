@@ -724,6 +724,7 @@ function wireSkillsToCommands(
         aliases: [],
         type: isFork ? "skill_fork" : "prompt",
         description: `${meta.description} [skill]`,
+        isSkill: true,
         handler: isFork ? () => "" : (ctx) => runSkillInline(skill, ctx.args, skillHost),
       });
     } catch {

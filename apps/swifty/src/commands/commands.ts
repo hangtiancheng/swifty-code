@@ -57,6 +57,8 @@ export interface Command {
   type: CommandType;
   description: string;
   handler: (ctx: CommandContext) => string;
+  /** Skill-derived commands; excluded from the /help listing (see /skills). */
+  isSkill?: boolean;
 }
 
 export class CommandRegistry {
@@ -188,8 +190,8 @@ export function createDefaultRegistry(): CommandRegistry {
         }
         return detail;
       }
-      // List all commands
-      const cmds = registry.listCommands();
+      // List all commands; skills are discoverable via /skills instead.
+      const cmds = registry.listCommands().filter((c) => !c.isSkill);
       let output = "Available commands:\n\n";
       output += cmds
         .map((c) => {

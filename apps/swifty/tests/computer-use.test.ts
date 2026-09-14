@@ -72,6 +72,151 @@ describe("ComputerUseTool", () => {
     );
   });
 
+  it("exposes the OpenAI batch contract alongside Anthropic fields", () => {
+    const tool = new ComputerUseTool({ platform: "linux" });
+    const schema = tool.schema();
+
+    expect(schema.input_schema.properties.actions).toMatchObject({
+      type: "array",
+      minItems: 1,
+    });
+    expect(schema.input_schema.properties.pendingSafetyChecks).toMatchObject({ type: "array" });
+    expect(schema.input_schema.properties.status).toHaveProperty("enum", [
+      "in_progress",
+      "completed",
+      "incomplete",
+    ]);
+    expect(schema.input_schema.required).toEqual([]);
+  });
+
+  it("serializes one schema for the anthropic, openai, and openai-compat protocols", () => {
+    const registry = new ToolRegistry();
+    registry.register(new ComputerUseTool({ platform: "linux" }));
+
+    expect(registry.getAllSchemas("anthropic")[0]).toMatchObject({
+      name: "ComputerUse",
+      type: "custom",
+    });
+    expect(registry.getAllSchemas("openai")[0]).toMatchObject({
+      type: "function",
+      name: "ComputerUse",
+    });
+    expect(registry.getAllSchemas("openai-compat")[0]).toMatchObject({
+      type: "function",
+      function: { name: "ComputerUse" },
+    });
+  });
+
+  it("runs an OpenAI-style batch in order and returns the post-batch screenshot", async () => {
+    const png = await sharp({
+      create: { width: 800, height: 600, channels: 4, background: "#0a141e" },
+    })
+      .png()
+      .toBuffer();
+    const calls: { command: string; args: readonly string[] }[] = [];
+    const runCommand = vi.fn(async (command: string, args: readonly string[]) => {
+      calls.push({ command, args });
+      if (command === "gnome-screenshot") {
+        const outputPath = args[1];
+        if (!outputPath) {
+          throw new Error("missing screenshot path");
+        }
+        await writeFile(outputPath, png);
+      }
+      return { code: 0, stdout: Buffer.alloc(0), stderr: "" };
+    });
+    const tool = new ComputerUseTool({ platform: "linux", runCommand });
+
+    const result = await tool.execute(context, {
+      actions: [
+        { type: "move", x: 10, y: 20 },
+        { type: "click", button: "right", x: 30, y: 40 },
+        { type: "screenshot" },
+      ],
+      status: "in_progress",
+      pendingSafetyChecks: [{ id: "check_1", code: "navigation" }],
+    });
+
+    expect(result.isError).toBe(false);
+    expect(calls[0]).toEqual({
+      command: "xdotool",
+      args: ["mousemove", "--sync", "10", "20"],
+    });
+    expect(calls[1]).toEqual({
+      command: "xdotool",
+      args: ["mousemove", "--sync", "30", "40"],
+    });
+    expect(calls[2]).toEqual({
+      command: "xdotool",
+      args: ["click", "--repeat", "1", "--delay", "80", "3"],
+    });
+    expect(calls[3]?.command).toBe("gnome-screenshot");
+    expect(result.contentBlocks?.[0]).toMatchObject({
+      type: "image",
+      source: { type: "base64", media_type: "image/png" },
+    });
+    expect(result.output).toContain("Executed 3 action(s): move, click, screenshot.");
+    expect(result.output).toContain("Status: in_progress.");
+    expect(result.output).toContain("Acknowledged safety checks: check_1.");
+  });
+
+  it("takes a follow-up screenshot when the batch has none", async () => {
+    const png = await sharp({
+      create: { width: 800, height: 600, channels: 4, background: "#0a141e" },
+    })
+      .png()
+      .toBuffer();
+    const commands: string[] = [];
+    const runCommand = vi.fn(async (command: string, args: readonly string[]) => {
+      commands.push(command);
+      if (command === "gnome-screenshot" && args[1]) {
+        await writeFile(args[1], png);
+      }
+      return { code: 0, stdout: Buffer.alloc(0), stderr: "" };
+    });
+    const tool = new ComputerUseTool({ platform: "linux", runCommand });
+
+    const result = await tool.execute(context, {
+      actions: [{ type: "keypress", keys: ["ctrl", "s"] }],
+    });
+
+    expect(result.isError).toBe(false);
+    expect(commands).toContain("xdotool");
+    expect(commands.at(-1)).toBe("gnome-screenshot");
+    expect(result.contentBlocks?.[0]).toMatchObject({ type: "image" });
+    expect(result.output).toContain("Executed 1 action(s): keypress.");
+  });
+
+  it("stops at the first failing action in a batch", async () => {
+    const runCommand = vi.fn(() =>
+      Promise.resolve({ code: 0, stdout: Buffer.alloc(0), stderr: "" }),
+    );
+    const tool = new ComputerUseTool({ platform: "linux", runCommand });
+
+    const result = await tool.execute(context, {
+      actions: [{ type: "click" }, { type: "screenshot" }],
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain("Error at actions[0] (click)");
+    expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it("rejects mixing or omitting both call styles", async () => {
+    const tool = new ComputerUseTool({ platform: "linux" });
+
+    const both = await tool.execute(context, {
+      action: "screenshot",
+      actions: [{ type: "screenshot" }],
+    });
+    expect(both.isError).toBe(true);
+    expect(both.output).toContain("not both");
+
+    const neither = await tool.execute(context, {});
+    expect(neither.isError).toBe(true);
+    expect(neither.output).toContain("is required");
+  });
+
   it("returns screenshots as image tool-result blocks and scales later coordinates", async () => {
     const png = await sharp({
       create: {
@@ -127,6 +272,17 @@ describe("ComputerUse availability", () => {
 
   it("scopes permission rules to the requested action", () => {
     expect(extractContent("ComputerUse", { action: "screenshot" })).toBe("screenshot");
+  });
+
+  it("summarizes batched OpenAI-style actions for permission rules", () => {
+    expect(
+      extractContent("ComputerUse", {
+        actions: [
+          { type: "move", x: 1, y: 2 },
+          { type: "click", x: 3, y: 4 },
+        ],
+      }),
+    ).toBe("move,click");
   });
 
   it("does not leak through a manually assembled subagent registry", () => {

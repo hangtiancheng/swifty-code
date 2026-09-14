@@ -26,6 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
+import { createDefaultRegistry } from "@/commands/commands.js";
 import { loadUserCommands, renderBody } from "@/commands/loader.js";
 
 function cmdDir(): string {
@@ -66,5 +67,26 @@ describe("user command loader", () => {
     expect(renderBody("Echo $ARGUMENTS!", "hi")).toBe("Echo hi!");
     expect(renderBody("Echo $ARGUMENTS!", "$& $$ $` $'")).toBe("Echo $& $$ $` $'!");
     expect(renderBody("No args needed.", "")).toBe("No args needed.");
+  });
+});
+
+describe("/help listing", () => {
+  it("lists commands but excludes skill-derived ones", () => {
+    const registry = createDefaultRegistry();
+    registry.register({
+      name: "demo-skill",
+      aliases: [],
+      type: "prompt",
+      description: "Demo skill [skill]",
+      isSkill: true,
+      handler: () => "",
+    });
+
+    const help = registry.find("help");
+    const output = help?.handler({ workDir: tmpdir(), args: "" }) ?? "";
+
+    expect(output).toContain("/help");
+    expect(output).not.toContain("demo-skill");
+    expect(output).not.toContain("[skill]");
   });
 });

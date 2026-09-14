@@ -52,8 +52,42 @@ const PathPointSchema = z.object({
   x: z.number().int().nonnegative(),
   y: z.number().int().nonnegative(),
 });
+
+// OpenAI computer contract: instead of one action per call, the model sends an
+// ordered batch of typed actions plus safety-check/status bookkeeping.
+const OPENAI_ACTION_TYPES = [
+  "click",
+  "double_click",
+  "drag",
+  "keypress",
+  "move",
+  "screenshot",
+  "scroll",
+  "type",
+  "wait",
+] as const;
+const MAX_BATCH_ACTIONS = 100;
+const OpenAIActionSchema = z.object({
+  type: z.enum(OPENAI_ACTION_TYPES),
+  button: z.enum(["left", "right", "wheel", "back", "forward"]).optional(),
+  x: z.number().int().nonnegative().optional(),
+  y: z.number().int().nonnegative().optional(),
+  keys: z.array(z.string().min(1)).max(8).optional(),
+  path: z.array(PathPointSchema).min(2).max(200).optional(),
+  scrollX: z.number().optional(),
+  scrollY: z.number().optional(),
+  text: z.string().max(10_000).optional(),
+});
+const SafetyCheckSchema = z.object({
+  id: z.string().min(1),
+  code: z.string().optional(),
+  message: z.string().optional(),
+});
 const ComputerUseInputSchema = z.object({
-  action: z.enum(ACTIONS),
+  action: z.enum(ACTIONS).optional(),
+  actions: z.array(OpenAIActionSchema).min(1).max(MAX_BATCH_ACTIONS).optional(),
+  pendingSafetyChecks: z.array(SafetyCheckSchema).optional(),
+  status: z.enum(["in_progress", "completed", "incomplete"]).optional(),
   coordinate: CoordinateSchema.optional(),
   duration: z.number().nonnegative().max(60).optional(),
   region: z
@@ -78,6 +112,7 @@ const ComputerUseInputSchema = z.object({
 });
 
 type ComputerUseInput = z.infer<typeof ComputerUseInputSchema>;
+type OpenAIAction = z.infer<typeof OpenAIActionSchema>;
 type ComputerUseEnvironment = "windows" | "mac" | "browser" | "linux" | "ubuntu";
 type Point = { x: number; y: number };
 type NativeAction =
@@ -382,6 +417,50 @@ function normalizeAction(
         keys: keysFor(input),
       };
     }
+    default:
+      throw new Error("action is required.");
+  }
+}
+
+/**
+ * Map one OpenAI batched action onto the flat Anthropic-style input so both
+ * contracts share a single execution path.
+ */
+function openaiActionToFlat(item: OpenAIAction): ComputerUseInput {
+  const point = {
+    ...(item.x !== undefined ? { x: item.x } : {}),
+    ...(item.y !== undefined ? { y: item.y } : {}),
+  };
+  switch (item.type) {
+    case "click":
+      return {
+        action: "click",
+        ...(item.button ? { button: item.button } : {}),
+        ...point,
+        keys: item.keys,
+      };
+    case "double_click":
+      return { action: "double_click", ...point, keys: item.keys };
+    case "drag":
+      return { action: "drag", path: item.path, keys: item.keys };
+    case "keypress":
+      return { action: "keypress", keys: item.keys };
+    case "move":
+      return { action: "move", ...point, keys: item.keys };
+    case "screenshot":
+      return { action: "screenshot" };
+    case "scroll":
+      return {
+        action: "scroll",
+        ...point,
+        scroll_x: item.scrollX ?? 0,
+        scroll_y: item.scrollY ?? 0,
+        keys: item.keys,
+      };
+    case "type":
+      return { action: "type", text: item.text };
+    case "wait":
+      return { action: "wait" };
   }
 }
 
@@ -412,7 +491,9 @@ export class ComputerUseTool implements Tool {
     this.description =
       `Control the current ${this.environment} computer with screenshots, mouse, keyboard, scrolling, waiting, and zoom. ` +
       "Use screenshot before choosing coordinates and verify consequential actions with another screenshot. " +
-      "Anthropic-style actions are supported directly; OpenAI action aliases click, drag, keypress, and move are also accepted.";
+      "Two call styles are supported: Anthropic-style single actions (action + coordinate/scroll_amount/scroll_direction/start_coordinate/region/text), " +
+      "and OpenAI-style batches (actions[] of typed actions with x/y/button/keys/path/scrollX/scrollY/text, plus pendingSafetyChecks and status; " +
+      "a screenshot is returned after the batch). Flat OpenAI aliases (action=click/drag/keypress/move) are also accepted.";
   }
 
   isConcurrencySafe(): boolean {
@@ -429,7 +510,88 @@ export class ComputerUseTool implements Tool {
           action: {
             type: "string",
             enum: ACTIONS,
-            description: "The computer action to perform.",
+            description:
+              "Anthropic-style single computer action. Send either action or actions, not both.",
+          },
+          actions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: OPENAI_ACTION_TYPES,
+                  description:
+                    "OpenAI-style action type: click (button, x, y, keys), double_click (x, y, keys), drag (path, keys), keypress (keys), move (x, y, keys), screenshot, scroll (x, y, scrollX, scrollY, keys), type (text), wait.",
+                },
+                button: {
+                  type: "string",
+                  enum: ["left", "right", "wheel", "back", "forward"],
+                  description: "Button for type=click.",
+                },
+                x: { type: "integer", minimum: 0 },
+                y: { type: "integer", minimum: 0 },
+                keys: {
+                  type: "array",
+                  items: { type: "string" },
+                  maxItems: 8,
+                  description: "Keys held during the action, or pressed by keypress.",
+                },
+                path: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      x: { type: "integer", minimum: 0 },
+                      y: { type: "integer", minimum: 0 },
+                    },
+                    required: ["x", "y"],
+                    additionalProperties: false,
+                  },
+                  minItems: 2,
+                  maxItems: 200,
+                  description: "Drag path for type=drag.",
+                },
+                scrollX: {
+                  type: "number",
+                  description: "Horizontal scroll delta for type=scroll.",
+                },
+                scrollY: {
+                  type: "number",
+                  description: "Vertical scroll delta for type=scroll.",
+                },
+                text: {
+                  type: "string",
+                  description: "Text to type for type=type.",
+                },
+              },
+              required: ["type"],
+              additionalProperties: false,
+            },
+            minItems: 1,
+            maxItems: MAX_BATCH_ACTIONS,
+            description:
+              "OpenAI-style ordered batch of computer actions, executed in sequence; a screenshot is returned after the batch.",
+          },
+          pendingSafetyChecks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                code: { type: "string" },
+                message: { type: "string" },
+              },
+              required: ["id"],
+              additionalProperties: false,
+            },
+            description:
+              "OpenAI-style safety checks raised with the batch; acknowledged in the tool result.",
+          },
+          status: {
+            type: "string",
+            enum: ["in_progress", "completed", "incomplete"],
+            description: "OpenAI-style status of the computer call; echoed in the tool result.",
           },
           coordinate: {
             type: "array",
@@ -515,7 +677,9 @@ export class ComputerUseTool implements Tool {
             description: "OpenAI-style vertical scroll delta.",
           },
         },
-        required: ["action"],
+        // Either action (Anthropic-style) or actions (OpenAI-style) is required;
+        // execute() enforces the mutual exclusivity JSON Schema cannot express.
+        required: [],
         additionalProperties: false,
       },
     };
@@ -530,37 +694,116 @@ export class ComputerUseTool implements Tool {
       };
     }
 
+    const input = parsed.data;
+    const batch = input.actions ?? [];
+    if (batch.length > 0 && input.action !== undefined) {
+      return {
+        output:
+          "Error: send either action (Anthropic-style, one action per call) or actions (OpenAI-style batch), not both.",
+        isError: true,
+      };
+    }
+    if (batch.length === 0 && input.action === undefined) {
+      return {
+        output: "Error: action (Anthropic-style) or actions (OpenAI-style batch) is required.",
+        isError: true,
+      };
+    }
+
     try {
       ctx.abortSignal?.throwIfAborted();
-      const action = normalizeAction(parsed.data);
-      if (action === "screenshot") {
-        return await this.screenshot(ctx.abortSignal);
+      if (batch.length > 0) {
+        return await this.executeBatch(ctx, input);
       }
-      if ("region" in action) {
-        return await this.screenshot(ctx.abortSignal, action.region);
-      }
-      if (action.action === "wait") {
-        await delay((action.duration ?? 1) * 1000, undefined, {
-          signal: ctx.abortSignal,
-        });
-        return { output: "Wait completed.", isError: false };
-      }
-
-      const native = this.toNativeCoordinates(action);
-      let output = await this.executeNative(native, ctx.abortSignal);
-      if (native.action === "cursor_position" && output) {
-        const [x, y] = output.split(",").map(Number);
-        if (Number.isFinite(x) && Number.isFinite(y)) {
-          output = `${String(Math.round(x / this.coordinateScaleX))},${String(Math.round(y / this.coordinateScaleY))}`;
-        }
-      }
-      return {
-        output: output || `Computer action ${parsed.data.action} completed.`,
-        isError: false,
-      };
+      return await this.runSingle(ctx, input);
     } catch (err) {
       return { output: `Error: ${asErrorString(err)}`, isError: true };
     }
+  }
+
+  /** Execute one Anthropic-style action (also the per-item path for batches). */
+  private async runSingle(ctx: ToolContext, input: ComputerUseInput): Promise<ToolResult> {
+    const action = normalizeAction(input);
+    if (action === "screenshot") {
+      return await this.screenshot(ctx.abortSignal);
+    }
+    if ("region" in action) {
+      return await this.screenshot(ctx.abortSignal, action.region);
+    }
+    if (action.action === "wait") {
+      await delay((action.duration ?? 1) * 1000, undefined, {
+        signal: ctx.abortSignal,
+      });
+      return { output: "Wait completed.", isError: false };
+    }
+
+    const native = this.toNativeCoordinates(action);
+    let output = await this.executeNative(native, ctx.abortSignal);
+    if (native.action === "cursor_position" && output) {
+      const [x, y] = output.split(",").map(Number);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        output = `${String(Math.round(x / this.coordinateScaleX))},${String(Math.round(y / this.coordinateScaleY))}`;
+      }
+    }
+    return {
+      output: output || `Computer action ${input.action ?? "batch"} completed.`,
+      isError: false,
+    };
+  }
+
+  /**
+   * Execute an OpenAI-style ordered action batch. Per the OpenAI computer
+   * output contract, the result always carries the screenshot taken after the
+   * batch ran, and status / safety checks are echoed so the model can continue.
+   */
+  private async executeBatch(ctx: ToolContext, input: ComputerUseInput): Promise<ToolResult> {
+    const actions = input.actions ?? [];
+    const executed: string[] = [];
+    let screenshotResult: ToolResult | undefined;
+    for (const [index, item] of actions.entries()) {
+      ctx.abortSignal?.throwIfAborted();
+      let result: ToolResult;
+      try {
+        result = await this.runSingle(ctx, openaiActionToFlat(item));
+      } catch (err) {
+        return {
+          output: `Error at actions[${String(index)}] (${item.type}): ${asErrorString(err)}`,
+          isError: true,
+        };
+      }
+      if (result.isError) {
+        return {
+          output: `Error at actions[${String(index)}] (${item.type}): ${result.output}`,
+          contentBlocks: result.contentBlocks,
+          isError: true,
+        };
+      }
+      executed.push(item.type);
+      if (item.type === "screenshot") {
+        screenshotResult = result;
+      }
+    }
+
+    screenshotResult ??= await this.screenshot(ctx.abortSignal).catch(
+      (err: unknown): ToolResult => ({
+        output: `Actions completed, but the follow-up screenshot failed: ${asErrorString(err)}`,
+        isError: false,
+      }),
+    );
+
+    const notes = [
+      input.status ? `Status: ${input.status}.` : "",
+      input.pendingSafetyChecks?.length
+        ? `Acknowledged safety checks: ${input.pendingSafetyChecks.map((check) => check.id).join(", ")}.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return {
+      output: `${screenshotResult.output} Executed ${String(executed.length)} action(s): ${executed.join(", ")}.${notes ? ` ${notes}` : ""}`,
+      contentBlocks: screenshotResult.contentBlocks,
+      isError: false,
+    };
   }
 
   private toNativeCoordinates(action: NativeInput): NativeInput {
