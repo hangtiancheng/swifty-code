@@ -74,6 +74,7 @@ function document(name = "demo", body = "Original instructions"): string {
   return `---\nname: ${JSON.stringify(name)}\ndescription: Demo skill\n---\n${body}`;
 }
 
+// Ecosystem only supports `.agents` currently
 function writeSkill(base: string, ecosystem: string, name = "demo", body?: string): string {
   const file = join(base, ecosystem, "skills", name, "SKILL.md");
   mkdirSync(dirname(file), { recursive: true });
@@ -127,7 +128,7 @@ describe("skill installation boundaries", () => {
     expect(onInstalled).not.toHaveBeenCalled();
   });
 
-  it.each([".swifty", ".agents/skills", ".agents/skills/demo", ".agents/skills/demo/SKILL.md"])(
+  it.each([".agents", ".agents/skills", ".agents/skills/demo", ".agents/skills/demo/SKILL.md"])(
     "does not follow an installation symlink at %s",
     async (component) => {
       const { source, tool, onInstalled } = localInstaller();
@@ -146,7 +147,7 @@ describe("skill installation boundaries", () => {
     },
   );
 
-  it.each([".swifty", ".agents/skills/demo/SKILL.md"])(
+  it.each([".agents", ".agents/skills/demo/SKILL.md"])(
     "rejects a dangling symlink at %s",
     async (component) => {
       const { source, tool } = localInstaller();
@@ -173,7 +174,7 @@ describe("skill installation boundaries", () => {
 
   it("replaces a hard-linked destination without changing the other link", async () => {
     const { source, tool } = localInstaller();
-    const file = writeSkill(workDir, ".swifty", "demo", "old");
+    const file = writeSkill(workDir, ".agents", "demo", "old");
     const outside = join(root, "outside.md");
     linkSync(file, outside);
     const old = readFileSync(outside, "utf-8");
@@ -208,7 +209,7 @@ describe("skill installation boundaries", () => {
     "---\nname: [bad]\n---\nbody",
     "---\nname: ''\n---\nbody",
   ])("rejects invalid content without replacing an existing skill: %j", async (content) => {
-    const file = writeSkill(workDir, ".swifty");
+    const file = writeSkill(workDir, ".agents");
     const { tool, source, onInstalled } = localInstaller(content);
     const result = await tool.execute({ workDir }, { source, name: "demo" });
     expect(result.isError).toBe(true);
@@ -384,9 +385,9 @@ describe("skill catalog reload", () => {
   });
 
   it("clears stale entries on repeated loads and retains source precedence", () => {
-    writeSkill(userDir, ".swifty", "demo", "global");
+    writeSkill(userDir, ".agents", "demo", "global");
     writeSkill(workDir, ".agents", "demo", "project agents");
-    const preferred = writeSkill(workDir, ".swifty", "demo", "project swifty");
+    const preferred = writeSkill(workDir, ".agents", "demo", "project swifty");
     const catalog = new SkillCatalog();
     catalog.load(workDir);
     expect(catalog.get("demo")?.body).toBe("project swifty");
@@ -403,7 +404,7 @@ describe("skill catalog reload", () => {
   });
 
   it("skips broken symlinks while loading healthy and linked skills", () => {
-    const file = writeSkill(workDir, ".swifty");
+    const file = writeSkill(workDir, ".agents");
     const skillsDir = dirname(dirname(file));
     symlinkSync(join(root, "missing"), join(skillsDir, "aaa-broken"));
     const linked = writeSkill(root, ".agents", "linked");
@@ -415,7 +416,7 @@ describe("skill catalog reload", () => {
   });
 
   it("rereads files when mtime moves backwards and keeps a valid cache during bad writes", () => {
-    const file = writeSkill(workDir, ".swifty");
+    const file = writeSkill(workDir, ".agents");
     const catalog = new SkillCatalog();
     catalog.load(workDir);
     writeFileSync(file, document("demo", "updated"));
@@ -426,7 +427,7 @@ describe("skill catalog reload", () => {
   });
 
   it("reindexes frontmatter renames without aliasing the old name", () => {
-    const file = writeSkill(workDir, ".swifty");
+    const file = writeSkill(workDir, ".agents");
     const catalog = new SkillCatalog();
     catalog.load(workDir);
     writeFileSync(file, document("renamed"));
@@ -465,7 +466,7 @@ describe("skill frontmatter and instructions", () => {
   });
 
   it("advertises the actual install schema and emits one-line descriptions", () => {
-    const file = writeSkill(workDir, ".swifty");
+    const file = writeSkill(workDir, ".agents");
     writeFileSync(
       file,
       document().replace("description: Demo skill", "description: |\n  first line\n  second line"),

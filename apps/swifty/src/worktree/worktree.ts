@@ -395,6 +395,7 @@ export function buildWorktreeNotice(parentCwd: string, wtPath: string): string {
  */
 async function performPostCreationSetup(repoRoot: string, wtPath: string): Promise<void> {
   await copySwiftySettings(repoRoot, wtPath);
+  await copyAgentsSettings(repoRoot, wtPath);
   await configureHooksPath(repoRoot, wtPath);
   await symlinkNodeModules(repoRoot, wtPath);
   await copyWorktreeIncludeFiles(repoRoot, wtPath);
@@ -407,13 +408,9 @@ async function performPostCreationSetup(repoRoot: string, wtPath: string): Promi
  * copying the whole directory targets a subdirectory of its own source and
  * Node's cp rejects that with EINVAL.
  */
-const SHARED_SWIFTY_ENTRIES = [
-  "permissions.yaml",
-  "permissions.local.yaml",
-  "agents",
-  "memory",
-  "skills",
-];
+const SHARED_SWIFTY_ENTRIES = ["permissions.yaml", "permissions.local.yaml", "agents", "memory"];
+
+const SHARED_AGENTS_ENTRIES = ["AGENTS.md", "skills"];
 
 /** Copy shared .swifty/ settings from the main repo to the worktree. */
 async function copySwiftySettings(repoRoot: string, wtPath: string): Promise<void> {
@@ -437,6 +434,31 @@ async function copySwiftySettings(repoRoot: string, wtPath: string): Promise<voi
       await cp(src, join(dstRoot, entry), { recursive: true });
     } catch (err) {
       log.error({ err, entry }, "failed to copy .swifty/ entry to worktree");
+    }
+  }
+}
+
+async function copyAgentsSettings(repoRoot: string, wtPath: string): Promise<void> {
+  const agentsDir = join(repoRoot, ".agents");
+  if (!(await pathExists(agentsDir))) {
+    return;
+  }
+  const dstRoot = join(wtPath, ".agents");
+  try {
+    await mkdir(dstRoot, { recursive: true });
+  } catch (err) {
+    log.error({ err }, "failed to create .agents in worktree");
+    return;
+  }
+  for (const entry of SHARED_AGENTS_ENTRIES) {
+    const src = join(agentsDir, entry);
+    if (!(await pathExists(src))) {
+      continue;
+    }
+    try {
+      await cp(src, join(dstRoot, entry), { recursive: true });
+    } catch (err) {
+      log.error({ err, entry }, "failed to copy .agents/ entry to worktree");
     }
   }
 }
