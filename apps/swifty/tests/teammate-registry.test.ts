@@ -95,7 +95,7 @@ describe("teammate worker tool registry", () => {
     }
 
     // Spawning agents and managing team lifecycle are Lead-only capabilities
-    for (const name of ["Agent", "TeamCreate", "TeamDelete"]) {
+    for (const name of ["Agent", "ComputerUse", "TeamCreate", "TeamDelete"]) {
       expect(names.has(name)).toBe(false);
     }
   });
@@ -156,7 +156,15 @@ describe("in-process teammate tool filtering", () => {
     });
 
     const parent = new ToolRegistry();
-    for (const n of ["ReadFile", "Bash", "EditFile", "Agent", "TeamCreate", "TeamDelete"]) {
+    for (const n of [
+      "ReadFile",
+      "Bash",
+      "EditFile",
+      "ComputerUse",
+      "Agent",
+      "TeamCreate",
+      "TeamDelete",
+    ]) {
       parent.register(stub(n));
     }
 
@@ -175,7 +183,7 @@ describe("in-process teammate tool filtering", () => {
     }
     const names = new Set(teammate.listTools().map((t) => t.name));
 
-    for (const n of ["Agent", "TeamCreate", "TeamDelete"]) {
+    for (const n of ["Agent", "ComputerUse", "TeamCreate", "TeamDelete"]) {
       expect(names.has(n)).toBe(false);
     }
     for (const n of ["ReadFile", "Bash", "EditFile"]) {

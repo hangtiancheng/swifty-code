@@ -42,6 +42,7 @@ import { TaskStopTool } from "./teams/task-stop.js";
 import { TeamManager } from "./teams/team.js";
 import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "./teams/tools.js";
 import { BashTool } from "./tools/bash.js";
+import { ComputerUseTool } from "./tools/computer-use.js";
 import { EditFileTool } from "./tools/edit-file.js";
 import { FileStateCache } from "./tools/file-state-cache.js";
 import { GlobTool } from "./tools/glob.js";
@@ -127,6 +128,7 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
   registry.register(new ReadFileTool());
   registry.register(new BashTool());
   registry.register(new PowerShellTool());
+  registry.register(new ComputerUseTool());
   registry.register(new GlobTool());
   registry.register(new GrepTool());
   registry.register(new WriteFileTool());

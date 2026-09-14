@@ -63,7 +63,7 @@ describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
         "Agent", "ToolRegistry", "MCPManager", "PermissionChecker",
         "loadConfig", "createClient", "buildSystemPrompt", "TeamManager",
         "TaskCreateTool", "TeamTaskCreateTool", "TaskStopTool", "TaskStore",
-        "recover", "runPrintMode", "RemoteServer",
+        "recover", "runPrintMode", "RemoteServer", "ComputerUseTool",
       ];
       console.log(JSON.stringify({
         totalExports: Object.keys(m).length,

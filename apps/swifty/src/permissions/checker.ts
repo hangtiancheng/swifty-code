@@ -248,6 +248,7 @@ const SAFE_PREFIXES: (string | RegExp)[] = [
 const CONTENT_FIELDS: Record<string, string> = {
   Bash: "command",
   PowerShell: "command",
+  ComputerUse: "action",
   ReadFile: "file_path",
   WriteFile: "file_path",
   EditFile: "file_path",

@@ -108,6 +108,7 @@ export * from "./teams/transcript.js";
 export * from "./tool-result/budget.js";
 export * from "./tools/ask-user.js";
 export * from "./tools/bash.js";
+export * from "./tools/computer-use.js";
 export * from "./tools/descriptions.js";
 export * from "./tools/diff.js";
 export * from "./tools/edit-file.js";

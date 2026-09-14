@@ -45,6 +45,7 @@ type AllTools =
   | "AskUserQuestion"
   | "Bash"
   | "PowerShell"
+  | "ComputerUse"
   | "EditFile"
   | "EnterWorktree"
   | "ExitPlanMode"
@@ -61,6 +62,7 @@ export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
   "ExitPlanMode",
   "Agent", // Prevents recursive spawning of subagents
   "AskUserQuestion",
+  "ComputerUse",
   "TaskStop",
 ]);
 
@@ -178,6 +180,9 @@ export function cloneRegistryForFork(registry: ToolRegistry): ToolRegistry {
   const forked = new ToolRegistry();
   forked.mcpLoadingMode = registry.mcpLoadingMode;
   for (const tool of registry.listTools()) {
+    if (tool.name === "ComputerUse") {
+      continue;
+    }
     if (tool.name === "Agent" && "querySource" in tool) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const clone = Object.create(

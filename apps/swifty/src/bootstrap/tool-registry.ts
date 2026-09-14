@@ -28,6 +28,7 @@ import type { SkillHost } from "../skills/skill.js";
 import type { TaskList } from "../todo/todo.js";
 import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "../todo/tools.js";
 import { BashTool } from "../tools/bash.js";
+import { ComputerUseTool } from "../tools/computer-use.js";
 import { EditFileTool } from "../tools/edit-file.js";
 import { EnterWorktreeTool } from "../tools/enter-worktree.js";
 import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
@@ -53,6 +54,7 @@ export function createToolRegistry(workDir: string, taskList: TaskList): ToolReg
   registry.register(new TaskUpdateTool(taskList));
   registry.register(new BashTool());
   registry.register(new PowerShellTool());
+  registry.register(new ComputerUseTool());
   registry.register(new EditFileTool());
   registry.register(new EnterWorktreeTool());
   registry.register(new ExitPlanModeTool());

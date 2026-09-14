@@ -20,39 +20,38 @@
  * SOFTWARE.
  */
 
-import { manageContext, forceCompact, AutoCompactTrackingState } from "../compact/compact.js";
-import { RecoveryState } from "../compact/recovery.js";
-import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT_TOKENS } from "../config/config.js";
-import type { ConversationManager } from "../conversation/conversation.js";
-import type { ToolUseBlock, ToolResultBlock } from "../conversation/conversation.js";
-import { REJECTED_TOOL_RESULT } from "../conversation/pairing.js";
-import type { FileHistory } from "../file-history/file-history.js";
-import type { HookEngine, EventName } from "../hooks/hooks.js";
-import type { LLMClient } from "../llm/client.js";
-import { ContextTooLongError, RateLimitError } from "../llm/errors.js";
-import type { RecallResult } from "../memory/manager.js";
-import type { PermissionChecker, Decision } from "../permissions/checker.js";
-import { getOrCreatePlanPath, planExists } from "../plan-file/plan-file.js";
-import { coordinatorReminder } from "../prompt/coordinator.js";
-import { buildPlanModeReminder } from "../prompt/plan-mode.js";
-import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "../session/session.js";
-import { getSessionFilePath } from "../session/session.js";
+import type { AgentEvent } from "./events.js";
+import { StreamingExecutor } from "./streaming-executor.js";
+
+import { manageContext, forceCompact, AutoCompactTrackingState } from "@/compact/compact.js";
+import { RecoveryState } from "@/compact/recovery.js";
+import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT_TOKENS } from "@/config/config.js";
+import type { ConversationManager } from "@/conversation/conversation.js";
+import type { ToolUseBlock, ToolResultBlock } from "@/conversation/conversation.js";
+import { REJECTED_TOOL_RESULT } from "@/conversation/pairing.js";
+import type { FileHistory } from "@/file-history/file-history.js";
+import type { HookEngine, EventName } from "@/hooks/hooks.js";
+import type { LLMClient } from "@/llm/client.js";
+import { ContextTooLongError, RateLimitError } from "@/llm/errors.js";
+import type { UsageInfo } from "@/llm/events.js";
+import type { RecallResult } from "@/memory/manager.js";
+import type { PermissionChecker, Decision } from "@/permissions/checker.js";
+import { getOrCreatePlanPath, planExists } from "@/plan-file/plan-file.js";
+import { coordinatorReminder } from "@/prompt/coordinator.js";
+import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
+import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "@/session/session.js";
+import { getSessionFilePath } from "@/session/session.js";
 import {
   applyBudget,
   isSpillReadback,
   persistLargeResult,
   replaceToolResultContent,
-} from "../tool-result/budget.js";
-import type { FileStateCache } from "../tools/file-state-cache.js";
-import { McpCallTool } from "../tools/mcp-call.js";
-import type { ToolRegistry } from "../tools/registry.js";
-import type { ToolResult } from "../tools/types.js";
-import { asErrorString, asRecord, strArg } from "../utils/index.js";
-
-import type { AgentEvent } from "./events.js";
-import { StreamingExecutor } from "./streaming-executor.js";
-
-import type { UsageInfo } from "@/llm/events.js";
+} from "@/tool-result/budget.js";
+import type { FileStateCache } from "@/tools/file-state-cache.js";
+import { McpCallTool } from "@/tools/mcp-call.js";
+import type { ToolRegistry } from "@/tools/registry.js";
+import type { ToolResult } from "@/tools/types.js";
+import { asErrorString, asRecord, strArg } from "@/utils/index.js";
 
 // When the model stops on max_tokens, escalate its output ceiling once to this
 // value, then attempt a bounded number of multi-turn recoveries.
@@ -340,8 +339,6 @@ export class Agent {
             this.compactTracking,
             this.recoveryState,
             toolSchemaNames,
-
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
             toolSchemas,
             this.sessionFilePath,
             this.abortSignal,
@@ -359,13 +356,7 @@ export class Agent {
 
           try {
             // Initiate API call directly with the conversation — no need to rebuild
-            const stream = this.client.stream(
-              this.conversation,
-
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              toolSchemas,
-              this.abortSignal,
-            );
+            const stream = this.client.stream(this.conversation, toolSchemas, this.abortSignal);
 
             for await (const event of stream) {
               if (this.abortSignal?.aborted) {
@@ -437,7 +428,6 @@ export class Agent {
                   this.recoveryState,
                   toolSchemaNames,
 
-                  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
                   toolSchemas,
                   this.sessionFilePath,
                   this.abortSignal,

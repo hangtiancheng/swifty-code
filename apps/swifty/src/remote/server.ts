@@ -81,6 +81,7 @@ import { LoadSkillTool } from "../skills/load-skill-tool.js";
 import type { SkillForkHost, SkillHost } from "../skills/skill.js";
 import { AgentTool } from "../subagent/agent-tool.js";
 import { spawnSubagent } from "../subagent/spawn.js";
+import { filterToolsForAgent } from "../subagent/tool-filter.js";
 import { coordinatorToolFilter, coordinatorActive } from "../teams/coordinator.js";
 import { TaskStopTool } from "../teams/task-stop.js";
 import { TeamManager, type RunAgent } from "../teams/team.js";
@@ -90,6 +91,7 @@ import { TaskList } from "../todo/todo.js";
 import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "../todo/tools.js";
 import { AskUserQuestionTool, type Question, type Asker } from "../tools/ask-user.js";
 import { BashTool } from "../tools/bash.js";
+import { ComputerUseTool } from "../tools/computer-use.js";
 import { EditFileTool } from "../tools/edit-file.js";
 import { EnterWorktreeTool } from "../tools/enter-worktree.js";
 import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
@@ -461,7 +463,7 @@ export async function createRemoteAgent(
 
       const subAgent = new AgentClass({
         client,
-        registry,
+        registry: filterToolsForAgent(registry, undefined, undefined, false),
         checker: new PC(workDir, "acceptEdits"),
         conversation: subConv,
         workDir,
@@ -684,6 +686,7 @@ function buildToolRegistry(workDir: string, sessionId: string): ToolRegistry {
   registry.register(new ReadFileTool());
   registry.register(new BashTool());
   registry.register(new PowerShellTool());
+  registry.register(new ComputerUseTool());
   registry.register(new GlobTool());
   registry.register(new GrepTool());
   registry.register(new WriteFileTool());

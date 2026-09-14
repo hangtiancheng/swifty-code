@@ -20,10 +20,6 @@
  * SOFTWARE.
  */
 
-// import { createChildLogger } from "../logger/logger.js";
-
-// const log = createChildLogger({ module: "tools" });
-
 import { safeParseAsync, z } from "zod";
 
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "./types.js";
@@ -139,7 +135,6 @@ export class AskUserQuestionTool implements Tool {
       };
     }
 
-    // TODO: Migrate manual parse to zod.
     const questions = argsData.questions;
     if (!Array.isArray(questions) || questions.length < 1 || questions.length > 4) {
       return { output: "Error: must have 1-4 questions", isError: true };
