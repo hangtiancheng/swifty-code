@@ -11,7 +11,6 @@ import MACOS_SWIFT from "./snippets/macos.swift?raw";
 import WIN32_SCRIPT_PS1 from "./snippets/win32-script.ps1?raw";
 import WINDOWS_CS from "./snippets/windows.cs?raw";
 import WINDOWS_PS1 from "./snippets/windows.ps1?raw";
-import { COMPUTER_USE_TOOL_NAME } from "./tool-names.js";
 import type {
   ProviderNativeToolSchema,
   Tool,
@@ -483,7 +482,7 @@ function commandError(command: string, result: CommandResult): Error {
 }
 
 export class ComputerUseTool implements Tool {
-  name = COMPUTER_USE_TOOL_NAME;
+  name = "ComputerUse";
   description: string;
   category: ToolCategory = "command";
   deferred = false;

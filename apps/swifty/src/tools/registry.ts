@@ -20,7 +20,6 @@
  * SOFTWARE.
  */
 
-import { MCP_CALL_TOOL_NAME, TOOL_SEARCH_TOOL_NAME } from "./tool-names.js";
 import type {
   AnthropicToolSchema,
   McpLoadingMode,
@@ -96,8 +95,8 @@ export class ToolRegistry {
       // mode there are no deferred tools to search and no need to dispatch; sending
       // both would only waste tokens and might tempt the model into a detour.
       if (
-        (tool.name === TOOL_SEARCH_TOOL_NAME && !this.exposeToolSearch) ||
-        (tool.name === MCP_CALL_TOOL_NAME && !this.exposeMcpCall)
+        (tool.name === "ToolSearch" && !this.exposeToolSearch) ||
+        (tool.name === "McpCall" && !this.exposeMcpCall)
       ) {
         continue;
       }

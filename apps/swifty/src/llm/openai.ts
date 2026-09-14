@@ -21,6 +21,7 @@
  */
 
 import OpenAI from "openai";
+import { z } from "zod";
 
 import type { LLMClient } from "./client.js";
 import {
@@ -50,7 +51,6 @@ import type {
 } from "@/conversation/conversation.js";
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/logger.js";
-import { COMPUTER_USE_TOOL_NAME } from "@/tools/tool-names.js";
 import type { ProviderToolSchema, ToolSchema } from "@/tools/types.js";
 import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/index.js";
 
@@ -272,7 +272,7 @@ export class OpenAIClient implements LLMClient {
           } else if (event.item.type === "computer_call") {
             yield {
               type: "tool_call_start",
-              toolName: COMPUTER_USE_TOOL_NAME,
+              toolName: "ComputerUse",
               toolId: event.item.call_id,
             };
           } else if (event.item.type === "reasoning") {
@@ -308,7 +308,7 @@ export class OpenAIClient implements LLMClient {
             yield {
               type: "tool_call_complete",
               toolId: event.item.call_id,
-              toolName: COMPUTER_USE_TOOL_NAME,
+              toolName: "ComputerUse",
               arguments: computerCallArguments(event.item),
               providerItemId: event.item.id,
             };
@@ -520,7 +520,8 @@ function computerActionsForResponses(
       });
       continue;
     }
-    actions.push(raw as OpenAI.Responses.ComputerAction);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    actions.push(raw as unknown as OpenAI.Responses.ComputerAction);
   }
   return actions;
 }
@@ -628,7 +629,7 @@ export function buildOpenAIInput(messages: Message[]): OpenAIMessageParam[] {
   const computerCalls = new Map<string, ToolUseBlock>();
   for (const message of messages) {
     for (const toolUse of message.toolUses ?? []) {
-      if (toolUse.toolName === COMPUTER_USE_TOOL_NAME) {
+      if (toolUse.toolName === "ComputerUse") {
         computerCalls.set(toolUse.toolUseId, toolUse);
       }
     }
@@ -655,7 +656,7 @@ export function buildOpenAIInput(messages: Message[]): OpenAIMessageParam[] {
       }
 
       for (const tu of m.toolUses) {
-        if (tu.toolName === COMPUTER_USE_TOOL_NAME) {
+        if (tu.toolName === "ComputerUse") {
           const status = tu.arguments.status;
           result.push({
             type: "computer_call",

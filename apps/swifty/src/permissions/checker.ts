@@ -28,7 +28,7 @@ import yaml from "js-yaml";
 import z, { parse } from "zod";
 
 import { createChildLogger } from "@/logger/logger.js";
-import { MCP_CALL_TOOL_NAME, mcpCallPermissionContent } from "@/tools/mcp-call.js";
+import { mcpCallPermissionContent } from "@/tools/mcp-call.js";
 import { isRecord, strArg } from "@/utils/index.js";
 import { canonicalPath, isPathWithin } from "@/utils/paths.js";
 
@@ -263,7 +263,7 @@ export function extractContent(toolName: string, args: Record<string, unknown>):
   // The match target for McpCall is not a specific parameter but "which MCP
   // tool to call", derived from the server + tool parameters as server__tool.
   // This lets a rule like McpCall(linear__*) allow/deny per server or per tool.
-  if (toolName === MCP_CALL_TOOL_NAME) {
+  if (toolName === "McpCall") {
     return mcpCallPermissionContent(strArg(args, "server", ""), strArg(args, "tool", ""));
   }
   const field = CONTENT_FIELDS[toolName];

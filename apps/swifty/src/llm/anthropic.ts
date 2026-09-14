@@ -50,7 +50,6 @@ import type { ConversationManager, Message } from "@/conversation/conversation.j
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/logger.js";
 import { NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
-import { COMPUTER_USE_TOOL_NAME } from "@/tools/tool-names.js";
 import { normalizeToolResultContentBlock } from "@/tools/types.js";
 import type { AnthropicToolSchema, ProviderToolSchema, ToolSchema } from "@/tools/types.js";
 import {
@@ -230,7 +229,7 @@ export function buildAnthropicMessages(messages: Message[]): Anthropic.MessagePa
           blocks.push({
             type: "tool_use", // tool use **request**
             id: tu.toolUseId,
-            name: tu.toolName === COMPUTER_USE_TOOL_NAME ? "computer" : tu.toolName,
+            name: tu.toolName === "ComputerUse" ? "computer" : tu.toolName,
             input: tu.arguments,
           });
         }
@@ -402,8 +401,8 @@ export class AnthropicClient implements LLMClient {
       ],
       messages,
       ...(antToolSchemas.length > 0
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        ? { tools: antToolSchemas as Anthropic.Tool[] }
+        ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          { tools: antToolSchemas as Anthropic.Tool[] }
         : {}),
     };
 
@@ -468,7 +467,7 @@ export class AnthropicClient implements LLMClient {
             } // end if (block.type === "thinking")
             else if (block.type === "tool_use") {
               currentToolId = block.id;
-              currentToolName = block.name === "computer" ? COMPUTER_USE_TOOL_NAME : block.name;
+              currentToolName = block.name === "computer" ? "ComputerUse" : block.name;
               jsonAccumulate = "";
               yield {
                 type: "tool_call_start",

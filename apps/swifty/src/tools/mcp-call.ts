@@ -49,7 +49,6 @@
  */
 
 import type { ToolRegistry } from "./registry.js";
-import { MCP_CALL_TOOL_NAME } from "./tool-names.js";
 import type { MCPToolLike, Tool, ToolContext, ToolResult, ToolSchema } from "./types.js";
 
 import {
@@ -59,9 +58,6 @@ import {
   sanitizeSegment,
 } from "@/mcp/tool-wrapper.js";
 import { asRecord, strArg } from "@/utils/index.js";
-
-/** The dispatcher tool's name; permission rules reference it too. */
-export { MCP_CALL_TOOL_NAME } from "./tool-names.js";
 
 function coerceScalar(value: unknown, want: string): unknown {
   // boolean must be excluded first: typeof true !== "number", but in other
@@ -175,7 +171,7 @@ export function isMcpToolLike(tool: Tool): tool is MCPToolLike {
 }
 
 export class McpCallTool implements Tool {
-  name = MCP_CALL_TOOL_NAME;
+  name = "McpCall";
   description =
     "Invoke a tool on a connected MCP server. Call ToolSearch first to load the " +
     "tool's schema, then pass its arguments here exactly as that schema requires, " +

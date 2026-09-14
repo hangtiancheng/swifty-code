@@ -87,8 +87,8 @@ export interface MaxTokensSetter {
 
 /** Runtime control of the effective logical thinking level. */
 export interface ThinkingLevelControl {
-  /** Built-in clients return the effective level; legacy controls may return void. */
-  setThinkingLevel(level: ThinkingLevel): ThinkingLevel | void;
+  /** Applies the level and returns the effective one, which may be clamped by the provider. */
+  setThinkingLevel(level: ThinkingLevel): ThinkingLevel;
   getThinkingLevel(): ThinkingLevel;
   getSupportedThinkingLevels?(): readonly ThinkingLevel[];
 }

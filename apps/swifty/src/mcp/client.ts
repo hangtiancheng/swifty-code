@@ -185,8 +185,8 @@ export class MCPClient {
 
       this.transport =
         this.config.transport === "sse"
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
-          ? new SSEClientTransport(url, opts)
+          ? // eslint-disable-next-line @typescript-eslint/no-deprecated
+            new SSEClientTransport(url, opts)
           : new StreamableHTTPClientTransport(url, opts);
     } else {
       throw new Error(

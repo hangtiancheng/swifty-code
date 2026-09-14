@@ -21,7 +21,6 @@
  */
 
 import type { ToolRegistry } from "./registry.js";
-import { TOOL_SEARCH_TOOL_NAME } from "./tool-names.js";
 import {
   type Tool,
   type ToolCategory,
@@ -35,7 +34,7 @@ import { MCP_TOOL_PREFIX } from "@/mcp/tool-wrapper.js";
 import { intArg, strArg } from "@/utils/index.js";
 
 export class ToolSearchTool implements Tool {
-  name = TOOL_SEARCH_TOOL_NAME;
+  name = "ToolSearch";
 
   description = "Search for and load deferred tools by name or keyword.";
   category: ToolCategory = "read";
