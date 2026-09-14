@@ -21,7 +21,6 @@
  */
 
 import OpenAI from "openai";
-import { z } from "zod";
 
 import type { LLMClient } from "./client.js";
 import {

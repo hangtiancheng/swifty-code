@@ -33,6 +33,7 @@ import {
   newSessionId,
   saveCompactBoundary,
   rebuildFromSession,
+  toolUsesToRecords,
   toolResultsToRecords,
   COMPACT_BOUNDARY,
 } from "@/session/session.js";
@@ -124,6 +125,27 @@ describe("session save/load round-trip", () => {
     expect(loaded).toHaveLength(2);
     expect(loaded[0]).toMatchObject({ role: "user", content: "first" });
     expect(loaded[1]).toMatchObject({ role: "assistant", content: "reply" });
+  });
+
+  it("round-trips the provider item ID for native computer calls", () => {
+    const toolUses = toolUsesToRecords([
+      {
+        toolUseId: "call_1",
+        providerItemId: "item_1",
+        toolName: "ComputerUse",
+        arguments: { actions: [{ type: "screenshot" }], status: "completed" },
+      },
+    ]);
+
+    expect(toolUses[0]?.provider_item_id).toBe("item_1");
+    const restored = rebuildFromSession([
+      { role: "assistant", content: "", timestamp: t0, tool_uses: toolUses },
+    ]);
+    expect(restored[0]?.toolUses?.[0]).toMatchObject({
+      toolUseId: "call_1",
+      providerItemId: "item_1",
+      toolName: "ComputerUse",
+    });
   });
 
   it("skips malformed and empty-content lines instead of crashing", () => {
