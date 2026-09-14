@@ -205,8 +205,7 @@ describe("coordinator prompt", () => {
     expect(p).not.toContain("<task_id>");
   });
 
-  // This guidance is just over 8KB, and system-reminders are appended per turn;
-  // resending it verbatim every turn would refill the context this mode is meant to save.
+  // Reminders are appended per turn; sparse turns keep their recurring cost bounded.
   it("goes sparse after the first turn", () => {
     const full = coordinatorReminder(1);
     const second = coordinatorReminder(2);
@@ -229,7 +228,7 @@ describe("coordinator prompt", () => {
   // The tools listed in the prompt must be exactly the ones the whitelist allows
   it("lists exactly the whitelisted tools", () => {
     const p = coordinatorReminder(1);
-    const section = p.slice(p.indexOf("## 2. Your Tools"), p.indexOf("### Worker Results"));
+    const section = p.slice(p.indexOf("## Tools"), p.indexOf("## Delegation"));
     for (const name of ["Agent", "SendMessage", "TaskStop", "SyntheticOutput", "TeamDelete"]) {
       expect(section).toContain(`**${name}**`);
     }

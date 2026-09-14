@@ -24,12 +24,17 @@ import Anthropic from "@anthropic-ai/sdk";
 import { safeParseAsync, z } from "zod";
 
 import {
+  clampThinkingLevel,
   getMaxOutputTokens,
+  getSupportedThinkingLevels,
   getThinkingLevel,
+  MIN_THINKING_ANSWER_TOKENS,
   type ProviderConfig,
   resolveAPIKey,
   type ThinkingLevel,
   thinkingBudgetForLevel,
+  toAnthropicThinkingEffort,
+  toReasoningEffort,
 } from "../config/config.js";
 import type { ConversationManager, Message } from "../conversation/conversation.js";
 import { ensureToolPairing } from "../conversation/pairing.js";
@@ -57,12 +62,6 @@ import type { StreamEvent } from "./events.js";
 
 import type { ToolSchema } from "@/tools/types.js";
 
-// Anthropic requires thinking budgets of at least 1024 tokens, and the budget
-// must stay strictly below max_tokens. Reserve room for the answer so a long
-// thinking phase cannot consume the whole response.
-const MIN_THINKING_BUDGET_TOKENS = 1024;
-const MIN_ANSWER_TOKENS = 1024;
-
 /**
  * Place the cache breakpoint on the last non-deferred tool.
  *
@@ -73,7 +72,9 @@ const MIN_ANSWER_TOKENS = 1024;
  * built-in tools, so the array tail is often a deferred tool — we must scan
  * backwards. Built-in tools are never deferred, so a valid slot always exists.
  */
-export function markToolsForCache(tools: ToolSchema[]): void {
+export function markToolsForCache(
+  tools: Pick<Anthropic.Tool, "defer_loading" | "cache_control">[],
+): void {
   for (let i = tools.length - 1; i >= 0; i--) {
     const t = tools[i];
     if (t.defer_loading === true) {
@@ -300,13 +301,11 @@ export function buildAnthropicMessages(messages: Message[]): Anthropic.MessagePa
 export class AnthropicClient implements LLMClient {
   private client: Anthropic;
   private model: string;
-  /**
-   * PI-equivalent thinking level; maps to a thinking token budget.
-   */
+  /** Effective logical level for budget or explicitly configured adaptive mode. */
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: string;
   private maxOutputTokens: number;
-  /** Currently not used */
+  private config: ProviderConfig;
 
   constructor(config: ProviderConfig, systemPrompt: string) {
     const apiKey = resolveAPIKey(config);
@@ -321,6 +320,7 @@ export class AnthropicClient implements LLMClient {
       baseURL: config.base_url,
     });
     this.model = config.model;
+    this.config = { ...config };
     this.thinkingLevel = getThinkingLevel(config);
     this.systemPrompt = systemPrompt;
     this.maxOutputTokens = getMaxOutputTokens(config);
@@ -329,13 +329,19 @@ export class AnthropicClient implements LLMClient {
     this.systemPrompt = prompt;
   }
   setMaxOutputTokens(maxTokens: number): void {
-    this.maxOutputTokens = maxTokens;
+    this.config = { ...this.config, max_output_tokens: maxTokens };
+    this.maxOutputTokens = getMaxOutputTokens(this.config);
+    this.setThinkingLevel(this.thinkingLevel);
   }
-  setThinkingLevel(level: ThinkingLevel): void {
-    this.thinkingLevel = level;
+  setThinkingLevel(level: ThinkingLevel): ThinkingLevel {
+    this.thinkingLevel = clampThinkingLevel(this.config, level);
+    return this.thinkingLevel;
   }
   getThinkingLevel(): ThinkingLevel {
     return this.thinkingLevel;
+  }
+  getSupportedThinkingLevels(): readonly ThinkingLevel[] {
+    return getSupportedThinkingLevels(this.config);
   }
 
   async *stream(
@@ -351,24 +357,24 @@ export class AnthropicClient implements LLMClient {
     // fetch a tool_reference via ToolSearch before it can call them. This field is only accepted with the beta header.
     const sendToolSearchBeta = needsToolSearchBeta(toolSchemas);
     const antToolSchemas: Anthropic.Tool[] = toolSchemas.map((s) => {
-      const inputSchema = s.input_schema;
       const tool: Anthropic.Tool = {
         name: s.name,
         description: s.description,
-        input_schema: {
-          type: "object" as const,
-          properties: inputSchema.properties,
-          required: inputSchema.required ?? [],
-        },
+        // Preserve constraints and definitions, not just properties/required.
+        input_schema: s.input_schema,
       };
+      if (s.strict !== undefined) {
+        tool.strict = s.strict;
+      }
       if (s.defer_loading === true) {
         tool.defer_loading = true;
+      } else if (s.cache_control) {
+        tool.cache_control = s.cache_control;
       }
       return tool;
     });
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    markToolsForCache(antToolSchemas as ToolSchema[]);
+    markToolsForCache(antToolSchemas);
 
     // Mark last user message tail for cache control
     markLastUserTailForCache(messages);
@@ -390,18 +396,31 @@ export class AnthropicClient implements LLMClient {
       ...(antToolSchemas.length > 0 ? { tools: antToolSchemas } : {}),
     };
 
-    // Map the PI-equivalent thinking level to a thinking token budget. Mirrors
-    // PI's `adjustMaxTokensForThinking` + `clampThinkingBudgetToAnswerRoom`: the
-    // budget shares the output ceiling, always leaves room for the answer, and
-    // is shrunk (rather than disabling thinking) when it would not fit.
-    const budgetCeiling = this.maxOutputTokens - MIN_ANSWER_TOKENS;
-    params.thinking =
-      this.thinkingLevel !== "off" && budgetCeiling >= MIN_THINKING_BUDGET_TOKENS
-        ? {
+    const level = this.getThinkingLevel();
+    if (this.config.reasoning !== false) {
+      if (level === "off") {
+        params.thinking = { type: "disabled" };
+      } else if (this.config.thinking_mode === "adaptive") {
+        const effort = toAnthropicThinkingEffort(level, this.config);
+        if (effort !== null) {
+          params.thinking = { type: "adaptive" };
+          params.output_config = { effort };
+        }
+      } else {
+        // Share the strict output ceiling and reserve answer room. Availability
+        // already ensures that at least the minimum thinking budget fits.
+        const effort = toReasoningEffort(level, this.config);
+        if (effort !== null && effort !== "none") {
+          params.thinking = {
             type: "enabled",
-            budget_tokens: Math.min(thinkingBudgetForLevel(this.thinkingLevel), budgetCeiling),
-          }
-        : { type: "disabled" };
+            budget_tokens: Math.min(
+              thinkingBudgetForLevel(effort),
+              this.maxOutputTokens - MIN_THINKING_ANSWER_TOKENS,
+            ),
+          };
+        }
+      }
+    }
 
     let inputTokens = 0;
     let outputTokens = 0;

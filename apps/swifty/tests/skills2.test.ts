@@ -476,7 +476,7 @@ describe("skill frontmatter and instructions", () => {
     expect(section).not.toContain("{url:");
     expect(section).toContain("GitHub tree/blob pages are not supported");
     expect(section).not.toContain("tools the Skill declares get registered");
-    expect(section).toContain("- /demo: first line second line");
+    expect(section).toContain("<name>demo</name><description>first line second line</description>");
   });
 
   it("substitutes arguments literally in inline and fork skills", async () => {
@@ -493,13 +493,13 @@ describe("skill frontmatter and instructions", () => {
       runSubagent: vi.fn((prompt: string) => Promise.resolve(prompt)),
     };
     const args = "$& $$ $` $'";
-    const expected = `Do ${args} and ${args}`;
-    expect(runInline(skill, args, host)).toBe(expected);
-    expect(activateSkill).toHaveBeenCalledWith("demo", expected);
-    expect(await runFork(skill, args, host)).toBe(expected);
-    expect(await runFork(skill, "", host)).toBe("Do  and ");
-    expect(await runFork({ ...skill, body: "Instructions" }, "extra", host)).toBe(
-      "Instructions\n\nARGUMENTS: extra",
-    );
+    const inline = runInline(skill, args, host);
+    expect(inline).toContain(`<skill-body>\nDo ${args} and ${args}\n</skill-body>`);
+    expect(activateSkill).toHaveBeenCalledExactlyOnceWith("demo", inline);
+    expect(await runFork(skill, args, host)).toBe(inline);
+    expect(await runFork(skill, "", host)).toContain("<skill-body>\nDo  and \n</skill-body>");
+    const fallback = await runFork({ ...skill, body: "Instructions" }, "extra", host);
+    expect(fallback).toContain("<skill-body>\nInstructions\n</skill-body>");
+    expect(fallback).toContain("<skill-arguments>extra</skill-arguments>");
   });
 });

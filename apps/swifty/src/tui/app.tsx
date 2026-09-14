@@ -54,6 +54,7 @@ import {
   DEFAULT_THINKING_LEVEL,
   getContextWindow,
   getMaxOutputTokens,
+  getSupportedThinkingLevels,
 } from "../config/config.js";
 import { persistThinkingLevel, saveProvider } from "../config/provider-login.js";
 import { expandAtRefsWithImages } from "../conversation/at-expand.js";
@@ -120,15 +121,15 @@ import type { PlanChoice } from "./plan-approval.js";
 import { ProviderLogin } from "./provider-login.js";
 import { ProviderSelect } from "./provider-select.js";
 import type { RewindAction } from "./rewind-dialog.js";
-import { activityStatusColor, THEME } from "./styles.js";
+import { activityStatusColor, THEME, thinkingLevelColor } from "./styles.js";
 import { TeamStatus } from "./team-status.js";
 import { Transcript } from "./transcript.js";
 import { useAgentOutput } from "./use-agent-output.js";
+import { useFollowUpQueue } from "./use-follow-up-queue.js";
 import { useIdeInput } from "./use-ide-input.js";
 import { useTeammateStates } from "./use-teammate-states.js";
 import { useTerminalControls } from "./use-terminal-controls.js";
 
-import type { ToolSchema } from "@/tools/types.js";
 import { asErrorString, asRecord, contentToText, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tui" });
@@ -177,6 +178,7 @@ export function App({
   );
   const selectedProviderRef = useRef(selectedProvider);
   const [providerDialogActive, setProviderDialogActive] = useState(false);
+  const [thinkingDialogActive, setThinkingDialogActive] = useState(false);
   const [providerSwitching, setProviderSwitching] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const output = useAgentOutput(setMessages);
@@ -222,7 +224,6 @@ export function App({
     toolCount: number;
   } | null>(null);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
-  const [pendingMessages, setPendingMessages] = useState<string[]>([]);
   const [footerRows, setFooterRows] = useState(2);
 
   const workDir = process.cwd();
@@ -459,12 +460,6 @@ export function App({
         memManagerRef.current = memMgr;
         const memReminder = memMgr.buildSystemReminder();
         convRef.current.injectLongTermMemory(instructions, memReminder);
-
-        // Hard identity injection to prevent model from revealing underlying identity
-        convRef.current.addSystemReminder(
-          "IDENTITY OVERRIDE: You are Swifty. It is strictly forbidden to mention Claude, Anthropic, OpenAI, GPT, or ChatGPT in any response." +
-            "When asked about your identity, only respond as Swifty. This is the highest priority instruction.",
-        );
 
         // Load prompt history
         setPromptHistory(historyMod.load(historyDir));
@@ -906,7 +901,7 @@ export function App({
             ]);
             setIsStreaming(true);
             output.prepareTurn();
-            runAgentLoopWithStats("default")
+            await runAgentLoopWithStats("default")
               .then(() => {
                 setIsStreaming(false);
                 output.clearTools();
@@ -925,16 +920,16 @@ export function App({
             const controller = new AbortController();
             abortControllerRef.current = controller;
             setIsCompacting(true);
-            forceCompact(
+            await forceCompact(
               convRef.current,
               clientRef.current,
               recoveryStateRef.current,
               registryRef.current.listTools().map((t) => t.name),
 
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              registryRef.current.getAllSchemas() as ToolSchema[],
+              registryRef.current.getAllSchemas(),
               sessionMod.getSessionFilePath(workDir, sessionIdRef.current),
               controller.signal,
+              parsed.args,
             )
               .then((result) => {
                 // Persist the boundary so the compacted state survives /resume.
@@ -1226,22 +1221,37 @@ export function App({
     }
 
     if (cmd.type === "local") {
+      const client = clientRef.current;
+      if (cmd.name === "thinking" && !parsed.args.trim() && client?.setThinkingLevel) {
+        setThinkingDialogActive(true);
+        return true;
+      }
       const output = cmd.handler({
         workDir,
         args: parsed.args,
-        thinkingLevel: () => clientRef.current?.getThinkingLevel?.() ?? DEFAULT_THINKING_LEVEL,
-        setThinkingLevel: (level) => clientRef.current?.setThinkingLevel?.(level),
-        persistThinkingLevel: (level) => {
-          persistThinkingLevel(selectedProviderRef.current.name, level);
-          // Keep the in-memory provider in sync, otherwise recreating the
-          // client (provider switch, /login) would revive the stale level.
-          const updated = { ...selectedProviderRef.current, thinking: level };
-          selectedProviderRef.current = updated;
-          setSelectedProvider(updated);
-          setProviders((current) =>
-            current.map((provider) => (provider.name === updated.name ? updated : provider)),
-          );
-        },
+        thinkingLevel: () =>
+          client?.getThinkingLevel?.() ??
+          selectedProviderRef.current.thinking ??
+          DEFAULT_THINKING_LEVEL,
+        availableThinkingLevels: () =>
+          client?.getSupportedThinkingLevels?.() ??
+          getSupportedThinkingLevels(selectedProviderRef.current),
+        setThinkingLevel: client?.setThinkingLevel
+          ? (level) => {
+              client.setThinkingLevel?.(level);
+              const updated = {
+                ...selectedProviderRef.current,
+                thinking: client.getThinkingLevel?.() ?? level,
+              };
+              selectedProviderRef.current = updated;
+              setSelectedProvider(updated);
+              setProviders((current) =>
+                current.map((provider) => (provider.name === updated.name ? updated : provider)),
+              );
+            }
+          : undefined,
+        persistThinkingLevel: (level) =>
+          persistThinkingLevel(selectedProviderRef.current.name, level),
       });
       setMessages((prev) => [...prev, { role: "system", content: output }]);
       return true;
@@ -1260,7 +1270,7 @@ export function App({
         });
         setIsStreaming(true);
         output.prepareTurn();
-        runAgentLoopWithStats()
+        await runAgentLoopWithStats()
           .then(() => {
             setIsStreaming(false);
             output.clearTools();
@@ -1318,7 +1328,7 @@ export function App({
             .join("\n");
         },
       };
-      runSkillFork(skill, parsed.args, forkHost)
+      await runSkillFork(skill, parsed.args, forkHost)
         .then((result) => {
           setMessages((prev) => [...prev, { role: "assistant", content: result }]);
         })
@@ -1726,31 +1736,36 @@ export function App({
     wireSkillsToRegistry(catalog, cmdRegistryRef.current, skillHostRef.current);
   };
 
-  const submittingRef = useRef(false);
-
-  const handleSubmit = async (text: string) => {
-    if (isStreaming || isCompacting) {
-      setPendingMessages((current) => [...current, text]);
+  const processSubmission = async (text: string) => {
+    refreshSkillsIfNeeded();
+    setPromptHistory(historyMod.append(historyDir, text));
+    if (text.startsWith("/") && (await handleSlashCommand(text))) {
       return;
     }
-    if (submittingRef.current) {
-      return;
-    }
-    submittingRef.current = true;
-
-    try {
-      refreshSkillsIfNeeded();
-      setPromptHistory(historyMod.append(historyDir, text));
-
-      if (text.startsWith("/") && (await handleSlashCommand(text))) {
-        return;
-      }
-
-      await runUserTurn(text);
-    } finally {
-      submittingRef.current = false;
-    }
+    await runUserTurn(text);
   };
+
+  const followUps = useFollowUpQueue({
+    blocked:
+      appState !== "chat" ||
+      !clientRef.current ||
+      isStreaming ||
+      isCompacting ||
+      providerSwitching ||
+      loginActive ||
+      providerDialogActive ||
+      thinkingDialogActive ||
+      planApprovalActive ||
+      rewindDialogActive ||
+      resumeDialogActive ||
+      permissionRequest !== null ||
+      askRequest !== null ||
+      teamsDialogOpen,
+    send: processSubmission,
+    onError: (error) => setError(asErrorString(error)),
+  });
+  const pendingMessages = followUps.messages;
+  const handleSubmit = followUps.enqueue;
 
   useEffect(() => {
     if (!resume || appState !== "chat" || initialResumeHandledRef.current) {
@@ -1759,18 +1774,6 @@ export function App({
     initialResumeHandledRef.current = true;
     void handleSlashCommand(resume === true ? "/resume" : `/resume ${resume}`);
   }, [appState, resume]);
-
-  useEffect(() => {
-    if (isStreaming || isCompacting || submittingRef.current) {
-      return;
-    }
-    const next = pendingMessages[0];
-    if (!next) {
-      return;
-    }
-    setPendingMessages((current) => current.slice(1));
-    void handleSubmit(next);
-  }, [isCompacting, isStreaming, pendingMessages]);
 
   const handleLogin = async (input: ProviderConfig): Promise<void> => {
     const environment = detectEnvironment(workDir);
@@ -1801,9 +1804,20 @@ export function App({
     setLoginActive(false);
   };
 
+  const thinkingLevel =
+    clientRef.current?.getThinkingLevel?.() ?? selectedProvider.thinking ?? DEFAULT_THINKING_LEVEL;
+  const availableThinkingLevels =
+    clientRef.current?.getSupportedThinkingLevels?.() ??
+    getSupportedThinkingLevels(selectedProvider);
+  const loginInitialValues = {
+    ...selectedProvider,
+    thinking: thinkingLevel,
+  };
+
   if (appState === "providerSelect" && loginActive) {
     return (
       <ProviderLogin
+        initialValues={loginInitialValues}
         onSubmit={handleLogin}
         onCancel={() => (providers.length === 0 ? requestExit() : setLoginActive(false))}
       />
@@ -1864,7 +1878,13 @@ export function App({
       />
       <InteractionDock
         login={
-          loginActive ? { onSubmit: handleLogin, onCancel: () => setLoginActive(false) } : undefined
+          loginActive
+            ? {
+                initialValues: loginInitialValues,
+                onSubmit: handleLogin,
+                onCancel: () => setLoginActive(false),
+              }
+            : undefined
         }
         provider={
           providerDialogActive
@@ -1876,6 +1896,19 @@ export function App({
                   setProviderDialogActive(false);
                 },
                 onSelect: handleProviderSelect,
+              }
+            : undefined
+        }
+        thinking={
+          thinkingDialogActive
+            ? {
+                currentLevel: thinkingLevel,
+                levels: availableThinkingLevels,
+                onSelect: (level) => {
+                  setThinkingDialogActive(false);
+                  void handleSlashCommand(`/thinking ${level}`);
+                },
+                onCancel: () => setThinkingDialogActive(false),
               }
             : undefined
         }
@@ -1959,13 +1992,18 @@ export function App({
           disabled: providerSwitching,
           history: promptHistory,
           commands: cmdRegistryRef.current.listCommands(),
+          thinkingLevels: availableThinkingLevels,
+          onRecallQueuedMessage: followUps.takeLast,
           usageTracker: usageTrackerRef.current,
           inputState: error
             ? "error"
             : isStreaming || isCompacting || providerSwitching
               ? "agent"
               : "focused",
-          borderColor: activityStatusColor(activityStatus),
+          borderColor:
+            activityStatus === "idle" || activityStatus === "working"
+              ? thinkingLevelColor(thinkingLevel)
+              : activityStatusColor(activityStatus),
           statusLabel: error
             ? "Error"
             : providerSwitching
@@ -1999,6 +2037,7 @@ export function App({
         contextWindow={contextWindowRef.current}
         inputTokens={inputTokens}
         model={selectedProvider.model}
+        thinkingLevel={thinkingLevel}
         outputTokens={outputTokens}
         permissionMode={permMode}
         provider={selectedProvider.name}

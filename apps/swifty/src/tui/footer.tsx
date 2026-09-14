@@ -25,7 +25,9 @@ import { homedir } from "node:os";
 import { Box, Text, useBoxMetrics, useStdout, type DOMElement } from "ink";
 import { useLayoutEffect, useRef } from "react";
 
-import { THEME } from "./styles.js";
+import type { ThinkingLevel } from "../config/config.js";
+
+import { THEME, thinkingLevelColor } from "./styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
 interface FooterProps {
@@ -39,6 +41,7 @@ interface FooterProps {
   permissionMode: string;
   provider: string;
   sessionId: string;
+  thinkingLevel?: ThinkingLevel;
   workDir: string;
 }
 
@@ -106,6 +109,7 @@ export function Footer(props: FooterProps) {
     permissionMode,
     provider,
     sessionId,
+    thinkingLevel,
     workDir,
   } = props;
   const { stdout } = useStdout();
@@ -129,25 +133,54 @@ export function Footer(props: FooterProps) {
   const statsWidth = visibleWidth(`${tokens} ${context}`);
   const mode = MODE_DISPLAY[permissionMode] ?? permissionMode;
   const rightWidth = width - statsWidth - 2;
-  const separateMode = rightWidth < visibleWidth(mode);
+  const thinkingSuffix = thinkingLevel ? ` · ${thinkingLevel}` : "";
+  const minimumIdentityWidth = (model ? 2 : 0) + visibleWidth(thinkingSuffix);
+  const separateIdentity = rightWidth < visibleWidth(mode) + 3 + minimumIdentityWidth;
+  const identityWidth = separateIdentity ? width : rightWidth - visibleWidth(mode) - 3;
+  const modelWidth = Math.max(0, identityWidth - visibleWidth(thinkingSuffix));
+  const fullIdentity = provider ? `${provider}/${model}` : model;
+  // Keep the model and complete thinking level before provider names or shortcuts.
+  const identity =
+    visibleWidth(fullIdentity) <= modelWidth ? fullIdentity : truncateToWidth(model, modelWidth);
+  const separateThinking = thinkingLevel !== undefined && modelWidth < 2;
   const cycleHint = "  Shift+Tab to cycle";
-  let identity = provider ? `${provider}/${model}` : model;
-  let hint = "";
-
-  if (!separateMode) {
-    if (visibleWidth(`${identity} · ${mode}${cycleHint}`) <= rightWidth) {
-      hint = cycleHint;
-    } else if (visibleWidth(`${identity} · ${mode}`) > rightWidth) {
-      // Provider is secondary; only shorten the model once it is gone.
-      const modelWidth = rightWidth - visibleWidth(mode) - 3;
-      identity = modelWidth >= 2 ? truncateToWidth(model, modelWidth) : "";
-    }
-  }
-  const modelPrefix = identity ? `${identity} · ` : "";
-  const gap = Math.max(2, width - statsWidth - visibleWidth(`${modelPrefix}${mode}${hint}`));
+  const hint =
+    !separateIdentity &&
+    visibleWidth(`${fullIdentity}${thinkingSuffix} · ${mode}${cycleHint}`) <= rightWidth
+      ? cycleHint
+      : "";
+  const gap = Math.max(
+    2,
+    width - statsWidth - visibleWidth(`${identity}${thinkingSuffix} · ${mode}${hint}`),
+  );
+  const thinking = thinkingLevel ? (
+    <Text color={thinkingLevelColor(thinkingLevel)}>
+      {wrapToLines(thinkingLevel, width).join("\n")}
+    </Text>
+  ) : null;
+  const modelIdentity = (
+    <Text color={THEME.muted}>
+      {separateThinking ? truncateToWidth(model, width) : identity}
+      {thinking ? (separateThinking ? "\n" : " · ") : ""}
+      {thinking}
+    </Text>
+  );
   const stats = (
     <Text color={THEME.dim}>
       {tokens} <Text color={contextColor}>{context}</Text>
+    </Text>
+  );
+  const summary =
+    statsWidth + 2 + visibleWidth(mode) <= width ? (
+      stats
+    ) : (
+      <Text color={contextColor}>{wrapToLines(context, width).join("\n")}</Text>
+    );
+  const modeLabel = (
+    <Text color={permissionModeColor(permissionMode)}>
+      {wrapToLines(mode, width)
+        .map((line) => truncateToWidth(line, width))
+        .join("\n")}
     </Text>
   );
 
@@ -160,19 +193,25 @@ export function Footer(props: FooterProps) {
       paddingRight={padding}
     >
       <Text color={THEME.dim}>{locationLines(workDir, sessionId, width).join("\n")}</Text>
-      {separateMode ? (
+      {separateIdentity ? (
         <>
-          {stats}
-          <Text color={permissionModeColor(permissionMode)}>
-            {wrapToLines(mode, width).join("\n")}
-          </Text>
+          {visibleWidth(context) + 2 + visibleWidth(mode) <= width ? (
+            <Text color={THEME.dim}>
+              {summary} {modeLabel}
+            </Text>
+          ) : (
+            <>
+              {modeLabel}
+              {summary}
+            </>
+          )}
+          {modelIdentity}
         </>
       ) : (
         <Text color={THEME.dim}>
           {stats}
           {" ".repeat(gap)}
-          {modelPrefix}
-          <Text color={permissionModeColor(permissionMode)}>{mode}</Text>
+          {modelIdentity} · {modeLabel}
           {hint}
         </Text>
       )}

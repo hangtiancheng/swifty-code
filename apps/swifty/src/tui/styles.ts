@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+import type { ThinkingLevel } from "../config/config.js";
+
 export interface ThemePalette {
   accent: string;
   bashMode: string;
@@ -198,6 +200,25 @@ export const THEME: ThemePalette = { ...DARK_THEME };
 
 export function setThemeMode(mode: "dark" | "light"): void {
   Object.assign(THEME, mode === "light" ? LIGHT_THEME : DARK_THEME);
+}
+
+export function thinkingLevelColor(level: ThinkingLevel): string {
+  switch (level) {
+    case "off":
+      return THEME.thinkingOff;
+    case "minimal":
+      return THEME.thinkingMinimal;
+    case "low":
+      return THEME.thinkingLow;
+    case "medium":
+      return THEME.thinkingMedium;
+    case "high":
+      return THEME.thinkingHigh;
+    case "xhigh":
+      return THEME.thinkingXHigh;
+    case "max":
+      return THEME.thinkingMax;
+  }
 }
 
 export type ActivityStatus = "idle" | "working" | "retry" | "compacting" | "error";

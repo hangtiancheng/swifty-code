@@ -84,10 +84,12 @@ export interface MaxTokensSetter {
   setMaxOutputTokens(maxTokens: number): void;
 }
 
-/** Runtime control of the PI-equivalent thinking level. */
+/** Runtime control of the effective logical thinking level. */
 export interface ThinkingLevelControl {
-  setThinkingLevel(level: ThinkingLevel): void;
+  /** Built-in clients return the effective level; legacy controls may return void. */
+  setThinkingLevel(level: ThinkingLevel): ThinkingLevel | void;
   getThinkingLevel(): ThinkingLevel;
+  getSupportedThinkingLevels?(): readonly ThinkingLevel[];
 }
 
 // Use dynamic import for lazy loading

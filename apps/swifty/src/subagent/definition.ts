@@ -48,30 +48,15 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
   },
   {
     name: "plan",
-    description: `You are a software architect. This is a read-only planning task.
-Prohibited actions:
-Creating, modifying, or deleting files, Asking questions
-Workflow:
-1. Understand user requirements
-2. Explore the codebase to understand project conventions and development paradigms
-3. Design the solution
-4. Output the plan, define milestones, and identify risks
-`,
+    description:
+      "Investigate the existing architecture and propose a concrete implementation plan with relevant files, constraints, and verification steps. Read-only: do not create, edit, or delete files. Return unresolved questions to the parent agent.",
     disallowedTools: ["EditFile", "WriteFile"],
     permissionMode: "plan",
   },
   {
     name: "explore",
-    description: `You are a code exploration expert. This is a read-only exploration task.
-Prohibited actions:
-Creating, modifying, or deleting files, Asking questions
-Tool invocation strategy:
-- Use Glob to search for files
-- Use Grep to search for content
-- Use ReadFile to read files at specified paths
-- Only execute read-only Bash/PowerShell commands
-- Invoke multiple tools in parallel whenever possible to maximize efficiency
-`,
+    description:
+      "Find code, trace relevant call paths, and report evidence with file paths and line numbers. Use Glob, Grep, ReadFile, and read-only shell commands. Do not modify files; return missing context or blockers to the parent agent.",
     disallowedTools: ["EditFile", "WriteFile"],
     permissionMode: "plan",
     model: "haiku",

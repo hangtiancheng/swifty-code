@@ -45,10 +45,5 @@ export function memoryFreshnessText(mtimeMs: number): string {
   if (d <= 1) {
     return "";
   }
-  return (
-    `This memory is ${String(d)} days old. ` +
-    `Memories are point-in-time observations, not live state — ` +
-    `claims about code behavior or file:line citations may be outdated. ` +
-    `Verify against current code before asserting as fact.`
-  );
+  return `Saved ${String(d)} days ago; not live state. Code behavior and file:line citations may be stale. Verify against current code before asserting facts.`;
 }

@@ -21,61 +21,30 @@
  */
 
 // Plan Mode full reminder: displayed on the first iteration and every reminderInterval iterations
-const planModeFullReminder = `Plan mode is active. The user indicated that they do not want you to execute yet -- you MUST NOT make any edits (with the exception of the plan file mentioned below), run any non-readonly tools (including changing configs or making commits), or otherwise make any changes to the system. This supersedes any other instructions you have received.
-
-## Plan File Info:
+const planModeFullReminder = `# Plan mode
+Read-only except the declared plan file. You MUST NOT make any edits elsewhere, run mutating tools, change configs, or commit. Do not begin implementation before the runtime approval gate allows it.
 
 %PLAN_FILE_INFO%
-You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
 
-## Plan Workflow
+## Context
+Inspect relevant code and reusable patterns. Clarify material unknowns with AskUserQuestion. Delegate bounded read-only research only when useful; at most 3 independent explore agents, with no mandatory plan agent.
 
-### Phase 1: Initial Understanding
+## Approach
+Write only the recommended approach in the plan file, starting with Context. Include the files to change, constraints, and a Verification section with concrete checks. Keep the plan proportional to the task and refine it as evidence arrives.
 
-Goal: Gain a comprehensive understanding of the user's request by reading through code and asking them questions. Critical: In this phase you should use the Agent tool with subagent_type="explore".
-
-1. Focus on understanding the user's request and the code associated with their request. Actively search for existing functions, utilities, and patterns that can be reused — avoid proposing new code when suitable implementations already exist.
-
-2. **Call the Agent tool with subagent_type="explore" to explore the codebase.** You can launch up to 3 explore agents IN PARALLEL by making multiple Agent tool calls in a single response.
-
-### Phase 2: Design
-
-Goal: Design an implementation approach.
-
-Call the Agent tool with subagent_type="plan" to design the implementation based on the user's intent and your exploration results from Phase 1.
-
-### Phase 3: Review
-
-Goal: Review the plan(s) from Phase 2 and ensure alignment with the user's intentions.
-
-1. Read the critical files identified by agents to deepen your understanding
-2. Ensure that the plans align with the user's original request
-3. Use AskUserQuestion to clarify any remaining questions with the user.
-
-### Phase 4: Final Plan
-
-Goal: Write your final plan to the plan file (the only file you can edit).
-
-- Begin with a **Context** section
-- Include only your recommended approach
-- Include the paths of critical files to be modified
-- Include a verification section
-
-### Phase 5: Call ExitPlanMode
-
-At the very end of your turn, once you have asked the user questions and are happy with your final plan file - you should always call ExitPlanMode.
-`;
+## Approval
+When the plan is ready, call ExitPlanMode for approval. End with AskUserQuestion only for needed clarification, or ExitPlanMode for the handoff. Never request approval through prose or AskUserQuestion; wait for the runtime to exit plan mode.`;
 
 // Plan Mode sparse reminder: only key rules are displayed during intermediate iterations
-const planModeSparseReminder = `Plan mode still active (see full instructions earlier in conversation). Read-only except plan file (%PLAN_PATH%). Follow 5-phase workflow. End turns with AskUserQuestion (for clarifications) or ExitPlanMode (for plan approval). Never ask about plan approval via text or AskUserQuestion.`;
+const planModeSparseReminder = `Plan mode still active. Read-only except plan file (%PLAN_PATH%). Keep Context, Approach, files, and Verification current. Use AskUserQuestion for clarification; call ExitPlanMode for approval, never prose or AskUserQuestion. Do not implement before the runtime approval gate allows it.`;
 
 // Prompt for exiting Plan Mode
 const planModeExitTemplate = `## Exited Plan Mode
 
-You have exited plan mode. You can now make edits, run tools, and take actions.%EXTRA%`;
+Plan mode has ended. Proceed within the approved scope and current permissions.%EXTRA%`;
 
 // Prompt for re-entering Plan Mode: reminds the model that a plan file already exists and can be continued
-const planModeReentryTemplate = `You have re-entered plan mode. Your previous plan file is at %PLAN_PATH%. Review it and continue from where you left off. You can update, refine, or restart the plan as needed. Follow the same 5-phase workflow as before.`;
+const planModeReentryTemplate = `Plan mode is active again. Review the existing plan at %PLAN_PATH%; refine or replace it as needed. Stay read-only except that file, and use ExitPlanMode for approval before implementation.`;
 
 // How many iterations before repeating the full reminder
 const reminderInterval = 5;
@@ -102,11 +71,11 @@ export function buildPlanModeReminder(
   // resending it every iteration is too token-expensive, but sending it only once causes gradual drift;
   // periodic repetition strikes a balance between the two
   if ((iteration - 1) % reminderInterval === 0) {
-    return planModeFullReminder.replace("%PLAN_FILE_INFO%", planFileInfo);
+    return planModeFullReminder.replace("%PLAN_FILE_INFO%", () => planFileInfo);
   }
 
   // Use the sparse reminder for intermediate iterations
-  return planModeSparseReminder.replace("%PLAN_PATH%", planPath);
+  return planModeSparseReminder.replace("%PLAN_PATH%", () => planPath);
 }
 
 /**
@@ -118,7 +87,7 @@ export function buildPlanModeExitReminder(planPath: string, planExists: boolean)
   if (planExists) {
     extra = ` The plan file is located at ${planPath} if you need to reference it.`;
   }
-  return planModeExitTemplate.replace("%EXTRA%", extra);
+  return planModeExitTemplate.replace("%EXTRA%", () => extra);
 }
 
 /**
@@ -129,5 +98,5 @@ export function buildPlanModeReentryReminder(planPath: string, planFileExists: b
   if (!planFileExists) {
     return "";
   }
-  return planModeReentryTemplate.replace("%PLAN_PATH%", planPath);
+  return planModeReentryTemplate.replace("%PLAN_PATH%", () => planPath);
 }

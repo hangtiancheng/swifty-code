@@ -25,6 +25,8 @@
 // Cmd+Option+K to the CLI whose pid matches the active terminal) and listen
 // for `at_mentioned` notifications carrying file path + 0-based line range.
 
+import { setTimeout as delay } from "node:timers/promises";
+
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { z } from "zod";
 
@@ -63,25 +65,29 @@ function inIdeTerminal(): boolean {
   return process.env.CLAUDE_CODE_SSE_PORT !== undefined || process.env.TERM_PROGRAM === "vscode";
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 export async function connectToIde(opts: {
   cwd: string;
   onAtMentioned: (mention: IdeAtMention) => void;
   onDisconnect?: () => void;
+  signal?: AbortSignal;
 }): Promise<IdeConnection | null> {
   // Only poll when we're plausibly inside an IDE terminal — the extension
   // may still be activating right after the window opens.
   const deadline = Date.now() + (inIdeTerminal() ? 30_000 : 0);
 
+  if (opts.signal?.aborted) {
+    return null;
+  }
   let ide = await detectIde(opts.cwd);
   while (!ide && Date.now() < deadline) {
-    await sleep(1000);
+    try {
+      await delay(1000, undefined, { signal: opts.signal });
+    } catch {
+      return null;
+    }
     ide = await detectIde(opts.cwd);
   }
-  if (!ide) {
+  if (!ide || opts.signal?.aborted) {
     return null;
   }
 
@@ -91,9 +97,16 @@ export async function connectToIde(opts: {
   const client = new Client({ name: "swifty", version }, {});
 
   try {
-    await client.connect(transport);
+    await client.connect(transport, { signal: opts.signal });
+    if (opts.signal?.aborted) {
+      await client.close();
+      return null;
+    }
   } catch (err) {
-    log.error({ err, url: ide.url }, "failed to connect to IDE extension");
+    await client.close().catch(() => undefined);
+    if (!opts.signal?.aborted) {
+      log.error({ err, url: ide.url }, "failed to connect to IDE extension");
+    }
     return null;
   }
 

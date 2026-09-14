@@ -28,10 +28,12 @@ import { Box, Text, useInput, usePaste, useStdout } from "ink";
 import type { Key } from "ink";
 import { useState, useMemo, useRef, useEffect } from "react";
 
+import { THINKING_LEVELS, type ThinkingLevel } from "../config/config.js";
 import { createChildLogger } from "../logger/logger.js";
 
 import { useInputDraft } from "./input-draft.js";
 import type { InputDraft } from "./input-draft.js";
+import { layoutInputRows, locateInputCursor, moveInputVertically } from "./input-navigation.js";
 import { collapseImage, collapsePaste, expandPastes, inputBoundary } from "./input-paste.js";
 import { getListWindowStart } from "./list-window.js";
 import { StatusBorder } from "./status-border.js";
@@ -96,12 +98,15 @@ const MODEL_CYCLE: PermissionMode[] = ["default", "acceptEdits", "plan", "bypass
 
 interface InputBoxProps {
   onSubmit: (text: string) => void;
+  /** Atomically pop the latest queued message, only when Up starts on a clean draft. */
+  onRecallQueuedMessage?: () => string | undefined;
   disabled?: boolean;
   /** Blocks Enter-to-send while still allowing typing/editing (e.g. while
    *  the agent is streaming or the conversation is being compacted). */
   submitDisabled?: boolean;
   history?: string[];
   commands?: Command[];
+  thinkingLevels?: readonly ThinkingLevel[];
   onEscape?: () => void;
   inputState?: "idle" | "focused" | "agent" | "error";
   borderColor?: string;
@@ -124,10 +129,12 @@ interface InputBoxProps {
 export function InputBox(props: InputBoxProps) {
   const {
     onSubmit,
+    onRecallQueuedMessage,
     disabled,
     submitDisabled,
     history = [],
     commands = [],
+    thinkingLevels = THINKING_LEVELS,
     onEscape,
     inputState = "idle",
     borderColor: requestedBorderColor,
@@ -142,6 +149,10 @@ export function InputBox(props: InputBoxProps) {
     draftRef,
   } = props;
   const { stdout } = useStdout();
+  const borderWidth = Math.max(1, stdout.columns || 80);
+  const horizontalPadding = borderWidth > 2 ? 1 : 0;
+  const rowWidth = borderWidth - horizontalPadding * 2;
+  const preferredColumnRef = useRef<{ width: number; column: number } | null>(null);
 
   const {
     lines,
@@ -196,6 +207,7 @@ export function InputBox(props: InputBoxProps) {
       const before = line.slice(0, col);
       const pad = before.length > 0 && !/\s$/.test(before) ? " " : "";
       const inserted = pad + text;
+      preferredColumnRef.current = null;
       setLines((prev) => {
         const updated = [...prev];
         const l = updated[cursorLine] ?? "";
@@ -219,6 +231,7 @@ export function InputBox(props: InputBoxProps) {
       if (disabled) {
         return;
       }
+      preferredColumnRef.current = null;
       setLines([""]);
       setCursorLine(0);
       setCursorCol(0);
@@ -254,7 +267,22 @@ export function InputBox(props: InputBoxProps) {
       return { filteredCmds: [], recentCount: 0 };
     }
     const query = first.slice(1).toLowerCase();
-    if (query.includes(" ")) {
+    const thinkingMatch = /^(thinking|think)[ \t]+([a-z]*)$/u.exec(query);
+    const thinkingCommand = commands.find((command) => command.name === "thinking");
+    if (thinkingMatch && thinkingCommand) {
+      return {
+        filteredCmds: thinkingLevels
+          .filter((level) => level.startsWith(thinkingMatch[2]))
+          .map((level) => ({
+            ...thinkingCommand,
+            name: `${thinkingMatch[1]} ${level}`,
+            aliases: [],
+            description: `Set thinking to ${level}`,
+          })),
+        recentCount: 0,
+      };
+    }
+    if (/\s/u.test(query)) {
       return { filteredCmds: [], recentCount: 0 };
     }
     if (!query) {
@@ -316,7 +344,7 @@ export function InputBox(props: InputBoxProps) {
     }
 
     return { filteredCmds: result, recentCount: 0 };
-  }, [lines, commands, isMultiline, usageTracker]);
+  }, [lines, commands, isMultiline, usageTracker, thinkingLevels]);
 
   const showDropdown =
     filteredCmds.length > 0 &&
@@ -389,6 +417,7 @@ export function InputBox(props: InputBoxProps) {
     if (!normalized) {
       return;
     }
+    preferredColumnRef.current = null;
     const current = getDraft();
     const collapsed = image
       ? collapseImage(normalized, current.pastes)
@@ -470,6 +499,9 @@ export function InputBox(props: InputBoxProps) {
     if (input.includes("[<") && /\[<\d+;\d+;\d+[Mm]/.test(input)) {
       return;
     }
+    if (!key.upArrow && !key.downArrow) {
+      preferredColumnRef.current = null;
+    }
 
     // Escape: key.escape or raw \x1b byte (tmux compat)
     if (key.escape || input === "\x1b") {
@@ -526,7 +558,12 @@ export function InputBox(props: InputBoxProps) {
         completeAt(filteredFiles[dropdownIndex]);
         return;
       }
-      if (showDropdown && filteredCmds.length > 0 && dropdownIndex < filteredCmds.length) {
+      if (
+        showDropdown &&
+        filteredCmds.length > 0 &&
+        dropdownIndex < filteredCmds.length &&
+        !(lines.length === 1 && /^\/(thinking|think)\s*$/iu.test(lines[0]))
+      ) {
         const selected = filteredCmds.at(dropdownIndex);
         if (selected) {
           const newLine = "/" + selected.name + " ";
@@ -661,24 +698,53 @@ export function InputBox(props: InputBoxProps) {
       return;
     }
 
+    if (key.upArrow || key.downArrow) {
+      const direction = key.upArrow ? -1 : 1;
+      if (showAtDropdown || showDropdown) {
+        preferredColumnRef.current = null;
+        const count = showAtDropdown ? filteredFiles.length : filteredCmds.length;
+        setDropdownIndex((index) => (index + direction + count) % count);
+        return;
+      }
+      const preferred = preferredColumnRef.current;
+      const position = moveInputVertically(
+        layoutInputRows(lines, rowWidth, pastes),
+        cursorLine,
+        cursorCol,
+        direction,
+        preferred?.width === rowWidth ? preferred.column : undefined,
+      );
+      if (position) {
+        preferredColumnRef.current = { width: rowWidth, column: position.preferredColumn };
+        setCursorLine(position.cursorLine);
+        setCursorCol(position.cursorCol);
+        return;
+      }
+    }
+
     if (key.upArrow) {
-      if (showAtDropdown) {
-        setDropdownIndex((i) => (i > 0 ? i - 1 : filteredFiles.length - 1));
-        return;
-      }
-      if (showDropdown) {
-        setDropdownIndex((i) => (i > 0 ? i - 1 : filteredCmds.length - 1));
-        return;
-      }
-      if (isMultiline && cursorLine > 0) {
-        const targetLine = lines[cursorLine - 1] ?? "";
-        setCursorLine(cursorLine - 1);
-        setCursorCol(
-          inputBoundary(targetLine, Math.min(cursorCol, targetLine.length), "clamp", pastes),
-        );
-        return;
+      if (lines.length === 1 && lines[0] === "" && historyIndex === -1) {
+        const recalled = onRecallQueuedMessage?.();
+        if (recalled !== undefined) {
+          const recalledLines = recalled.replace(/\r\n?/g, "\n").split("\n");
+          preferredColumnRef.current = null;
+          setLines(recalledLines);
+          setCursorLine(recalledLines.length - 1);
+          setCursorCol(recalledLines[recalledLines.length - 1].length);
+          setHistoryIndex(-1);
+          setHistoryDraft(null);
+          setPastes(undefined);
+          pasteGenerationRef.current++;
+          pasteImageInflightRef.current = false;
+          setIsPastingImage(false);
+          setPasteError("");
+          setDropdownIndex(0);
+          setDropdownDismissed(true);
+          return;
+        }
       }
       if ((!isMultiline || historyIndex >= 0) && history.length > 0) {
+        preferredColumnRef.current = null;
         if (historyIndex === -1) {
           setHistoryDraft({
             lines: [...lines],
@@ -703,23 +769,10 @@ export function InputBox(props: InputBoxProps) {
     }
 
     if (key.downArrow) {
-      if (showAtDropdown) {
-        setDropdownIndex((i) => (i < filteredFiles.length - 1 ? i + 1 : 0));
-        return;
-      }
-      if (showDropdown) {
-        setDropdownIndex((i) => (i < filteredCmds.length - 1 ? i + 1 : 0));
-        return;
-      }
-      if (isMultiline && cursorLine < lines.length - 1) {
-        const targetLine = lines[cursorLine + 1] ?? "";
-        setCursorLine(cursorLine + 1);
-        setCursorCol(
-          inputBoundary(targetLine, Math.min(cursorCol, targetLine.length), "clamp", pastes),
-        );
-        return;
-      }
       if (!isMultiline || historyIndex >= 0) {
+        if (historyIndex >= 0) {
+          preferredColumnRef.current = null;
+        }
         if (historyIndex > 0) {
           const nextIdx = historyIndex - 1;
           setHistoryIndex(nextIdx);
@@ -774,17 +827,22 @@ export function InputBox(props: InputBoxProps) {
       : inputState === "idle"
         ? THEME.borderMuted
         : THEME.thinkingHigh);
-  const borderWidth = Math.max(1, stdout.columns || 80);
-  const horizontalPadding = borderWidth > 2 ? 1 : 0;
-  const rowWidth = borderWidth - horizontalPadding * 2;
+  const inputRows = useMemo(
+    () => layoutInputRows(lines, rowWidth, pastes),
+    [lines, rowWidth, pastes],
+  );
+  const visualCursor = locateInputCursor(inputRows, cursorLine, cursorCol);
   const maxVisibleLines = Math.max(5, Math.floor((stdout.rows || 24) * 0.3));
   const visibleStart = Math.max(
     0,
-    Math.min(cursorLine - Math.floor(maxVisibleLines / 2), lines.length - maxVisibleLines),
+    Math.min(
+      visualCursor.row - Math.floor(maxVisibleLines / 2),
+      inputRows.length - maxVisibleLines,
+    ),
   );
-  const visibleLines = lines.slice(visibleStart, visibleStart + maxVisibleLines);
+  const visibleRows = inputRows.slice(visibleStart, visibleStart + maxVisibleLines);
   const hiddenAbove = visibleStart;
-  const hiddenBelow = Math.max(0, lines.length - visibleStart - visibleLines.length);
+  const hiddenBelow = Math.max(0, inputRows.length - visibleStart - visibleRows.length);
   const spinner = SPINNER_FRAMES[statusFrame] ?? SPINNER_FRAMES[0];
 
   const ghostText = useMemo(() => {
@@ -812,44 +870,43 @@ export function InputBox(props: InputBoxProps) {
         spinner={inputState === "error" ? "!" : spinner}
         hiddenLineCount={hiddenAbove}
       />
-      <Box paddingLeft={horizontalPadding} paddingRight={horizontalPadding}>
-        <Text>
-          {disabled ? (
-            <Text color={THEME.muted}>Waiting...</Text>
-          ) : (
-            <>
-              {visibleLines.map((line, visibleIndex) => {
-                const lineIndex = visibleStart + visibleIndex;
-                const prefix = visibleIndex > 0 ? "\n" : "";
-                if (lineIndex === cursorLine) {
-                  const col = Math.min(cursorCol, line.length);
-                  const before = line.slice(0, col);
-                  const nextCol = inputBoundary(line, col, "next", pastes);
-                  const atChar = col < line.length ? line.slice(col, nextCol) : " ";
-                  const after = col < line.length ? line.slice(nextCol) : "";
-                  const atEnd = col >= line.length;
-                  return (
-                    <Text key={lineIndex}>
-                      {prefix}
-                      {before}
-                      <Text inverse>{atChar}</Text>
-                      {after}
-                      {atEnd && lineIndex === 0 && ghostText ? (
-                        <Text color={THEME.dim}>{ghostText}</Text>
-                      ) : null}
-                    </Text>
-                  );
-                }
-                return (
-                  <Text key={lineIndex}>
-                    {prefix}
-                    {line}
-                  </Text>
-                );
-              })}
-            </>
-          )}
-        </Text>
+      <Box flexDirection="column" paddingLeft={horizontalPadding} paddingRight={horizontalPadding}>
+        {disabled ? (
+          <Text color={THEME.muted} wrap="truncate-end">
+            Waiting...
+          </Text>
+        ) : (
+          visibleRows.map((row, visibleIndex) => {
+            const rowIndex = visibleStart + visibleIndex;
+            if (rowIndex !== visualCursor.row) {
+              return (
+                <Text key={rowIndex} wrap="truncate-end">
+                  {row.cells.map((cell) => cell.text).join("")}
+                </Text>
+              );
+            }
+            const before = row.cells
+              .slice(0, visualCursor.cell)
+              .map((cell) => cell.text)
+              .join("");
+            const caret = row.cells[visualCursor.cell];
+            const after = row.cells
+              .slice(visualCursor.cell + 1)
+              .map((cell) => cell.text)
+              .join("");
+            const atEnd = caret.offset === (lines[row.line] ?? "").length;
+            return (
+              <Text key={rowIndex} wrap="truncate-end">
+                {before}
+                <Text inverse>{caret.text}</Text>
+                {after}
+                {atEnd && row.line === 0 && ghostText ? (
+                  <Text color={THEME.dim}>{truncateToWidth(ghostText, rowWidth - row.width)}</Text>
+                ) : null}
+              </Text>
+            );
+          })
+        )}
       </Box>
       <StatusBorder
         width={borderWidth}

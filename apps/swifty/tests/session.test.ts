@@ -296,7 +296,9 @@ describe("rebuildFromSession (compacted-state resume)", () => {
 
     // Summary is present with Chinese framing, replayed as a synthetic user message.
     expect(rebuilt[0].role).toBe("user");
-    expect(rebuilt[0].content).toContain("This session continues from a previous conversation");
+    expect(rebuilt[0].content).toContain(
+      "The conversation history before this point was compacted",
+    );
     expect(rebuilt[0].content).toContain("SUMMARY of the old prefix");
     expect(rebuilt[0].content).toContain("Recent messages have been preserved verbatim");
     // Kept tail (original text) is replayed verbatim, in order, with roles.

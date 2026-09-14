@@ -20,124 +20,40 @@
  * SOFTWARE.
  */
 
-export const BASH_DESCRIPTION = `
-Execute a shell command and return stdout and stderr.
+const GIT_GUIDANCE = `Git: commit or push only when requested. Destructive operations (push --force, reset --hard, checkout ., clean -f, branch -D), amending, or skipping hooks/signing require explicit authorization; never bypass permission/hook denials. Prefer new commits. When committing, include Co-Authored-By: Swifty <usr161043261@outlook.com>.`;
 
-On Windows, prefer the PowerShell tool over Bash for shell commands.
+export const BASH_DESCRIPTION = `Execute command in Bash; return stdout and stderr. Prefer PowerShell on Windows.
+- timeout is in seconds: default 120, maximum 600. Each call starts a fresh, independent shell in the Agent's working directory; cd, variables, functions, and options do not persist.
+- Quote paths with spaces. To change directory, use cd "path" && command in the same call. Separate independent commands; chain dependent commands with &&, not ;.
+- Prefer dedicated file/search tools over cat, head, tail, sed, awk, echo, or find. Scope searches to a directory, never the filesystem root. Diagnose failures rather than retrying in sleep loops.
+${GIT_GUIDANCE}`;
 
-IMPORTANT: Avoid using this tool to run cat, head, tail, sed, awk or echo commands. Instead use the dedicated ReadFile, EditFile, or WriteFile tools which provide a better experience.
+export const POWERSHELL_DESCRIPTION = `Execute command in PowerShell; return stdout and stderr. Recommended on Windows (powershell.exe); uses pwsh elsewhere.
+- timeout is in seconds: default 120, maximum 600. Each call starts a fresh, independent shell in the Agent's working directory; location, variables, and options do not persist.
+- Quote paths with spaces; use Set-Location -LiteralPath "path" in the same call. Separate independent commands. For dependencies, check $LASTEXITCODE for native commands and use -ErrorAction Stop for cmdlets; ; does not stop on failure. Do not assume PowerShell 7 syntax.
+- Prefer dedicated file/search tools over Get-Content, Select-String, or Write-Output. Scope recursion to a directory, not a drive root. Diagnose failures rather than retrying in Start-Sleep loops.
+${GIT_GUIDANCE}`;
 
-Usage Notes
+export const READ_FILE_DESCRIPTION = `Read text with 1-based display line numbers, or images (png, jpg, jpeg, gif, webp) as visual content; not directories.
+- file_path is absolute or relative to the Agent's working directory. offset skips lines (0-based, default 0); limit defaults to 2000 lines, with a 50KB text output cap. Displayed line 101 starts at offset=100. Follow continuation/readback instructions for partial output.
+- Images ignore offset/limit. A successful read refreshes the file-state cache used by EditFile/WriteFile; re-read after an external-change error.`;
 
-- Each call starts in the Agent's working directory with a fresh shell. Changes made by cd, variables, functions, and shell options do not persist to the next call.
-- Always quote file paths containing spaces with double quotes.
-- To run in a subdirectory, use cd with a quoted path followed by && and the command in the same call.
-- Optional timeout in seconds (max 600s). Default 120s.
-- When issuing multiple independent commands, make separate tool calls instead of chaining with &&.
-- Use && to chain sequential dependent commands. Use ; only when you don't care if earlier commands failed.
+export const EDIT_FILE_DESCRIPTION = `Replace exact text in an existing file and return a diff. Prefer this over whole-file rewrites.
+- file_path is absolute or relative to the Agent's working directory. ReadFile is required first; stale file-state errors require a fresh read and revised edit.
+- old_string must be non-empty and unique unless replace_all=true (default false). Use enough context to disambiguate; preserve whitespace and exclude display line numbers.
+- new_string must differ from old_string; an empty string deletes the match.`;
 
-Git Safety Protocol
+export const WRITE_FILE_DESCRIPTION = `Write complete UTF-8 content to file_path, creating parent directories and overwriting existing content. Use for new files or complete rewrites; prefer EditFile for targeted changes.
+- file_path is absolute or relative to the Agent's working directory. Existing files require ReadFile first; re-read if the cached state is stale.
+- content includes any desired trailing newline; an empty string creates or truncates an empty file. Avoid unrelated files or unsolicited documentation.`;
 
-- NEVER run destructive git commands (push --force, reset --hard, checkout ., clean -f, branch -D) unless the user explicitly requests it.
-- NEVER skip hooks (--no-verify) unless the user explicitly requests it.
-- Prefer creating a new commit rather than amending an existing one.
-- Commit identity: adds a header: Co-Authored-By: Swifty <usr161043261@outlook.com>
+export const GLOB_DESCRIPTION = `Find files by glob pattern (e.g. "**/*.ts", "*.{ts,tsx}"). Return paths relative to path, sorted newest modification first.
+- path is absolute or relative to the Agent's working directory (default "."); never search the filesystem root.
+- Includes dotfiles; traversal skips fixed directories such as .git, .agents, .swifty, node_modules, dist, and __pycache__, not rules from .gitignore.
+- At most 1000 matches; narrow limited searches rather than treating them as exhaustive. Prefer this over shell find/ls.`;
 
-Avoiding unnecessary sleep commands. Do NOT retry failing commands in a sleep loop -- diagnose the root cause instead.
-When using find, search from "." or a specific path, not "/" -- scanning the full filesystem is too expensive.
-`;
-
-export const POWERSHELL_DESCRIPTION = `
-Execute a PowerShell command and return stdout and stderr.
-
-This is the RECOMMENDED shell tool on Windows -- prefer it over Bash there. It runs powershell.exe on Windows and pwsh (PowerShell Core) on other platforms.
-
-IMPORTANT: Avoid using this tool to run Get-Content, Select-String, or Write-Output/echo commands. Instead use the dedicated ReadFile, EditFile, or WriteFile tools which provide a better experience.
-
-Usage Notes
-
-- Each call starts in the Agent's working directory with a fresh shell. Set-Location, variables, and shell options do not persist to the next call.
-- Always quote file paths containing spaces with double quotes.
-- To run in a subdirectory, use Set-Location -LiteralPath with a quoted path in the same call.
-- Optional timeout in seconds (max 600s). Default 120s.
-- When issuing multiple independent commands, make separate tool calls instead of chaining with ;.
-- A semicolon does not stop after failure. Check $LASTEXITCODE after native commands and use -ErrorAction Stop for dependent cmdlets. Do not assume PowerShell 7 syntax is available on Windows PowerShell.
-
-Git Safety Protocol
-
-- NEVER run destructive git commands (push --force, reset --hard, checkout ., clean -f, branch -D) unless the user explicitly requests it.
-- NEVER skip hooks (--no-verify) unless the user explicitly requests it.
-- Prefer creating a new commit rather than amending an existing one.
-- Commit identity: adds a header: Co-Authored-By: Swifty <usr161043261@outlook.com>
-
-Avoiding unnecessary Start-Sleep commands. Do NOT retry failing commands in a sleep loop -- diagnose the root cause instead.
-When using Get-ChildItem -Recurse, search from "." or a specific path, not the drive root -- scanning the full filesystem is too expensive.
-`;
-
-export const READ_FILE_DESCRIPTION = `
-Read a file and return its contents with line numbers.
-
-Usage Notes
-
-- file_path may be absolute or relative to the Agent's working directory.
-- By default reads up to 2000 lines from the beginning of the file.
-- offset is the number of lines to skip (0-based); limit is the maximum number of lines to return. To start at displayed line 101, use offset=100. Only read what you need.
-- Results are returned with line numbers (1-based) for easy reference.
-- This tool reads files, not directories. Use Glob to find files and Grep to locate relevant lines.
-- Large output may be saved to a readback file. Follow the returned path or request a narrower range when more content is needed.
-- A successful read refreshes the file state used by EditFile and WriteFile. If a write reports that a file changed externally, read it again before retrying.
-- This tool can read image files (png, jpg, jpeg, gif, webp). Image contents are returned as visual content for multimodal analysis. Line numbers and offset/limit parameters do NOT apply to image files.
-`;
-
-export const EDIT_FILE_DESCRIPTION = `
-Replace an exact text string in an existing file and return a diff of the change.
-
-Usage Notes
-
-- You MUST read the file with ReadFile before editing, this tool will fail otherwise.
-- Preserve exact whitespace and indentation from the file; exclude ReadFile's line-number prefixes.
-- Always prefer editing existing files over creating new ones.
-- By default old_string must occur exactly once. Include more surrounding context to disambiguate, or set replace_all=true only when every occurrence should change.
-- Use the smallest old_string that is clearly unique -- 2-4 adjacent lines is usually sufficient.
-- old_string must be non-empty. new_string must differ from old_string and may be empty to delete the matched text.
-- file_path may be absolute or relative to the Agent's working directory. A stale-file error requires another ReadFile and a revised edit.
-`;
-
-export const WRITE_FILE_DESCRIPTION = `
-Write content to a file, creating parent directories if needed. Overwrites existing files.
-
-Usage Notes
-
-- If modifying an existing file, prefer EditFile over WriteFile -- it only sends the diff.
-- Use this tool only to create new files or for complete rewrites.
-- You MUST read existing files with ReadFile before overwriting them.
-- file_path may be absolute or relative to the Agent's working directory. content is the complete UTF-8 text, including any desired trailing newline; an empty string creates or truncates an empty file.
-- Create documentation when the requested task or active workflow requires it; avoid unrelated files.
-`;
-
-export const GLOB_DESCRIPTION = `
-Find files matching a glob pattern, returning paths relative to the search base, sorted by modification time (newest first).
-
-Usage Notes
-
-- Supports patterns like "**/*.ts", "src/js/*.js", "*.{ts,tsx}".
-- Search from "." or a specific path, never from "/".
-- Hidden (dot) files and directories are included.
-- Automatically skips .git, node_modules, __pycache__, and similar directories.
-- Returns at most 1000 matches. When limited, narrow the search; the result is not an exhaustive listing.
-- Use this instead of find or ls command via Bash.
-`;
-
-export const GREP_DESCRIPTION = `
-Search file content using a regex pattern (case-insensitive), returning file:line:content matches.
-
-Usage Notes
-
-- Searches one line at a time using JavaScript-style regular expressions (e.g., "log.*Error"). Escape backslashes in JSON strings. Multiline matches and every PCRE extension are not supported.
-- Filter files with the include parameter (e.g., "*.ts", "*.{ts,tsx}", "src/**/*.js").
-- Include patterns containing "/" match the path relative to the working directory; bare patterns like "*.ts" match file names at any depth.
-- Search from "." or a specific path, never from "/".
-- Automatically skips .git, node_modules, __pycache__, and similar directories.
-- Use this instead of grep or rg commands via Bash.
-- Returns at most 500 matching lines. Narrow the search if the result limit is reached. Use ReadFile for surrounding context.
-`;
+export const GREP_DESCRIPTION = `Search file content with a case-insensitive, line-by-line JavaScript-style regex pattern; return file:line:content with 1-based lines and working-directory-relative paths.
+- path is a file or directory, absolute or relative to the Agent's working directory (default "."). Escape regex backslashes in JSON. No multiline matching or general PCRE support.
+- include is an optional glob: "*.ts" matches names at any depth; patterns with "/" match working-directory-relative paths. A direct file path is searched without this filter.
+- Traversal includes dotfiles but skips fixed directories such as .git, .agents, .swifty, node_modules, dist, and __pycache__, not .gitignore rules. Binary/unreadable files are skipped; directory symlinks are not traversed.
+- At most 500 matching lines. Narrow searches; never search the filesystem root. Use ReadFile for context and this tool instead of shell grep/rg.`;

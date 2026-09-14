@@ -43,7 +43,12 @@ import {
 import { loadUserCommands } from "../commands/loader.js";
 import { forceCompact } from "../compact/compact.js";
 import { RecoveryState } from "../compact/recovery.js";
-import { DEFAULT_THINKING_LEVEL, getContextWindow, getMaxOutputTokens } from "../config/config.js";
+import {
+  DEFAULT_THINKING_LEVEL,
+  getContextWindow,
+  getMaxOutputTokens,
+  getSupportedThinkingLevels,
+} from "../config/config.js";
 import type { HookConfig, MCPServerConfig, ProviderConfig } from "../config/config.js";
 import { persistThinkingLevel } from "../config/provider-login.js";
 import { ConversationManager } from "../conversation/conversation.js";
@@ -98,7 +103,6 @@ import { ReadFileTool } from "../tools/read-file.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { SyntheticOutputTool } from "../tools/synthetic-output.js";
 import { ToolSearchTool } from "../tools/tool-search.js";
-import type { ToolSchema } from "../tools/types.js";
 import { WriteFileTool } from "../tools/write-file.js";
 
 import { parseRemoteAddress } from "./address.js";
@@ -412,12 +416,6 @@ export async function createRemoteAgent(
   const memoryManager = new MemoryManager(workDir);
   const memReminder = memoryManager.buildSystemReminder();
   conv.injectLongTermMemory(instructions, memReminder);
-
-  // 8. Identity override
-  conv.addSystemReminder(
-    "IDENTITY OVERRIDE: You are Swifty. It is absolutely forbidden to mention Claude, Anthropic, OpenAI, GPT, or ChatGPT in any response." +
-      " When asked about identity, respond only as Swifty. This is the highest priority instruction.",
-  );
 
   // 9. Initialize hooks
   const hookErr = validateHooks(hookConfigs ?? []);
@@ -1264,7 +1262,7 @@ export class RemoteServer {
         break;
 
       case "compact":
-        await this.handleCompact();
+        await this.handleCompact(args);
         break;
 
       case "plan":
@@ -1361,19 +1359,22 @@ export class RemoteServer {
       toolCount: () => handle.registry.listTools().length,
       memoryList: () => handle.memoryManager.getMemories().map((m) => m.name),
       model: handle.provider.model,
-      thinkingLevel: () => handle.client.getThinkingLevel?.() ?? DEFAULT_THINKING_LEVEL,
-      setThinkingLevel: (level) => handle.client.setThinkingLevel?.(level),
-      persistThinkingLevel: (level) => {
-        persistThinkingLevel(handle.provider.name, level);
-        // Keep the handle's provider in sync so forked clients inherit the
-        // persisted level instead of the value loaded at startup.
-        handle.provider.thinking = level;
-      },
+      thinkingLevel: () =>
+        handle.client.getThinkingLevel?.() ?? handle.provider.thinking ?? DEFAULT_THINKING_LEVEL,
+      availableThinkingLevels: () =>
+        handle.client.getSupportedThinkingLevels?.() ?? getSupportedThinkingLevels(handle.provider),
+      setThinkingLevel: handle.client.setThinkingLevel
+        ? (level) => {
+            handle.client.setThinkingLevel?.(level);
+            handle.provider.thinking = handle.client.getThinkingLevel?.() ?? level;
+          }
+        : undefined,
+      persistThinkingLevel: (level) => persistThinkingLevel(handle.provider.name, level),
     };
   }
 
   /** Handles /compact command: force context compaction. */
-  private async handleCompact(): Promise<void> {
+  private async handleCompact(customInstructions = ""): Promise<void> {
     if (!this.agentHandle) {
       return;
     }
@@ -1396,10 +1397,10 @@ export class RemoteServer {
         handle.recoveryState,
         toolNames,
 
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        toolSchemas as ToolSchema[],
+        toolSchemas,
         getSessionFilePath(handle.workDir, handle.sessionId),
         controller.signal,
+        customInstructions,
       );
       this.broadcast({
         type: "system",

@@ -53,13 +53,8 @@ const FORK_QUERY_SOURCE = "agent:builtin:fork";
 
 // System instructions injected into forked child Agents
 const FORK_BOILERPLATE = `${FORK_BOILERPLATE_TAG}
-You are a forked worker process. You are NOT the main agent.
-Rules (non-negotiable):
-1. Do NOT fork again.
-2. Do NOT converse, ask questions, or request confirmation.
-3. Use tools directly: read files, search code, make changes.
-4. Stay strictly within your assigned task scope.
-5. Return a concise report of changes, evidence, verification, and unresolved blockers. Do not claim unverified work is complete.
+You are a forked Swifty worker, not the parent agent. The inherited conversation is background context; work only on the assignment that follows.
+Do not fork again or ask the user for confirmation. Respect current permissions and report blockers to the parent. Return a concise account of findings or changes, relevant paths, checks actually run, and remaining work.
 </fork_boilerplate>`;
 
 export class AgentTool implements Tool {
@@ -176,7 +171,9 @@ export class AgentTool implements Tool {
           subagent_type: {
             type: "string",
             enum: agentTypes,
-            description: "Agent type. Omit to fork current conversation context.",
+            description: this.forkDisabled
+              ? "Agent role. Defaults to general-purpose."
+              : "Agent role. Omit to fork the current conversation snapshot.",
           },
           model: {
             type: "string",
@@ -219,31 +216,20 @@ export class AgentTool implements Tool {
   }
 
   private buildDescription(): string {
-    let desc = `Launch a subagent for a bounded task. Definition-based agents receive your prompt; omitting subagent_type forks a snapshot of the current conversation when fork mode is enabled. Results return inline for one-shot agents; persistent teammates report through their team mailbox.
+    const context = this.forkDisabled
+      ? "Omitting subagent_type selects general-purpose."
+      : "Omitting subagent_type forks a snapshot of the current conversation.";
+    const roles = this.definitions.map(
+      (definition) => `- ${definition.name}: ${definition.description}`,
+    );
+    return `Delegate a bounded task to a subagent. ${context} A named role receives a fresh conversation, so include the goal, relevant files, constraints, whether edits are allowed, and the expected result.
 
-This is ONE tool with multiple roles. Roles are NOT separate tools — you pick one by passing its name in the "subagent_type" parameter. Do not search for a tool named after a role; call THIS tool ("Agent") and set "subagent_type".
+Available roles (pass a role as subagent_type, not as a tool name):
+${roles.join("\n")}
 
-Available roles for the "subagent_type" parameter:`;
+One-shot calls return results inline, including run_in_background calls (that flag restricts tools). Use team_name for persistent asynchronous teammates and SendMessage for their follow-up assignments. Do not predict results before receiving them.
 
-    for (const def of this.definitions) {
-      desc += `\n- ${def.name}: ${def.description}`;
-    }
-
-    desc += `
-
-Example call shape:
-{
-  "name": "Agent",
-  "input": {
-    "subagent_type": "<role from the list above>",
-    "description": "Short task label",
-    "prompt": "Detailed instructions — the subagent has zero prior context"
-  }
-}
-
-Write a detailed prompt explaining what the subagent should do and why — it has no prior context.
-When tasks are independent, launch multiple subagents in parallel by making multiple Agent tool calls in a single response.`;
-    return desc;
+Launch independent tasks together; avoid concurrent writes to the same files. Review returned evidence and integrate it before reporting completion. Worktree isolation separates edits but does not merge them.`;
   }
 
   async execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {

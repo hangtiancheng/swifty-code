@@ -27,6 +27,7 @@ import type { ConversationManager } from "../conversation/conversation.js";
 import { createChildLogger } from "../logger/logger.js";
 import type { PermissionChecker } from "../permissions/checker.js";
 import { getOrCreatePlanPath } from "../plan-file/plan-file.js";
+import { buildTeammatePrompt } from "../prompt/delegation.js";
 import { randomVerb } from "../utils/verbs.js";
 
 import { detectBackend, spawnTeammate as spawnTeammateProcess } from "./backend.js";
@@ -328,7 +329,11 @@ export class Team {
         while (member.active) {
           // Execute one turn of the agent
           uiState.status = "running";
-          const result = await runAgent(nextPrompt, onEvent, abortController.signal);
+          const result = await runAgent(
+            buildTeammatePrompt(this.name, name, nextPrompt),
+            onEvent,
+            abortController.signal,
+          );
           uiState.lastMessage = result.length > 200 ? result.slice(0, 200) + "..." : result;
           // Plan-mode teammate: a completed turn means it called ExitPlanMode and the plan
           // has been written to disk. Submit the plan to the Lead for approval; only after

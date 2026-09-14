@@ -33,8 +33,10 @@ export function useIdeInput(workDir: string) {
   useEffect(() => {
     let connection: IdeConnection | null = null;
     let cancelled = false;
+    const controller = new AbortController();
     void connectToIde({
       cwd: workDir,
+      signal: controller.signal,
       onAtMentioned: ({ filePath, lineStart, lineEnd }) => {
         const rel = relative(workDir, filePath);
         const shown = rel && !rel.startsWith("..") ? rel : filePath;
@@ -59,6 +61,7 @@ export function useIdeInput(workDir: string) {
     });
     return () => {
       cancelled = true;
+      controller.abort();
       void connection?.close();
     };
   }, [workDir]);

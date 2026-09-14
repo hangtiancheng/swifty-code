@@ -214,4 +214,52 @@ describe("provider login", () => {
   it("reports a missing global config file with a clean error", () => {
     expect(() => loadConfig()).toThrow(/No config file found/);
   });
+
+  it("preserves known and future capability metadata through save, reload, and thinking updates", () => {
+    const metadata = {
+      reasoning: true,
+      thinking_mode: "adaptive",
+      thinking_level_map: { minimal: null, low: "medium", xhigh: null },
+      future_capability: { supported: true },
+    };
+    const saved = saveProvider({ ...input, ...metadata }, []);
+    expect(saved.provider).toMatchObject({ ...metadata, thinking: "high" });
+    expect(loadConfig(saved.path).providers[0]).toMatchObject(metadata);
+    persistThinkingLevel(saved.provider.name, "low");
+    expect(loadConfig(saved.path).providers[0]).toMatchObject({ ...metadata, thinking: "low" });
+    const duplicate = saveProvider({ ...input, reasoning: false }, saved.providers);
+    expect(duplicate.provider.name).toBe("custom2");
+    expect(duplicate.provider.thinking).toBe("off");
+    expect(duplicate.providers[0]).toMatchObject(metadata);
+    expect(loadConfig(saved.path).providers[0]).toMatchObject(metadata);
+  });
+
+  it("preserves capability fields from available providers not yet on disk", () => {
+    const available = ProviderLoginSchema.parse({
+      ...input,
+      name: "in-memory",
+      reasoning: false,
+      future_capability: { retained: true },
+    });
+    const saved = saveProvider(input, [available]);
+    expect(saved.providers[0]).toMatchObject(available);
+    expect(loadConfig(saved.path).providers[0]).toMatchObject(available);
+  });
+
+  it("saves effective defaults for capability-limited providers", () => {
+    expect(ProviderLoginSchema.parse({ ...input, reasoning: false }).thinking).toBe("off");
+    expect(ProviderLoginSchema.parse({ ...input, max_output_tokens: 1024 }).thinking).toBe("off");
+    expect(
+      ProviderLoginSchema.parse({ ...input, thinking_level_map: { high: null } }).thinking,
+    ).toBe("medium");
+  });
+
+  it("rejects malformed capabilities before changing the isolated config", () => {
+    const saved = saveProvider(input, []);
+    const before = readFileSync(saved.path, "utf-8");
+    expect(() =>
+      saveProvider({ ...input, thinking_level_map: { high: "bogus" } }, saved.providers),
+    ).toThrow();
+    expect(readFileSync(saved.path, "utf-8")).toBe(before);
+  });
 });

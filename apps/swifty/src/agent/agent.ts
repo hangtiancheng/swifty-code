@@ -46,7 +46,7 @@ import {
 import type { FileStateCache } from "../tools/file-state-cache.js";
 import { McpCallTool } from "../tools/mcp-call.js";
 import type { ToolRegistry } from "../tools/registry.js";
-import type { ToolResult, ToolSchema } from "../tools/types.js";
+import type { ToolResult } from "../tools/types.js";
 import { asErrorString, asRecord, strArg } from "../utils/index.js";
 
 import type { AgentEvent } from "./events.js";
@@ -342,7 +342,7 @@ export class Agent {
             toolSchemaNames,
 
             // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-            toolSchemas as ToolSchema[],
+            toolSchemas,
             this.sessionFilePath,
             this.abortSignal,
           );
@@ -363,7 +363,7 @@ export class Agent {
               this.conversation,
 
               // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              toolSchemas as ToolSchema[],
+              toolSchemas,
               this.abortSignal,
             );
 
@@ -438,7 +438,7 @@ export class Agent {
                   toolSchemaNames,
 
                   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-                  toolSchemas as ToolSchema[],
+                  toolSchemas,
                   this.sessionFilePath,
                   this.abortSignal,
                 );

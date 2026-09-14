@@ -52,16 +52,15 @@ describe("skills runInline", () => {
     const { host, activated } = makeHost();
     const body = runInline(skill("Do $ARGUMENTS now."), "the thing", host);
 
-    expect(body).toBe("Do the thing now.");
-    expect(activated[0][0]).toBe("demo");
-    expect(activated[0][1]).toBe("Do the thing now.");
+    expect(body).toContain("<skill-body>\nDo the thing now.\n</skill-body>");
+    expect(activated).toEqual([["demo", body]]);
   });
 
-  it("appends a User Request fallback when there is no placeholder", () => {
+  it("keeps user arguments separate when there is no placeholder", () => {
     const { host } = makeHost();
     const body = runInline(skill("SOP body"), "extra context", host);
-    expect(body).toContain("SOP body");
-    expect(body).toContain("User Request: extra context");
+    expect(body).toContain("<skill-body>\nSOP body\n</skill-body>");
+    expect(body).toContain("<skill-arguments>extra context</skill-arguments>");
   });
 });
 

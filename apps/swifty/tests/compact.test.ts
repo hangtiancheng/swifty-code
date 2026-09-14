@@ -250,7 +250,9 @@ describe("doCompact via forceCompact (keep recent verbatim)", () => {
     expect(keepJoined).toContain("marker-recent-f");
     // The boundary summary is bare (no recovery attachment / no Chinese framing
     // wrapper — those are added at replay time, not persisted).
-    expect(boundary?.summary).not.toContain("This session continues from a previous conversation");
+    expect(boundary?.summary).not.toContain(
+      "The conversation history before this point was compacted",
+    );
 
     const after = conversation.getMessages();
     const joined = after.map((m) => contentToText(m.content)).join("\n");
@@ -261,7 +263,7 @@ describe("doCompact via forceCompact (keep recent verbatim)", () => {
     expect(joined).toContain("marker-recent-f");
     // The summary is present with the Chinese framing...
     expect(joined).toContain("THE SUMMARY BODY");
-    expect(joined).toContain("This session continues from a previous conversation");
+    expect(joined).toContain("The conversation history before this point was compacted");
     expect(joined).toContain("Recent messages have been preserved verbatim");
     // ...but the summary prompt only covered the prefix, NOT the kept tail.
     expect(lastPrompt()).toContain("OLD-PREFIX-0");
@@ -315,7 +317,7 @@ describe("doCompact via forceCompact (keep recent verbatim)", () => {
     // The verbatim originals are untouched (no summary injected).
     const joined = after.map((m) => contentToText(m.content)).join("\n");
     expect(joined).toContain("only-q marker");
-    expect(joined).not.toContain("This session continues from a previous conversation");
+    expect(joined).not.toContain("The conversation history before this point was compacted");
   });
 });
 

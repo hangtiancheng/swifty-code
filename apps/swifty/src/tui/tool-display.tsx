@@ -27,7 +27,7 @@ import { isDiffTool } from "../tools/is-diff-tool.js";
 
 import { DiffLines } from "./diff-render.js";
 import { THEME } from "./styles.js";
-import { truncateToWidth } from "./terminal-text.js";
+import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 import { formatToolOutputPreview } from "./tool-preview.js";
 
 export interface ToolBlockInfo {
@@ -61,45 +61,64 @@ export function ToolCard({
 }: ToolCardProps) {
   const { stdout } = useStdout();
   const width = Math.max(1, stdout.columns || 80);
-  const contentWidth = Math.max(1, width - 2);
+  const padding = width > 2 ? 1 : 0;
+  const contentWidth = width - padding * 2;
   const backgroundColor = loading
     ? THEME.toolPendingBg
     : isError
       ? THEME.toolErrorBg
       : THEME.toolSuccessBg;
   const shell = /^(bash|powershell)$/iu.test(toolName);
-  const title = shell
-    ? `${toolName.toLowerCase() === "bash" ? "$" : ">"} ${argsSummary}`
-    : `${toolName}${argsSummary ? ` ${argsSummary}` : ""}`;
-  const shown = output
+  const title = (
+    shell
+      ? `${toolName.toLowerCase() === "bash" ? "$" : ">"} ${argsSummary}`
+      : `${toolName}${argsSummary ? ` ${argsSummary}` : ""}`
+  ).replace(/[\r\n\t]+/g, " ");
+  const status = loading ? "running" : isError ? "failed" : "";
+  const timing = elapsed !== undefined && elapsed > 0 ? `${elapsed.toFixed(1)}s` : "";
+  const metadata = [status, timing].filter(Boolean).join(" · ");
+  const inlineMetadata = metadata && contentWidth >= visibleWidth(metadata) + 4;
+  const titleWidth = inlineMetadata ? contentWidth - visibleWidth(metadata) - 2 : contentWidth;
+  const preview = output
     ? expanded
       ? output.trimEnd()
       : formatToolOutputPreview(toolName, output, contentWidth)
     : "";
+  // A wide grapheme cannot fit in a one-column terminal, even with hard wrapping.
+  const shown =
+    contentWidth === 1
+      ? wrapToLines(preview, contentWidth)
+          .map((line) => truncateToWidth(line, contentWidth))
+          .join("\n")
+      : preview;
+  const detail = (
+    <Text color={isError && !loading ? THEME.error : THEME.dim}>
+      {wrapToLines(metadata, contentWidth).join("\n")}
+    </Text>
+  );
 
   return (
     <Box
       backgroundColor={backgroundColor}
       flexDirection="column"
       marginTop={1}
-      paddingX={1}
-      paddingY={1}
+      paddingX={padding}
       width={width}
     >
-      <Text bold color={THEME.toolTitle} wrap="truncate-end">
-        {truncateToWidth(title, contentWidth)}
+      <Text wrap="truncate-end">
+        <Text bold color={THEME.toolTitle}>
+          {truncateToWidth(title, titleWidth)}
+        </Text>
+        {inlineMetadata ? "  " : ""}
+        {inlineMetadata ? detail : null}
       </Text>
+      {metadata && !inlineMetadata ? detail : null}
       {shown ? (
-        <Box marginTop={1} flexDirection="column">
-          {isDiffTool(toolName) ? (
-            <DiffLines text={shown} />
-          ) : (
-            <Text color={THEME.toolOutput}>{shown}</Text>
-          )}
-        </Box>
-      ) : null}
-      {elapsed !== undefined && elapsed > 0 ? (
-        <Text color={THEME.dim}>{`Took ${elapsed.toFixed(1)}s`}</Text>
+        isDiffTool(toolName) ? (
+          <DiffLines text={shown} />
+        ) : (
+          <Text color={THEME.toolOutput}>{shown}</Text>
+        )
       ) : null}
     </Box>
   );

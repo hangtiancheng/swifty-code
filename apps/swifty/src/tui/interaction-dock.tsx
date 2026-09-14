@@ -32,10 +32,12 @@ import { ProviderSelect } from "./provider-select.js";
 import RewindDialog from "./rewind-dialog.js";
 import { SessionSelector } from "./session-selector.js";
 import { TeamsDialog } from "./teams-dialog.js";
+import { ThinkingSelect } from "./thinking-select.js";
 
 interface Props {
   login?: ComponentProps<typeof ProviderLogin>;
   provider?: ComponentProps<typeof ProviderSelect>;
+  thinking?: ComponentProps<typeof ThinkingSelect>;
   planApproval?: ComponentProps<typeof PlanApprovalDialog>;
   rewind?: ComponentProps<typeof RewindDialog>;
   resume?: ComponentProps<typeof SessionSelector>;
@@ -48,6 +50,7 @@ interface Props {
 export function InteractionDock({
   login,
   provider,
+  thinking,
   planApproval,
   rewind,
   resume,
@@ -80,6 +83,9 @@ export function InteractionDock({
   }
   if (teams) {
     return <TeamsDialog {...teams} />;
+  }
+  if (thinking) {
+    return <ThinkingSelect {...thinking} />;
   }
   return <InputBox {...composer} draftRef={draftRef} />;
 }

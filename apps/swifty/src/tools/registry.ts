@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-import type Anthropic from "@anthropic-ai/sdk";
+import type { ChatCompletionFunctionTool } from "openai/resources/chat/completions";
 import type { FunctionTool as OpenAITool } from "openai/resources/responses/responses";
 
 import { MCP_CALL_TOOL_NAME, TOOL_SEARCH_TOOL_NAME } from "./tool-names.js";
-import type { McpLoadingMode, Tool } from "./types.js";
+import type { McpLoadingMode, Tool, ToolSchema } from "./types.js";
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
@@ -60,11 +60,12 @@ export class ToolRegistry {
     return [...this.tools.values()];
   }
 
-  getAllSchemas(protocol?: "anthropic"): Anthropic.Tool[];
-  getAllSchemas(protocol: "openai" | "openai-compat"): OpenAITool[];
+  getAllSchemas(protocol?: "anthropic"): ToolSchema[];
+  getAllSchemas(protocol: "openai"): OpenAITool[];
+  getAllSchemas(protocol: "openai-compat"): ChatCompletionFunctionTool[];
   getAllSchemas(
     protocol: "anthropic" | "openai" | "openai-compat" = "anthropic",
-  ): (Anthropic.Tool | OpenAITool)[] {
+  ): (ToolSchema | OpenAITool | ChatCompletionFunctionTool)[] {
     const isOpenAI = protocol === "openai" || protocol === "openai-compat";
     // The official endpoint uses native deferral: tools stay in tools[] but are
     // flagged with defer_loading, and the server decides whether to show them to
@@ -73,7 +74,7 @@ export class ToolRegistry {
     // back on McpCall.
     const native = this.mcpLoadingMode === "native" && !isOpenAI;
 
-    const schemas: (Anthropic.Tool | OpenAITool)[] = [];
+    const schemas: (ToolSchema | OpenAITool | ChatCompletionFunctionTool)[] = [];
     for (const tool of this.tools.values()) {
       // Only expose search and dispatch in modes where they're useful. In eager
       // mode there are no deferred tools to search and no need to dispatch; sending
@@ -89,35 +90,26 @@ export class ToolRegistry {
         continue;
       }
       const s = tool.schema();
-      if (isOpenAI) {
-        // openai and openai-compat both use FunctionTool shape
+      if (protocol === "openai") {
         schemas.push({
-          strict: false, // Whether to enforce strict parameter validation. Default true.
+          strict: s.strict ?? false,
           type: "function",
           name: s.name,
           description: s.description,
           parameters: s.input_schema,
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
+        });
+      } else if (protocol === "openai-compat") {
+        schemas.push({
+          type: "function",
           function: {
             name: s.name,
             description: s.description,
             parameters: s.input_schema,
+            strict: s.strict ?? false,
           },
-        } satisfies OpenAITool);
+        });
       } else {
-        schemas.push(
-          deferred
-            ? ({
-                ...s,
-                type: "custom",
-                defer_loading: true,
-              } satisfies Anthropic.Tool)
-            : ({
-                ...s,
-                type: "custom",
-              } satisfies Anthropic.Tool),
-        );
+        schemas.push({ ...s, type: "custom", ...(deferred ? { defer_loading: true } : {}) });
       }
     }
     return schemas;

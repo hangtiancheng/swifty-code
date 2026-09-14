@@ -22,6 +22,7 @@
 
 import { stripVTControlCharacters } from "node:util";
 
+import chalk, { Chalk } from "chalk";
 import { Box, Text, render, renderToString, useInput } from "ink";
 import type { Instance, Key } from "ink";
 import type * as Ink from "ink";
@@ -39,7 +40,7 @@ import { SelectorFrame } from "@/tui/selector-frame.js";
 import { SelectorListRow } from "@/tui/selector-list.js";
 import { updateSelectorQuery } from "@/tui/selector-search.js";
 import { SessionSelector } from "@/tui/session-selector.js";
-import { ICONS } from "@/tui/styles.js";
+import { ICONS, setThemeMode, THEME } from "@/tui/styles.js";
 import { visibleWidth } from "@/tui/terminal-text.js";
 
 // Keep Ink's real layout and React hooks; invoke only the captured input callback.
@@ -72,6 +73,8 @@ const noKey: Key = {
 };
 const initialColumns = Object.getOwnPropertyDescriptor(process.stdout, "columns");
 const initialRows = Object.getOwnPropertyDescriptor(process.stdout, "rows");
+const initialColorLevel = chalk.level;
+const colors = new Chalk({ level: 3 });
 let instance: Instance | undefined;
 let frame = "";
 
@@ -173,6 +176,8 @@ afterEach(() => {
   }
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  chalk.level = initialColorLevel;
+  setThemeMode("dark");
 });
 
 describe("provider selector", () => {
@@ -388,6 +393,66 @@ describe("session selector", () => {
 });
 
 describe("selector layout", () => {
+  it.each(["dark", "light"] satisfies ("dark" | "light")[])(
+    "uses quiet rules and accent titles/focus in %s mode without relying on color",
+    (mode) => {
+      setThemeMode(mode);
+      for (const columns of [1, 20, 32, 48, 80, 120]) {
+        for (const colorLevel of [0, 3] satisfies (0 | 3)[]) {
+          chalk.level = colorLevel;
+          let output = "";
+          act(() => {
+            output = renderToString(
+              createElement(SelectorFrame, {
+                compact: true,
+                title: "Select provider",
+                width: columns,
+                hint: "↑↓ navigate · Enter select · Escape cancel · Ctrl+U clear",
+                children: createElement(Text, null, "choice"),
+              }),
+              { columns },
+            );
+          });
+          const plain = stripVTControlCharacters(output);
+          expect(plain.split("\n").every((line) => visibleWidth(line) <= columns)).toBe(true);
+          if (columns >= 20) {
+            expect(plain).toContain("Select provider");
+            expect(plain).toContain("Enter");
+            expect(plain).toMatch(/Esc(?:ape)?/);
+            expect(plain.split("\n")[1].startsWith(" Select")).toBe(true);
+          }
+          if (colorLevel === 0) {
+            expect(output).toBe(plain);
+          } else {
+            expect(output).toContain(colors.hex(THEME.borderMuted)("─".repeat(columns)));
+            if (columns >= 20) {
+              expect(output).toContain(colors.hex(THEME.accent)("Select provider"));
+            }
+          }
+        }
+      }
+      chalk.level = 3;
+      let selected = "";
+      act(() => {
+        selected = renderToString(
+          createElement(SelectorListRow, {
+            width: 40,
+            label: "Selected",
+            current: true,
+            focused: true,
+          }),
+          { columns: 40 },
+        );
+      });
+      expect(selected).toContain(
+        `${colors.hex(THEME.accent)(" ").split(" ")[0]}${ICONS.arrow} Selected`,
+      );
+      expect(stripVTControlCharacters(selected)).toContain(
+        `${ICONS.arrow} Selected ${ICONS.success}`,
+      );
+    },
+  );
+
   it.each([8, 12, 16, 24, 40])(
     "keeps providers and the footer within %i rows, including content above the dock",
     (rows) => {

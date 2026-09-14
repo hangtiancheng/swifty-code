@@ -39,6 +39,7 @@ import { MCPToolWrapper } from "./mcp/tool-wrapper.js";
 import { loadInstructions } from "./memory/instructions.js";
 import { PermissionChecker } from "./permissions/checker.js";
 import { buildSystemPrompt, detectEnvironment } from "./prompt/builder.js";
+import { buildTeammatePrompt } from "./prompt/delegation.js";
 import { SkillCatalog } from "./skills/catalog.js";
 import { buildSkillSection } from "./skills/catalog.js";
 import { InstallSkillTool } from "./skills/install-tool.js";
@@ -281,8 +282,9 @@ export async function runTeammate(args: TeammateArgs): Promise<void> {
       maxOutput: getMaxOutputTokens(provider),
     });
 
-    // Start with initial task
-    conversation.addUserMessage(args.initialTask);
+    conversation.addUserMessage(
+      buildTeammatePrompt(args.teamName, args.memberName, args.initialTask),
+    );
 
     for await (const event of agent.run()) {
       switch (event.type) {

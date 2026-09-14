@@ -37,7 +37,7 @@ import { z } from "zod";
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
-  DEFAULT_THINKING_LEVEL,
+  getThinkingLevel,
   globalConfigPath,
   ProviderConfigSchema,
   type ProviderConfig,
@@ -74,11 +74,10 @@ export const ProviderLoginSchema = ProviderConfigSchema.extend({
     path: ["max_output_tokens"],
     message: "Max output tokens must not exceed the context window",
   })
-  // Providers may omit `thinking`; default it so the form and saved YAML always
-  // carry an explicit level.
+  // Persist an explicit effective level, retaining all capability metadata.
   .transform((provider) => ({
     ...provider,
-    thinking: provider.thinking ?? DEFAULT_THINKING_LEVEL,
+    thinking: getThinkingLevel(provider),
   }));
 
 /** Read the raw global config as a record; an absent file yields {}. */

@@ -40,7 +40,9 @@ export function PendingQueue({ messages }: PendingQueueProps) {
           Follow-up: {message.replaceAll("\n", " ")}
         </Text>
       ))}
-      <Text color={THEME.dim}>↳ queued messages run after the current response</Text>
+      <Text color={THEME.dim}>
+        Queued until the agent finishes · ↑ on empty input edits the latest
+      </Text>
     </Box>
   );
 }

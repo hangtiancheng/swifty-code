@@ -21,7 +21,7 @@
  */
 
 import { Agent, type AgentConfig } from "../agent/agent.js";
-import type { ProviderConfig } from "../config/config.js";
+import { getContextWindow, getMaxOutputTokens, type ProviderConfig } from "../config/config.js";
 import { ConversationManager } from "../conversation/conversation.js";
 import type { LLMClient } from "../llm/client.js";
 import { createClient } from "../llm/client.js";
@@ -29,6 +29,7 @@ import { resolveModelId } from "../llm/model-resolver.js";
 import { loadInstructions } from "../memory/instructions.js";
 import { PermissionChecker } from "../permissions/checker.js";
 import { buildSystemPrompt, detectEnvironment } from "../prompt/builder.js";
+import { buildSubagentInstructions } from "../prompt/delegation.js";
 import { FileStateCache } from "../tools/file-state-cache.js";
 import type { ToolRegistry } from "../tools/registry.js";
 
@@ -72,9 +73,14 @@ export async function spawnSubagent(
   const env = detectEnvironment(workDir);
   env.model = resolvedModel;
   const systemPrompt = definition.systemPromptOverride ?? buildSystemPrompt(env);
+  const provider = {
+    ...parentProvider,
+    model: resolvedModel,
+    thinking: parentClient.getThinkingLevel?.() ?? parentProvider.thinking,
+  };
   const client: LLMClient =
     effectiveModel || definition.systemPromptOverride
-      ? await createClient({ ...parentProvider, model: resolvedModel }, systemPrompt)
+      ? await createClient(provider, systemPrompt)
       : parentClient;
 
   // Build the subagent tool registry through multi-layer filtering
@@ -95,6 +101,7 @@ export async function spawnSubagent(
       : (definition.permissionMode ?? options.permissionMode ?? "acceptEdits");
   const checker = checkerOverride ?? new PermissionChecker(workDir, permMode);
   const conversation = options.conversation ?? new ConversationManager();
+  conversation.addSystemReminder(buildSubagentInstructions(definition));
   conversation.addUserMessage(prompt);
 
   const agent = new Agent({
@@ -108,6 +115,8 @@ export async function spawnSubagent(
     onPermissionRequest: options.onPermissionRequest,
     fileStateCache: new FileStateCache(),
     instructions: loadInstructions(workDir),
+    contextWindow: getContextWindow(provider),
+    maxOutput: getMaxOutputTokens(provider),
   });
 
   let output = "";

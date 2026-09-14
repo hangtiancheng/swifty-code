@@ -23,13 +23,17 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  clampThinkingLevel,
   DEFAULT_MAX_OUTPUT_TOKENS,
   forkEnabled,
   getContextWindow,
   getMaxOutputTokens,
+  getSupportedThinkingLevels,
   getThinkingLevel,
   isValidThinkingLevel,
+  ProviderConfigSchema,
   resolveAPIKey,
+  THINKING_LEVELS,
   thinkingBudgetForLevel,
   toReasoningEffort,
   withProviderDefaults,
@@ -154,6 +158,85 @@ describe("config", () => {
       expect(toReasoningEffort("off")).toBe("none");
       expect(toReasoningEffort("low")).toBe("low");
       expect(toReasoningEffort("max")).toBe("max");
+    });
+  });
+
+  describe("explicit thinking capabilities", () => {
+    const base: ProviderConfig = { name: "p", base_url: "#", protocol: "openai", model: "m" };
+
+    it.each(["gpt-4o", "o3", "claude-haiku", "arbitrary-model"])(
+      "does not infer capabilities from %s",
+      (model) => {
+        expect(getSupportedThinkingLevels({ ...base, model })).toEqual(THINKING_LEVELS);
+        expect(getThinkingLevel({ ...base, model })).toBe("high");
+      },
+    );
+
+    it("retains capability metadata and unrecognized fields while adding defaults", () => {
+      const provider = withProviderDefaults(
+        ProviderConfigSchema.parse({
+          ...base,
+          reasoning: true,
+          thinking_mode: "adaptive",
+          thinking_level_map: { low: "medium", xhigh: null },
+          future_capability: { enabled: true },
+        }),
+      );
+      expect(provider).toMatchObject({
+        reasoning: true,
+        thinking_mode: "adaptive",
+        thinking_level_map: { low: "medium", xhigh: null },
+        future_capability: { enabled: true },
+        thinking: "high",
+        context_window: 1000000,
+        max_output_tokens: 128000,
+      });
+    });
+
+    it.each([
+      { reasoning: "false" },
+      { thinking_mode: "automatic" },
+      { thinking_level_map: { high: "unsupported-native-effort" } },
+      { thinking_level_map: { unknown: "low" } },
+      { thinking_level_map: { off: "high" } },
+      { thinking_level_map: { max: false } },
+    ])("rejects malformed capabilities: %j", (metadata) => {
+      expect(ProviderConfigSchema.safeParse({ ...base, ...metadata }).success).toBe(false);
+    });
+
+    it("only exposes off when configured as non-reasoning", () => {
+      const provider = { ...base, reasoning: false };
+      expect(getSupportedThinkingLevels(provider)).toEqual(["off"]);
+      expect(getThinkingLevel(provider)).toBe("off");
+      expect(toReasoningEffort("off", provider)).toBeNull();
+      expect(withProviderDefaults(provider).thinking).toBe("off");
+    });
+
+    it("uses partial overrides and clamps down rather than raising a requested level", () => {
+      const provider: ProviderConfig = {
+        ...base,
+        thinking_level_map: { minimal: null, low: null, high: null, max: "max" },
+      };
+      expect(getSupportedThinkingLevels(provider)).toEqual(["off", "medium", "xhigh", "max"]);
+      expect(clampThinkingLevel(provider, "low")).toBe("off");
+      expect(clampThinkingLevel(provider, "high")).toBe("medium");
+      expect(clampThinkingLevel(provider, "max")).toBe("max");
+      expect(getThinkingLevel(provider)).toBe("medium");
+      expect(toReasoningEffort("max", provider)).toBe("max");
+    });
+
+    it("accounts for the context-clamped Anthropic budget ceiling", () => {
+      const provider: ProviderConfig = {
+        ...base,
+        protocol: "anthropic",
+        context_window: 1024,
+        max_output_tokens: 128000,
+      };
+      expect(getSupportedThinkingLevels(provider)).toEqual(["off"]);
+      expect(getThinkingLevel(provider)).toBe("off");
+      expect(getSupportedThinkingLevels({ ...provider, thinking_mode: "adaptive" })).toEqual(
+        THINKING_LEVELS,
+      );
     });
   });
 

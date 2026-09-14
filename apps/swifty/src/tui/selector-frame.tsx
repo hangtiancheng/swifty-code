@@ -24,7 +24,21 @@ import { Box, Text, useWindowSize } from "ink";
 import type { ReactNode } from "react";
 
 import { THEME } from "./styles.js";
-import { truncateToWidth } from "./terminal-text.js";
+import { truncateToWidth, visibleWidth } from "./terminal-text.js";
+
+function fitHint(hint: string, width: number): string {
+  const full = hint.replace(/[\r\n\t]+/g, " ");
+  const compact = full.replace(/Escape/g, "Esc").replace(/ navigate/g, "");
+  const actions = compact.split(" · ").filter((part) => /Enter|Esc/.test(part));
+  const keys = actions.map((part) => part.split(" ")[0]).join(" / ");
+  return truncateToWidth(
+    [full, compact, actions.join(" · "), keys].find(
+      (text) => text && visibleWidth(text) <= width,
+    ) ??
+      (keys || compact),
+    width,
+  );
+}
 
 interface SelectorFrameProps {
   children: ReactNode;
@@ -53,11 +67,11 @@ export function SelectorFrame({
 
   return (
     <Box flexDirection="column" flexShrink={0} width="100%">
-      <Text color={THEME.border} wrap="truncate-end">
+      <Text color={THEME.borderMuted} wrap="truncate-end">
         {rule}
       </Text>
       <Box flexDirection="column" paddingX={padding}>
-        <Text bold color={THEME.text} wrap="truncate-end">
+        <Text bold color={THEME.accent} wrap="truncate-end">
           {singleLine(title)}
         </Text>
         {subtitle ? (
@@ -69,10 +83,10 @@ export function SelectorFrame({
           {children}
         </Box>
         <Text color={THEME.dim} wrap="truncate-end">
-          {singleLine(hint)}
+          {fitHint(hint, contentWidth)}
         </Text>
       </Box>
-      <Text color={THEME.border} wrap="truncate-end">
+      <Text color={THEME.borderMuted} wrap="truncate-end">
         {rule}
       </Text>
     </Box>

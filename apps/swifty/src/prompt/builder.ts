@@ -48,10 +48,8 @@ export class PromptBuilder {
 
   build(): string {
     const sorted = [...this.sections].sort((a, b) => a.priority - b.priority);
-    return sorted
-      .map((s) => s.content.trim())
-      .filter(Boolean)
-      .join("\n\n");
+    const contents = sorted.map((s) => s.content.trim()).filter(Boolean);
+    return [...new Set(contents)].join("\n\n");
   }
 }
 

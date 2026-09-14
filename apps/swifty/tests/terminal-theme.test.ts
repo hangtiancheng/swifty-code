@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   parseOsc11BackgroundColor,
@@ -28,9 +28,40 @@ import {
   themeForRgb,
   themeFromEnvironment,
 } from "@/bootstrap/terminal-theme.js";
-import { activityStatusColor, DARK_THEME, LIGHT_THEME, setThemeMode, THEME } from "@/tui/styles.js";
+import { THINKING_LEVELS } from "@/config/config.js";
+import {
+  activityStatusColor,
+  DARK_THEME,
+  LIGHT_THEME,
+  setThemeMode,
+  THEME,
+  thinkingLevelColor,
+} from "@/tui/styles.js";
+
+afterEach(() => setThemeMode("dark"));
 
 describe("terminal theme detection", () => {
+  it.each(["dark", "light"] satisfies ("dark" | "light")[])(
+    "maps every thinking level to its existing %s token, independently of lifecycle status",
+    (mode) => {
+      setThemeMode(mode);
+      const palette = mode === "dark" ? DARK_THEME : LIGHT_THEME;
+      expect(THINKING_LEVELS.map(thinkingLevelColor)).toEqual([
+        palette.thinkingOff,
+        palette.thinkingMinimal,
+        palette.thinkingLow,
+        palette.thinkingMedium,
+        palette.thinkingHigh,
+        palette.thinkingXHigh,
+        palette.thinkingMax,
+      ]);
+      expect(activityStatusColor("idle")).toBe(palette.borderMuted);
+      expect(activityStatusColor("working")).toBe(palette.thinkingHigh);
+      expect(activityStatusColor("retry")).toBe(palette.warning);
+      expect(activityStatusColor("compacting")).toBe(palette.accent);
+      expect(activityStatusColor("error")).toBe(palette.error);
+    },
+  );
   it("parses terminal color scheme and OSC 11 responses", () => {
     expect(parseTerminalColorSchemeReport("\u001B[?997;2n")).toBe("light");
     expect(parseTerminalColorSchemeReport("\u001B[?997;1n")).toBe("dark");

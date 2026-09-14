@@ -35,6 +35,7 @@ import { join } from "node:path";
 
 import z, { parse, safeParse } from "zod";
 
+import { buildCompactionSummaryMessage } from "../compact/prompts.js";
 import type { ToolResultBlock } from "../conversation/conversation.js";
 import { createChildLogger } from "../logger/logger.js";
 import { normalizeToolResultContentBlock, type ToolResultContentBlock } from "../tools/types.js";
@@ -305,15 +306,10 @@ export function rebuildFromSession(saved: SessionMessage[]): RestoredMessage[] {
   if (lastBoundary >= 0) {
     // Compacted state: summary + inlined keep, then post-boundary appends.
     if (payload) {
-      // The summary stands in for everything before the boundary, replayed as a
-      // single user message (mirrors how doCompact rebuilds the live transcript).
-      let resumeSummary =
-        "This session continues from a previous conversation, which has been compressed due to context limitations. Here is a summary of the earlier messages:\n\n" +
-        payload.summary;
-      if (payload.keep.length > 0) {
-        resumeSummary += "\n\nRecent messages have been preserved verbatim.";
-      }
-      out.push({ role: "user", content: resumeSummary });
+      out.push({
+        role: "user",
+        content: buildCompactionSummaryMessage(payload.summary, payload.keep.length > 0),
+      });
       for (const k of payload.keep) {
         if (
           (k.role !== "user" && k.role !== "assistant") ||

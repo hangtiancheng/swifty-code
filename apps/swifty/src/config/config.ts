@@ -66,7 +66,22 @@ export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhig
 
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
-export const ProviderConfigSchema = z.object({
+const ReasoningEffortSchema = z.enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
+const AnthropicEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
+
+// Partial overrides: absent entries retain the default mapping; null disables a
+// level. Off always disables thinking and cannot be mapped to an enabled effort.
+const ThinkingLevelMapSchema = z.strictObject({
+  off: z.literal("none").nullable().optional(),
+  minimal: ReasoningEffortSchema.nullable().optional(),
+  low: ReasoningEffortSchema.nullable().optional(),
+  medium: ReasoningEffortSchema.nullable().optional(),
+  high: ReasoningEffortSchema.nullable().optional(),
+  xhigh: ReasoningEffortSchema.nullable().optional(),
+  max: ReasoningEffortSchema.nullable().optional(),
+});
+
+export const ProviderConfigSchema = z.looseObject({
   name: z.string(),
   /**
    * enum: ["anthropic", "openai", "openai-compat"]
@@ -76,6 +91,11 @@ export const ProviderConfigSchema = z.object({
   model: z.string(),
   api_key: z.string().optional(),
   thinking: z.enum(THINKING_LEVELS).optional(),
+  /** Explicit capability metadata, never inferred from model names. */
+  reasoning: z.boolean().optional(),
+  thinking_level_map: ThinkingLevelMapSchema.optional(),
+  /** Only Anthropic uses this mode; existing configurations use budgets. */
+  thinking_mode: z.enum(["budget", "adaptive"]).optional(),
   context_window: z.coerce.number().optional(),
   /**
    * The model's output ceiling (PI's `model.maxTokens`). Clamped to the
@@ -108,14 +128,16 @@ export const THINKING_BUDGETS: Record<Exclude<ThinkingLevel, "off">, number> = {
   max: 65536,
 };
 
+export const MIN_THINKING_BUDGET_TOKENS = 1024;
+export const MIN_THINKING_ANSWER_TOKENS = 1024;
+
 export function isValidThinkingLevel(value: string): value is ThinkingLevel {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  return (THINKING_LEVELS as readonly string[]).includes(value);
+  return THINKING_LEVELS.some((level) => level === value);
 }
 
-/** Normalize the config `thinking` field to a level; unset means the default. */
+/** Resolve the effective logical level, including explicit capability limits. */
 export function getThinkingLevel(provider: ProviderConfig): ThinkingLevel {
-  return provider.thinking ?? DEFAULT_THINKING_LEVEL;
+  return clampThinkingLevel(provider, provider.thinking ?? DEFAULT_THINKING_LEVEL);
 }
 
 /** Thinking token budget for a level; 0 when thinking is off. */
@@ -123,11 +145,78 @@ export function thinkingBudgetForLevel(level: ThinkingLevel): number {
   return level === "off" ? 0 : THINKING_BUDGETS[level];
 }
 
-/** Map a PI thinking level to an OpenAI reasoning effort string. */
+/** Map a logical level using configured capabilities, not model-name guesses. */
 export function toReasoningEffort(
   level: ThinkingLevel,
-): "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" {
-  return level === "off" ? "none" : level;
+  provider?: ProviderConfig,
+): z.infer<typeof ReasoningEffortSchema> | null {
+  if (provider?.reasoning === false) {
+    return null;
+  }
+  // Omitting reasoning can enable a server default. Off must explicitly disable
+  // it, even when an off:null override was provided.
+  if (level === "off") {
+    return "none";
+  }
+  const mapped = provider?.thinking_level_map?.[level];
+  if (mapped !== undefined) {
+    return mapped;
+  }
+  if (provider?.protocol === "anthropic" && provider.thinking_mode === "adaptive") {
+    if (level === "minimal") {
+      return "low";
+    }
+    if (level === "xhigh") {
+      return "high";
+    }
+  }
+  return level;
+}
+
+/** Narrow adaptive efforts to the Anthropic SDK's legal values. */
+export function toAnthropicThinkingEffort(
+  level: ThinkingLevel,
+  provider: ProviderConfig,
+): z.infer<typeof AnthropicEffortSchema> | null {
+  const parsed = AnthropicEffortSchema.safeParse(toReasoningEffort(level, provider));
+  return parsed.success ? parsed.data : null;
+}
+
+/** Available logical levels; missing metadata preserves the existing defaults. */
+export function getSupportedThinkingLevels(provider: ProviderConfig): readonly ThinkingLevel[] {
+  if (
+    provider.reasoning === false ||
+    (provider.protocol === "anthropic" &&
+      provider.thinking_mode !== "adaptive" &&
+      getMaxOutputTokens(provider) < MIN_THINKING_BUDGET_TOKENS + MIN_THINKING_ANSWER_TOKENS)
+  ) {
+    return ["off"];
+  }
+  return THINKING_LEVELS.filter((level) => {
+    if (level === "off") {
+      return true;
+    }
+    if (provider.protocol === "anthropic" && provider.thinking_mode === "adaptive") {
+      return toAnthropicThinkingEffort(level, provider) !== null;
+    }
+    const effort = toReasoningEffort(level, provider);
+    return effort !== null && effort !== "none";
+  });
+}
+
+/** Lower unsupported requests to the nearest available level, never higher. */
+export function clampThinkingLevel(provider: ProviderConfig, level: ThinkingLevel): ThinkingLevel {
+  const supported = getSupportedThinkingLevels(provider);
+  let effective: ThinkingLevel = "off";
+  for (const candidate of THINKING_LEVELS) {
+    if (supported.includes(candidate)) {
+      effective = candidate;
+    }
+    if (candidate === level) {
+      break;
+    }
+  }
+  return effective;
 }
 
 export function withProviderDefaults(provider: ProviderConfig): ProviderConfig {

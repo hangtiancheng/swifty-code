@@ -22,7 +22,7 @@
 
 import { stripVTControlCharacters } from "node:util";
 
-import { Chalk } from "chalk";
+import chalk, { Chalk } from "chalk";
 import { renderToString } from "ink";
 import type * as Ink from "ink";
 import { createElement } from "react";
@@ -30,8 +30,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AgentActivity } from "@/tui/agent-activity.js";
 import { CommittedMessage } from "@/tui/chat.js";
+import { Footer } from "@/tui/footer.js";
 import { renderMarkdown, renderStreamingMarkdown, type MarkdownCache } from "@/tui/markdown.js";
-import { setThemeMode } from "@/tui/styles.js";
+import { setThemeMode, THEME, thinkingLevelColor } from "@/tui/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
 import { ThinkingBlock } from "@/tui/thinking-block.js";
 import { ToolBlock } from "@/tui/tool-display.js";
@@ -52,11 +53,14 @@ vi.mock("ink", async (importOriginal) => {
 });
 
 const colors = new Chalk({ level: 3 });
+const initialColorLevel = chalk.level;
 beforeEach(() => {
   terminal.columns = 40;
+  chalk.level = 0;
 });
 afterEach(() => {
   setThemeMode("dark");
+  chalk.level = initialColorLevel;
 });
 
 describe("terminal column handling", () => {
@@ -141,7 +145,7 @@ describe("pi Markdown presentation", () => {
     const collapsed = renderToString(createElement(ThinkingBlock, { text, expanded: false }), {
       columns: 40,
     });
-    expect(stripVTControlCharacters(collapsed).trim()).toBe("Thinking...");
+    expect(stripVTControlCharacters(collapsed).trim()).toBe("Thinking · Ctrl+O details");
     const expanded = renderToString(createElement(ThinkingBlock, { text, expanded: true }), {
       columns: 40,
     });
@@ -206,8 +210,13 @@ describe("shared live and committed tool cards", () => {
         { columns: 40 },
       );
       expect(saved).toBe(live);
-      expect(stripVTControlCharacters(live)).toContain("Read src/main.tsx");
-      expect(stripVTControlCharacters(live)).toContain("Took 0.5s");
+      const lines = stripVTControlCharacters(live).trim().split("\n");
+      expect(lines[0]).toContain("Read src/main.tsx  0.5s");
+      expect(lines.map((line) => line.trim())).toEqual([
+        "Read src/main.tsx  0.5s",
+        "line one",
+        "line two",
+      ]);
     },
   );
 
@@ -220,6 +229,220 @@ describe("shared live and committed tool cards", () => {
       { columns: 20 },
     );
     expect(stripVTControlCharacters(output)).toContain("$ pwd");
+    expect(stripVTControlCharacters(output)).toContain("running");
     expect(stripVTControlCharacters(output)).not.toContain("Took");
   });
+
+  it.each(["dark", "light"] satisfies ("dark" | "light")[])(
+    "retains state backgrounds, diff colors and no-color status in %s mode",
+    (mode) => {
+      setThemeMode(mode);
+      for (const loading of [false, true]) {
+        chalk.level = 3;
+        const output = renderToString(
+          createElement(ToolBlock, {
+            tool: {
+              toolId: "failed",
+              toolName: "Read",
+              args: { file_path: "missing.ts" },
+              loading,
+              isError: !loading,
+            },
+          }),
+          { columns: 40 },
+        );
+        const background = loading ? THEME.toolPendingBg : THEME.toolErrorBg;
+        expect(output).toContain(colors.bgHex(background)(" ").split(" ")[0]);
+        expect(stripVTControlCharacters(output)).toContain(loading ? "running" : "failed");
+        chalk.level = 0;
+        const plain = renderToString(
+          createElement(ToolBlock, {
+            tool: { toolId: "status", toolName: "Read", args: {}, loading, isError: !loading },
+          }),
+          { columns: 40 },
+        );
+        expect(plain).toBe(stripVTControlCharacters(plain));
+        expect(plain).toContain(loading ? "running" : "failed");
+      }
+      chalk.level = 3;
+      for (const expanded of [false, true]) {
+        const diff = renderToString(
+          createElement(ToolBlock, {
+            tool: { toolId: "edit", toolName: "EditFile", args: {}, output: "- old\n+ new" },
+            expanded,
+          }),
+          { columns: 40 },
+        );
+        expect(diff).toContain(colors.hex(THEME.toolDiffRemoved)("- old"));
+        expect(diff).toContain(colors.hex(THEME.toolDiffAdded)("+ new"));
+        expect(diff).toContain(colors.bgHex(THEME.toolSuccessBg)(" ").split(" ")[0]);
+      }
+    },
+  );
+
+  it("preserves shell preview limits and expands only on request", () => {
+    const tool = {
+      toolId: "shell",
+      toolName: "Bash",
+      args: { command: "test" },
+      output: Array.from({ length: 20 }, (_, index) => `line-${String(index)}`).join("\n"),
+    };
+    const collapsed = stripVTControlCharacters(
+      renderToString(createElement(ToolBlock, { tool }), { columns: 40 }),
+    );
+    expect(collapsed).not.toContain("line-0\n");
+    expect(collapsed).toContain("line-19");
+    expect(collapsed).toContain("Ctrl+O");
+    const expanded = stripVTControlCharacters(
+      renderToString(createElement(ToolBlock, { tool, expanded: true }), { columns: 40 }),
+    );
+    expect(expanded).toContain("line-0\n");
+    expect(expanded).toContain("line-19");
+    expect(expanded).not.toContain("more lines");
+  });
 });
+
+const footerProps = {
+  contextTokens: 40_000,
+  contextWindow: 200_000,
+  inputTokens: 1250,
+  outputTokens: 230,
+  model: "compact-model",
+  permissionMode: "plan",
+  provider: "very-long-provider-name",
+  sessionId: "01234567-89ab-cdef-0123-456789abcdef",
+  workDir: "/workspace/project",
+};
+
+describe.each(["dark", "light"] satisfies ("dark" | "light")[])(
+  "%s compact presentation",
+  (mode) => {
+    beforeEach(() => setThemeMode(mode));
+
+    it.each([1, 20, 32, 48, 80, 120])(
+      "fits footer, tools and reasoning within %i columns",
+      (columns) => {
+        terminal.columns = columns;
+        for (const colorLevel of [0, 3] satisfies (0 | 3)[]) {
+          chalk.level = colorLevel;
+          for (const [permissionMode, label] of [
+            ["default", "default"],
+            ["acceptEdits", "Accept Edits"],
+            ["plan", "Plan"],
+            ["bypassPermissions", "YOLO"],
+          ]) {
+            const footer = stripVTControlCharacters(
+              renderToString(
+                createElement(Footer, {
+                  ...footerProps,
+                  permissionMode,
+                  thinkingLevel: "high",
+                  model: colors.red("模型-".repeat(10)),
+                  workDir: colors.green("/工作区/".repeat(10)),
+                }),
+                { columns },
+              ),
+            );
+            const lines = footer.split("\n");
+            expect(lines.every((line) => visibleWidth(line) <= columns)).toBe(true);
+            const width = columns - (columns > 2 ? 2 : 0);
+            if (width < visibleWidth(footerProps.sessionId) + 4) {
+              const idRows = wrapToLines(footerProps.sessionId, width);
+              expect(
+                lines
+                  .slice(1, idRows.length + 1)
+                  .map((line) => line.trim())
+                  .join(""),
+              ).toBe(footerProps.sessionId);
+            } else {
+              expect(footer).toContain(footerProps.sessionId);
+            }
+            expect(lines.map((line) => line.trim()).join("")).toContain(
+              label.replace(/ /g, columns === 1 ? "" : " "),
+            );
+            if (columns >= 20) {
+              expect(footer).toContain("模型");
+              expect(footer).toContain("high");
+              expect(footer).toContain("20.0%/200k");
+            }
+          }
+          for (const expanded of [false, true]) {
+            for (const node of [
+              createElement(ThinkingBlock, {
+                text: colors.red("中文 reasoning ".repeat(30)),
+                expanded,
+              }),
+              createElement(ToolBlock, {
+                tool: {
+                  toolId: "wide",
+                  toolName: "Read",
+                  args: { file_path: colors.red("中文".repeat(20)) },
+                  output: colors.green("中文 output ".repeat(30)),
+                  isError: true,
+                },
+                expanded,
+              }),
+            ]) {
+              const output = renderToString(node, { columns });
+              expect(output.split("\n").every((line) => visibleWidth(line) <= columns)).toBe(true);
+              if (!expanded && columns >= 20 && node.type === ThinkingBlock) {
+                expect(stripVTControlCharacters(output)).toContain("Ctrl+O");
+                expect(stripVTControlCharacters(output)).not.toContain("Ctrl+T");
+              }
+            }
+          }
+        }
+      },
+    );
+
+    it("retains model/thinking before provider and hints and colors the runtime level", () => {
+      for (const columns of [20, 32, 48, 80, 120]) {
+        terminal.columns = columns;
+        chalk.level = 3;
+        const output = renderToString(
+          createElement(Footer, {
+            ...footerProps,
+            thinkingLevel: "high",
+          }),
+          { columns },
+        );
+        const plain = stripVTControlCharacters(output);
+        expect(output).toContain(
+          `${colors.hex(thinkingLevelColor("high"))(" ").split(" ")[0]}high`,
+        );
+        expect(plain).toContain("Plan");
+        expect(plain).toContain("20.0%/200k");
+        expect(plain).toMatch(/comp.* · high/);
+        if (columns < 80) {
+          expect(plain).not.toContain("very-long-provider-name");
+          expect(plain).not.toContain("Shift+Tab");
+        }
+        if (columns === 120) {
+          expect(plain).toContain("very-long-provider-name/compact-model · high · Plan");
+          expect(plain).toContain("Shift+Tab to cycle");
+        }
+      }
+    });
+
+    it("keeps reasoning italic and bounds the expanded streaming tail", () => {
+      chalk.level = 3;
+      const output = renderToString(
+        createElement(ThinkingBlock, {
+          text: Array.from({ length: 20 }, (_, index) => `detail-${String(index)}`).join("\n\n"),
+          expanded: true,
+          streaming: true,
+        }),
+        { columns: 40 },
+      );
+      expect(output).toContain("\u001b[3m");
+      const plain = stripVTControlCharacters(output).trim();
+      expect(plain).toContain("detail-19");
+      expect(plain).not.toContain("detail-0");
+      expect(plain.split("\n").length).toBeLessThanOrEqual(6);
+      const empty = renderToString(createElement(ThinkingBlock, { text: " ", expanded: false }), {
+        columns: 40,
+      });
+      expect(empty).toBe("");
+    });
+  },
+);

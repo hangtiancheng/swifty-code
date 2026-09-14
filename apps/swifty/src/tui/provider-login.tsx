@@ -21,18 +21,20 @@
  */
 
 import { Box, Text, useInput, usePaste, useWindowSize } from "ink";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_OUTPUT_TOKENS,
   DEFAULT_THINKING_LEVEL,
+  getSupportedThinkingLevels,
+  getThinkingLevel,
   type ProviderConfig,
   type ThinkingLevel,
-  THINKING_LEVELS,
 } from "../config/config.js";
 import { ProviderLoginSchema } from "../config/provider-login.js";
+import { discoverModels, modelListUrl, type DiscoveredModel } from "../llm/model-discovery.js";
 
 import { SelectorFrame } from "./selector-frame.js";
 import { THEME } from "./styles.js";
@@ -65,6 +67,11 @@ interface FormState {
 
 interface FieldErrors {
   [key: string]: string | undefined;
+}
+
+interface ModelDiscoveryState {
+  status: "idle" | "loading" | "ready" | "empty" | "error";
+  models: DiscoveredModel[];
 }
 
 export interface ProviderLoginProps {
@@ -111,19 +118,21 @@ function errorMessage(error: unknown): string {
   return "Unable to save provider";
 }
 
-function validateForm(form: FormState): {
+function validateForm(
+  form: FormState,
+  initialValues?: Partial<ProviderConfig>,
+): {
   provider?: ProviderConfig;
   errors: FieldErrors;
   formError?: string;
 } {
   const errors: FieldErrors = {};
-  const parsed = ProviderLoginSchema.safeParse(form);
+  const parsed = ProviderLoginSchema.safeParse({ ...initialValues, ...form });
 
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const path = issue.path[0];
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      if (typeof path === "string" && FIELD_KEYS.includes(path as FieldKey) && !errors[path]) {
+      if (typeof path === "string" && FIELD_KEYS.some((key) => key === path) && !errors[path]) {
         errors[path] = issue.message;
       }
     }
@@ -194,19 +203,108 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [discovery, setDiscovery] = useState<ModelDiscoveryState>({ status: "idle", models: [] });
   const formRef = useRef(form);
   const fieldRef = useRef<FieldKey>(field);
   const cursorRef = useRef(cursor);
   const submittingRef = useRef(false);
+  const discoveryGeneration = useRef(0);
+  const discoveryController = useRef<AbortController | undefined>(undefined);
+  const modelEditVersion = useRef(0);
+  const completedConnection = useRef<
+    Pick<FormState, "protocol" | "base_url" | "api_key"> | undefined
+  >(undefined);
 
   formRef.current = form;
   fieldRef.current = field;
   cursorRef.current = cursor;
 
+  const resetDiscovery = useCallback(() => {
+    discoveryGeneration.current += 1;
+    discoveryController.current?.abort();
+    completedConnection.current = undefined;
+    setDiscovery({ status: "idle", models: [] });
+  }, []);
+
+  const editingConnection = field === "base_url" || field === "api_key";
+
+  useEffect(() => {
+    const completed = completedConnection.current;
+    if (
+      completed?.protocol === form.protocol &&
+      completed.base_url === form.base_url &&
+      completed.api_key === form.api_key
+    ) {
+      return;
+    }
+    resetDiscovery();
+    // Do not send a prefilled credential to a partially edited URL.
+    if (editingConnection || !modelListUrl(form.protocol, form.base_url)) {
+      return;
+    }
+    const config = { protocol: form.protocol, base_url: form.base_url, api_key: form.api_key };
+    const generation = discoveryGeneration.current;
+    const controller = new AbortController();
+    discoveryController.current = controller;
+    const isCurrent = () =>
+      !controller.signal.aborted && generation === discoveryGeneration.current;
+    const timer = setTimeout(() => {
+      if (!isCurrent()) {
+        return;
+      }
+      const editVersion = modelEditVersion.current;
+      setDiscovery({ status: "loading", models: [] });
+      void discoverModels(config, controller.signal)
+        .then((models) => {
+          if (!isCurrent()) {
+            return;
+          }
+          completedConnection.current = config;
+          setDiscovery({ status: models.length ? "ready" : "empty", models });
+          const first = models[0];
+          if (
+            first &&
+            !formRef.current.model &&
+            editVersion === 0 &&
+            modelEditVersion.current === 0 &&
+            !submittingRef.current
+          ) {
+            const nextForm = { ...formRef.current, model: first.id };
+            formRef.current = nextForm;
+            setForm(nextForm);
+            setFieldErrors((current) => ({ ...current, model: undefined }));
+            if (fieldRef.current === "model") {
+              setCursor(first.id.length);
+              cursorRef.current = first.id.length;
+            }
+          }
+        })
+        .catch(() => {
+          if (isCurrent()) {
+            completedConnection.current = config;
+            setDiscovery({ status: "error", models: [] });
+          }
+        });
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      discoveryGeneration.current += 1;
+    };
+  }, [form.protocol, form.base_url, form.api_key, editingConnection, resetDiscovery]);
+
   const updateText = (value: string, nextCursor = value.length) => {
     const activeField = fieldRef.current;
     if (activeField === "protocol" || activeField === "thinking") {
       return;
+    }
+    if (
+      (activeField === "base_url" || activeField === "api_key") &&
+      value !== formRef.current[activeField]
+    ) {
+      resetDiscovery();
+    } else if (activeField === "model") {
+      modelEditVersion.current += 1;
     }
     setForm((current) => ({ ...current, [activeField]: value }));
     formRef.current = { ...formRef.current, [activeField]: value };
@@ -237,7 +335,7 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
     if (submittingRef.current) {
       return;
     }
-    const result = validateForm(formRef.current);
+    const result = validateForm(formRef.current, initialValues);
     setFieldErrors(result.errors);
     setFormError(result.formError ?? "");
     if (!result.provider) {
@@ -255,6 +353,13 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
       setSubmitting(false);
     }
   };
+
+  const thinkingProvider = (): ProviderConfig => ({
+    ...initialValues,
+    ...formRef.current,
+    context_window: Number(formRef.current.context_window),
+    max_output_tokens: Number(formRef.current.max_output_tokens),
+  });
 
   const moveField = (delta: number) => {
     const index = FIELD_KEYS.indexOf(fieldRef.current);
@@ -307,6 +412,7 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
         const next = (index + (key.rightArrow ? 1 : -1) + PROTOCOLS.length) % PROTOCOLS.length;
         const protocol = PROTOCOLS[next] ?? PROTOCOLS[0];
         const nextForm = { ...formRef.current, protocol };
+        resetDiscovery();
         formRef.current = nextForm;
         setForm(nextForm);
         setFieldErrors((current) => ({ ...current, protocol: undefined }));
@@ -316,10 +422,11 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
     }
     if (activeField === "thinking") {
       if (key.leftArrow || key.rightArrow) {
-        const index = THINKING_LEVELS.indexOf(formRef.current.thinking);
-        const next =
-          (index + (key.rightArrow ? 1 : -1) + THINKING_LEVELS.length) % THINKING_LEVELS.length;
-        const thinking = THINKING_LEVELS[next] ?? DEFAULT_THINKING_LEVEL;
+        const provider = thinkingProvider();
+        const levels = getSupportedThinkingLevels(provider);
+        const index = levels.indexOf(getThinkingLevel(provider));
+        const next = (index + (key.rightArrow ? 1 : -1) + levels.length) % levels.length;
+        const thinking = levels[next] ?? "off";
         const nextForm = { ...formRef.current, thinking };
         formRef.current = nextForm;
         setForm(nextForm);
@@ -331,13 +438,31 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
 
     const value = formRef.current[activeField];
     const position = Math.min(cursorRef.current, value.length);
-    if (key.ctrl && input === "u") {
+    if (
+      activeField === "model" &&
+      discovery.models.length > 0 &&
+      !key.ctrl &&
+      !key.meta &&
+      (key.leftArrow || key.rightArrow)
+    ) {
+      const index = discovery.models.findIndex((model) => model.id === value);
+      const next =
+        index < 0
+          ? key.rightArrow
+            ? 0
+            : discovery.models.length - 1
+          : (index + (key.rightArrow ? 1 : -1) + discovery.models.length) % discovery.models.length;
+      const model = discovery.models[next];
+      if (model) {
+        updateText(model.id);
+      }
+    } else if (key.ctrl && input === "u") {
       updateText("", 0);
-    } else if (key.leftArrow) {
+    } else if (key.leftArrow || (key.ctrl && input === "b")) {
       const next = Math.max(0, position - 1);
       setCursor(next);
       cursorRef.current = next;
-    } else if (key.rightArrow) {
+    } else if (key.rightArrow || (key.ctrl && input === "f")) {
       const next = Math.min(value.length, position + 1);
       setCursor(next);
       cursorRef.current = next;
@@ -363,6 +488,15 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
   const contentWidth = Math.max(1, frameWidth - framePadding);
   const labelWidth = Math.max(1, Math.min(24, Math.floor(contentWidth * 0.36)));
   const valueWidth = Math.max(1, contentWidth - labelWidth - (contentWidth > labelWidth ? 1 : 0));
+  const discoveryHelp: Record<ModelDiscoveryState["status"], string> = {
+    idle: editingConnection
+      ? "Tab to finish connection and fetch models"
+      : "Models: waiting for a valid URL",
+    loading: "Fetching models…",
+    ready: `${discovery.models.length} models available · ←→ cycle`,
+    empty: "No models returned",
+    error: "Model discovery unavailable",
+  };
 
   return (
     <SelectorFrame
@@ -374,7 +508,8 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
       <Box flexDirection="column" width="100%">
         {FIELD_KEYS.map((key) => {
           const selected = key === field;
-          const rawValue = displayValue(form, key);
+          const rawValue =
+            key === "thinking" ? getThinkingLevel(thinkingProvider()) : displayValue(form, key);
           const value =
             key === "protocol" && selected
               ? `‹ ${rawValue} ›`
@@ -407,6 +542,11 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
             </Box>
           );
         })}
+        <Text color={THEME.muted}>{discoveryHelp[discovery.status]}</Text>
+        <Text color={THEME.dim}>Model: type/paste any ID; Ctrl+U clears.</Text>
+        {discovery.models.length > 0 ? (
+          <Text color={THEME.dim}>Home/End or Ctrl+B/F move the model cursor.</Text>
+        ) : null}
       </Box>
     </SelectorFrame>
   );

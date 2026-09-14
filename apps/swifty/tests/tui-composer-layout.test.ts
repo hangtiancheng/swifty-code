@@ -375,6 +375,286 @@ describe("composer completion rows", () => {
   });
 });
 
+describe("composer queue recall and visual navigation", () => {
+  it("falls back to history when the queue is empty and restores the clean draft", () => {
+    const ref = draftRef();
+    const onRecallQueuedMessage = vi.fn(() => undefined);
+    mount({ draftRef: ref, history: ["older", "newer"], onRecallQueuedMessage });
+    press("", { upArrow: true });
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+    expect(ref.current?.lines).toEqual(["newer"]);
+    press("", { upArrow: true });
+    expect(ref.current?.lines).toEqual(["older"]);
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+    press("", { downArrow: true });
+    press("", { downArrow: true });
+    expect(ref.current).toEqual(draftRef().current);
+  });
+
+  it("leaves an empty draft intact when neither queue nor history has an entry", () => {
+    const ref = draftRef();
+    const onRecallQueuedMessage = vi.fn(() => undefined);
+    mount({ draftRef: ref, onRecallQueuedMessage });
+    press("", { downArrow: true });
+    expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+    press("", { upArrow: true });
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+    expect(ref.current).toEqual(draftRef().current);
+  });
+
+  it("does not recall while browsing even an empty history entry", () => {
+    const ref = draftRef();
+    const onRecallQueuedMessage = vi.fn(() => undefined);
+    mount({ draftRef: ref, history: [""], onRecallQueuedMessage });
+    press("", { upArrow: true });
+    press("", { upArrow: true });
+    expect(ref.current?.historyIndex).toBe(0);
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+  });
+
+  it.each([["draft"], [" "], ["first", "second"], ["", ""]])(
+    "never pops the queue from an existing draft %j",
+    (...lines) => {
+      const ref = draftRef(lines);
+      const onRecallQueuedMessage = vi.fn(() => "queued");
+      mount({ draftRef: ref, onRecallQueuedMessage });
+      press("", { upArrow: true });
+      press("", { downArrow: true });
+      expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+      expect(ref.current?.lines).toEqual(lines);
+    },
+  );
+
+  it("atomically recalls only once when two Up events arrive before React renders", () => {
+    const queue = ["older", "newest"];
+    const onRecallQueuedMessage = vi.fn(() => queue.pop());
+    const onSubmit = vi.fn();
+    const ref = draftRef();
+    mount({ draftRef: ref, onRecallQueuedMessage, onSubmit });
+    act(() => {
+      terminal.input.current?.("", key({ upArrow: true }));
+      terminal.input.current?.("", key({ upArrow: true }));
+    });
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+    expect(queue).toEqual(["older"]);
+    expect(ref.current?.lines).toEqual(["newest"]);
+    expect(ref.current?.cursorCol).toBe(6);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("recalls full editable multiline text, persists it, and submits the edit exactly once", () => {
+    const text = `first\n${"x".repeat(1100)}`;
+    const ref = draftRef();
+    const onSubmit = vi.fn();
+    const onRecallQueuedMessage = vi.fn(() => text);
+    mount({ draftRef: ref, onRecallQueuedMessage, onSubmit });
+    press("", { upArrow: true });
+    expect(ref.current?.lines).toEqual(text.split("\n"));
+    expect(ref.current?.cursorLine).toBe(1);
+    expect(ref.current?.cursorCol).toBe(1100);
+    expect(ref.current?.pastes).toBeUndefined();
+    expect(onSubmit).not.toHaveBeenCalled();
+    unmount();
+    mount({ draftRef: ref, onRecallQueuedMessage, onSubmit });
+    press("", { backspace: true });
+    press("!");
+    act(() => {
+      terminal.input.current?.("\r", key({ return: true }));
+      terminal.input.current?.("\r", key({ return: true }));
+    });
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith(`first\n${"x".repeat(1099)}!`);
+    expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
+  });
+
+  it("drops stale paste payloads on recall and does not activate recalled completion text", () => {
+    const ref = draftRef();
+    const onSubmit = vi.fn();
+    const recalled = "@one [paste #1 1001 chars]";
+    mount({ draftRef: ref, onSubmit, onRecallQueuedMessage: () => recalled });
+    act(() => {
+      terminal.paste.current?.("x".repeat(1001));
+    });
+    press("", { backspace: true });
+    expect(ref.current?.lines).toEqual([""]);
+    expect(ref.current?.pastes).toBeDefined();
+    press("", { upArrow: true });
+    expect(ref.current?.pastes).toBeUndefined();
+    expect(ref.current?.historyDraft).toBeNull();
+    press("", { return: true });
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith(recalled);
+  });
+
+  it("invalidates an in-flight clipboard image when recalling a queued draft", async () => {
+    type ClipboardResult = Awaited<ReturnType<typeof saveClipboardImage>>;
+    let resolve: ((result: ClipboardResult) => void) | undefined;
+    const pending = new Promise<ClipboardResult>((complete) => {
+      resolve = complete;
+    });
+    vi.mocked(saveClipboardImage).mockReturnValue(pending);
+    const ref = draftRef();
+    const onSubmit = vi.fn();
+    mount({ draftRef: ref, onSubmit, onRecallQueuedMessage: () => "queued", workDir: "/virtual" });
+    act(() => {
+      terminal.paste.current?.("");
+    });
+    press("", { upArrow: true });
+    await act(async () => {
+      resolve?.({ ok: true, value: "/virtual/image.png" });
+      await pending;
+    });
+    expect(ref.current?.lines).toEqual(["queued"]);
+    expect(ref.current?.pastes).toBeUndefined();
+    press("", { return: true });
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("queued");
+  });
+
+  it.each(["/help", "@one"])("submits recalled %s literally rather than completing it", (text) => {
+    const ref = draftRef();
+    const onSubmit = vi.fn();
+    mount({ draftRef: ref, commands, onSubmit, onRecallQueuedMessage: () => text });
+    press("", { upArrow: true });
+    press("", { return: true });
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith(text);
+  });
+
+  it("prioritizes slash completion over a soft-wrapped row and history", () => {
+    terminal.columns = 3;
+    const ref = draftRef(["/"]);
+    const onRecallQueuedMessage = vi.fn(() => "queued");
+    mount({ draftRef: ref, commands, history: ["history"], onRecallQueuedMessage });
+    press("", { upArrow: true });
+    expect(ref.current?.cursorCol).toBe(1);
+    expect(ref.current?.lines).toEqual(["/"]);
+    press("", { return: true });
+    expect(ref.current?.lines).toEqual(["/model "]);
+    expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+  });
+
+  it("prioritizes @file completion over movement in multiline input", () => {
+    const ref = draftRef(["first", "@"], 1);
+    const onRecallQueuedMessage = vi.fn(() => "queued");
+    mount({ draftRef: ref, onRecallQueuedMessage });
+    press("", { upArrow: true });
+    expect(ref.current?.cursorLine).toBe(1);
+    expect(ref.current?.cursorCol).toBe(1);
+    press("", { tab: true });
+    expect(ref.current?.lines).toEqual(["first", "@two.ts "]);
+    expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+  });
+
+  it("retains the preferred column across rapid Up/Down and leaves multiline boundaries intact", () => {
+    const lines = ["abcdef", "x", "abcdef"];
+    const ref = draftRef(lines, 2, 5);
+    const onRecallQueuedMessage = vi.fn(() => "queued");
+    mount({ draftRef: ref, history: ["history"], onRecallQueuedMessage });
+    act(() => {
+      terminal.input.current?.("", key({ upArrow: true }));
+      expect(ref.current?.cursorCol).toBe(1);
+      terminal.input.current?.("", key({ upArrow: true }));
+      expect(ref.current?.cursorCol).toBe(5);
+      terminal.input.current?.("", key({ upArrow: true }));
+    });
+    expect(ref.current?.cursorLine).toBe(0);
+    expect(ref.current?.lines).toEqual(lines);
+    press("", { downArrow: true });
+    expect(ref.current?.cursorCol).toBe(1);
+    press("", { downArrow: true });
+    expect(ref.current?.cursorCol).toBe(5);
+    press("", { downArrow: true });
+    expect(ref.current?.cursorLine).toBe(2);
+    expect(ref.current?.cursorCol).toBe(5);
+    expect(ref.current?.historyIndex).toBe(-1);
+    expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+  });
+
+  it.each(["horizontal", "edit", "paste", "insert"])(
+    "resets the vertical goal after a %s action",
+    (action) => {
+      const ref = draftRef(["abcdef", "x", "abcdef"], 2, 5);
+      const insertTextRef: { current: ((text: string) => void) | null } = { current: null };
+      mount({ draftRef: ref, insertTextRef });
+      press("", { upArrow: true });
+      if (action === "horizontal") {
+        press("", { leftArrow: true });
+      } else if (action === "edit") {
+        press("!");
+      } else if (action === "paste") {
+        act(() => {
+          terminal.paste.current?.("!");
+        });
+      } else {
+        act(() => {
+          insertTextRef.current?.("!");
+        });
+      }
+      const editedColumn = ref.current?.cursorCol;
+      press("", { upArrow: true });
+      expect(ref.current?.cursorCol).toBe(editedColumn);
+      expect(ref.current?.cursorCol).not.toBe(5);
+    },
+  );
+
+  it("moves between soft wraps before browsing history and restores the saved long draft", () => {
+    terminal.columns = 6;
+    const ref = draftRef(["abcdefghi"]);
+    const onRecallQueuedMessage = vi.fn(() => "queued");
+    mount({ draftRef: ref, history: ["old"], onRecallQueuedMessage });
+    press("", { upArrow: true });
+    expect(ref.current?.cursorCol).toBe(5);
+    press("", { upArrow: true });
+    expect(ref.current?.cursorCol).toBe(1);
+    press("", { upArrow: true });
+    expect(ref.current?.lines).toEqual(["old"]);
+    press("", { downArrow: true });
+    expect(ref.current?.lines).toEqual(["abcdefghi"]);
+    expect(ref.current?.cursorCol).toBe(1);
+    press("", { downArrow: true });
+    expect(ref.current?.cursorCol).toBe(5);
+    expect(onRecallQueuedMessage).not.toHaveBeenCalled();
+  });
+
+  it("reflows at narrow resize and resets the preferred display column", () => {
+    const ref = draftRef(["abcdefghijk", "x", "abcdefghijk"], 2, 9);
+    const props = { draftRef: ref, onSubmit: vi.fn() };
+    mount(props);
+    press("", { upArrow: true });
+    expect(ref.current?.cursorCol).toBe(1);
+    terminal.columns = 6;
+    act(() => {
+      instance?.rerender(createElement(InputBox, props));
+    });
+    press("", { upArrow: true });
+    expect(ref.current?.cursorLine).toBe(0);
+    expect(ref.current?.cursorCol).toBe(9);
+    press("", { upArrow: true });
+    expect(ref.current?.cursorCol).toBe(5);
+    terminal.columns = 1;
+    act(() => {
+      instance?.rerender(createElement(InputBox, props));
+    });
+    press("", { downArrow: true });
+    expect(ref.current?.cursorCol).toBe(6);
+    expect(ref.current?.lines).toEqual(["abcdefghijk", "x", "abcdefghijk"]);
+  });
+
+  it.each([1, 20, 40, 80])("bounds the visual viewport and inverse caret at width %i", (width) => {
+    chalk.level = 3;
+    const line = "界👩‍💻é".repeat(200);
+    const ref = draftRef([line], 0, "界👩‍💻é".repeat(100).length);
+    const output = composer(width, { draftRef: ref });
+    const rows = output.split("\n");
+    expect(rows).toHaveLength(9);
+    expect(rows.every((row) => visibleWidth(row) <= width)).toBe(true);
+    expect(output).toContain("\x1b[7m");
+    expect(ref.current?.lines).toEqual([line]);
+    if (width > 1) {
+      expect(output).toContain("\x1b[7m界\x1b[27m");
+      expect(rows[0]).toContain("more");
+      expect(rows.at(-1)).toContain("more");
+    }
+  });
+});
+
 describe("footer priorities", () => {
   it("shows provider, model, mode and the cycle hint when there is room", () => {
     const output = footer(150);
@@ -845,6 +1125,39 @@ describe("persistent composer drafts and input behavior", () => {
     expect(onSubmit).toHaveBeenLastCalledWith("@one.ts");
     expect(ref.current).toEqual(draftRef().current);
   });
+
+  it.each(["thinking", "think"])(
+    "completes supported /%s levels and submits the bare command",
+    (name) => {
+      const ref = draftRef();
+      const onSubmit = vi.fn();
+      mount({
+        draftRef: ref,
+        onSubmit,
+        commands: [
+          {
+            name: "thinking",
+            aliases: ["think"],
+            type: "local",
+            description: "Thinking level",
+            handler: () => "",
+          },
+        ],
+        thinkingLevels: ["off", "high"],
+      });
+      press(`/${name}`);
+      press("", { return: true });
+      expect(onSubmit).toHaveBeenLastCalledWith(`/${name}`);
+      press(`/${name} h`);
+      press("", { tab: true });
+      expect(ref.current?.lines).toEqual([`/${name} high `]);
+      press("", { return: true });
+      expect(onSubmit).toHaveBeenLastCalledWith(`/${name} high`);
+      press(`/${name} low`);
+      press("", { tab: true });
+      expect(ref.current?.lines).toEqual([`/${name} low`]);
+    },
+  );
 
   it("retains Tab completion and Shift+Tab mode cycling", () => {
     const ref = draftRef();

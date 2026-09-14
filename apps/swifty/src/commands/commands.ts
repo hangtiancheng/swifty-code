@@ -41,8 +41,10 @@ export interface CommandContext {
   memoryClear?: () => void;
   /** Returns the current model name */
   model?: string;
-  /** Returns the current thinking level */
+  /** Returns the current effective thinking level */
   thinkingLevel?: () => ThinkingLevel;
+  /** Returns the active client's available logical thinking levels */
+  availableThinkingLevels?: () => readonly ThinkingLevel[];
   /** Sets the thinking level for the active client */
   setThinkingLevel?: (level: ThinkingLevel) => void;
   /** Persists the thinking level to the global config; throws on failure */
@@ -141,7 +143,7 @@ export function parse(input: string): Parsed | null {
     return null;
   }
   const trimmed = input.slice(1).trim();
-  const spaceIdx = trimmed.indexOf(" ");
+  const spaceIdx = trimmed.search(/\s/);
   const name = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
   // Command names never contain "/"; a slash means the input is a filesystem
   // path (e.g. /path/to/somewhere), which should be a plain user message.
@@ -373,29 +375,41 @@ export function createDefaultRegistry(): CommandRegistry {
     description: "Show or set the thinking level (off, minimal, low, medium, high, xhigh, max)",
     handler: (ctx) => {
       const arg = ctx.args.trim().toLowerCase();
+      const available = ctx.availableThinkingLevels?.() ?? THINKING_LEVELS;
       if (!arg) {
         const current = ctx.thinkingLevel ? ctx.thinkingLevel() : "unknown";
-        return `Thinking level: ${current}\nUsage: /thinking <${THINKING_LEVELS.join(" | ")}>`;
+        return `Thinking level: ${current}\nUsage: /thinking <${available.join(" | ")}>`;
       }
       if (!isValidThinkingLevel(arg)) {
-        return `Unknown thinking level "${arg}". Valid levels: ${THINKING_LEVELS.join(", ")}`;
+        return `Unknown thinking level "${arg}". Available levels: ${available.join(", ")}`;
+      }
+      if (!available.includes(arg)) {
+        return `Thinking level "${arg}" is not supported. Available levels: ${available.join(", ")}`;
       }
       if (!ctx.setThinkingLevel) {
         return "Thinking level control is not available in this context.";
       }
-      ctx.setThinkingLevel(arg);
-      // Persist so the level survives restarts; a persistence failure should not
-      // undo the runtime change, so report it alongside the confirmation.
+      let effective: ThinkingLevel;
+      try {
+        ctx.setThinkingLevel(arg);
+        effective = ctx.thinkingLevel?.() ?? arg;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return `Unable to set thinking level: ${message}. Try /thinking <${available.join(" | ")}>. Nothing was saved.`;
+      }
+      const adjustment = effective === arg ? "" : ` (requested ${arg})`;
+      // Persist the effective level, not the request. A save failure must not
+      // undo the runtime change.
       if (ctx.persistThinkingLevel) {
         try {
-          ctx.persistThinkingLevel(arg);
-          return `Thinking level set to ${arg} and saved.`;
+          ctx.persistThinkingLevel(effective);
+          return `Thinking level set to ${effective}${adjustment} and saved.`;
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          return `Thinking level set to ${arg} for this session, but saving failed: ${message}`;
+          return `Thinking level set to ${effective}${adjustment} for this session, but saving failed: ${message}`;
         }
       }
-      return `Thinking level set to ${arg}.`;
+      return `Thinking level set to ${effective}${adjustment}.`;
     },
   });
 

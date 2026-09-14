@@ -230,6 +230,7 @@ export interface ToolSchema {
     type: "object";
     properties: Record<string, object>;
     required?: string[];
+    [keyword: string]: unknown;
   };
   allowed_callers?: ("direct" | "code_execution_20250825" | "code_execution_20260120")[];
   cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" };
