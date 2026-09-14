@@ -39,11 +39,11 @@ import { dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PermissionChecker } from "../src/permissions/checker.js";
-import { buildSkillSection, parseSkillFile, SkillCatalog } from "../src/skills/catalog.js";
-import { runFork, runInline } from "../src/skills/executor.js";
-import { InstallSkillTool } from "../src/skills/install-tool.js";
-import type { Skill, SkillForkHost } from "../src/skills/skill.js";
+import { PermissionChecker } from "@/permissions/checker.js";
+import { buildSkillSection, parseSkillFile, SkillCatalog } from "@/skills/catalog.js";
+import { runFork, runInline } from "@/skills/executor.js";
+import { InstallSkillTool } from "@/skills/install-tool.js";
+import type { Skill, SkillForkHost } from "@/skills/skill.js";
 
 vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof os>();
@@ -98,7 +98,9 @@ describe("skill installation boundaries", () => {
       "ask",
     );
     expect(
-      new PermissionChecker(workDir, "plan").check(tool.name, tool.category, { source }).effect,
+      new PermissionChecker(workDir, "plan").check(tool.name, tool.category, {
+        source,
+      }).effect,
     ).toBe("ask");
   });
 
@@ -125,7 +127,7 @@ describe("skill installation boundaries", () => {
     expect(onInstalled).not.toHaveBeenCalled();
   });
 
-  it.each([".swifty", ".swifty/skills", ".swifty/skills/demo", ".swifty/skills/demo/SKILL.md"])(
+  it.each([".swifty", ".agents/skills", ".agents/skills/demo", ".agents/skills/demo/SKILL.md"])(
     "does not follow an installation symlink at %s",
     async (component) => {
       const { source, tool, onInstalled } = localInstaller();
@@ -144,7 +146,7 @@ describe("skill installation boundaries", () => {
     },
   );
 
-  it.each([".swifty", ".swifty/skills/demo/SKILL.md"])(
+  it.each([".swifty", ".agents/skills/demo/SKILL.md"])(
     "rejects a dangling symlink at %s",
     async (component) => {
       const { source, tool } = localInstaller();
@@ -191,7 +193,7 @@ describe("skill installation boundaries", () => {
     expect(result.isError).toBe(false);
     expect(catalog.has("renamed")).toBe(true);
     expect(catalog.has("demo")).toBe(false);
-    const installed = readFileSync(join(workDir, ".swifty/skills/renamed/SKILL.md"), "utf-8");
+    const installed = readFileSync(join(workDir, ".agents/skills/renamed/SKILL.md"), "utf-8");
     expect(parseSkillFile(installed)?.frontmatter).toMatchObject({
       name: "renamed",
       allowed_tools: ["ReadFile"],
@@ -456,7 +458,10 @@ describe("skill frontmatter and instructions", () => {
   it("keeps unsupported allowed_tools as metadata without rejecting the skill", () => {
     expect(
       parseSkillFile(document().replace("description:", "allowed_tools: ReadFile\ndescription:")),
-    ).toMatchObject({ meta: { name: "demo" }, frontmatter: { allowed_tools: "ReadFile" } });
+    ).toMatchObject({
+      meta: { name: "demo" },
+      frontmatter: { allowed_tools: "ReadFile" },
+    });
   });
 
   it("advertises the actual install schema and emits one-line descriptions", () => {

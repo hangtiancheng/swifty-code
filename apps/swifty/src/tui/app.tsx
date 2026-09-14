@@ -168,7 +168,12 @@ export function App({
     providers.length === 1 ? "chat" : "providerSelect",
   );
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig>(
-    providers[0] ?? { name: "", protocol: "anthropic", base_url: "", model: "" },
+    providers[0] ?? {
+      name: "",
+      protocol: "anthropic",
+      base_url: "",
+      model: "",
+    },
   );
   const selectedProviderRef = useRef(selectedProvider);
   const [providerDialogActive, setProviderDialogActive] = useState(false);
@@ -670,7 +675,10 @@ export function App({
         decideAndApply(registryRef.current, provider.base_url, contextWindowRef.current);
         setMessages((current) => [
           ...current,
-          { role: "system", content: `Provider switched to ${provider.name} · ${provider.model}.` },
+          {
+            role: "system",
+            content: `Provider switched to ${provider.name} · ${provider.model}.`,
+          },
         ]);
       } catch (err) {
         selectedProviderRef.current = previousProvider;
@@ -699,7 +707,10 @@ export function App({
       if (down.length > 0) {
         setMessages((prev) => [
           ...prev,
-          { role: "system", content: `Connecting MCP server(s): ${down.join(", ")}` },
+          {
+            role: "system",
+            content: `Connecting MCP server(s): ${down.join(", ")}`,
+          },
         ]);
         await connectMcpServers(mgr, selectedProvider);
       }
@@ -1097,7 +1108,7 @@ export function App({
                 ...prev,
                 {
                   role: "system",
-                  content: "No skills found in .swifty/skills/.",
+                  content: "No skills found in .agents/skills/.",
                 },
               ]);
             } else {
@@ -1349,7 +1360,7 @@ export function App({
         allowWrite: [workDir, "/tmp"],
         denyWrite: [
           join(workDir, ".swifty", "permissions.local.yaml"),
-          join(workDir, ".swifty", "skills"),
+          join(workDir, ".agents", "skills"),
         ],
         networkEnabled: sandboxNetworkEnabled,
       };

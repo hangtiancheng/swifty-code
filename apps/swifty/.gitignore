@@ -17,5 +17,5 @@
 # ── Committed (do NOT ignore) ──────────────────────────────────────────
 # .swifty/permissions.yaml       — project permission rules (shared)
 # .swifty/memory/                — project-level memories (shared, team)
-# .swifty/skills/                — installed skills (shared)
+# .agents/skills/                — installed skills (shared)
 # .swifty/agents/                — custom agent definitions (shared)

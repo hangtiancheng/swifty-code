@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { SkillCatalog } from "../src/skills/catalog.js";
-import { InstallSkillTool } from "../src/skills/install-tool.js";
+import { SkillCatalog } from "@/skills/catalog.js";
+import { InstallSkillTool } from "@/skills/install-tool.js";
 
 const SKILL = `---
 name: commit-helper
@@ -51,7 +51,7 @@ describe("InstallSkillTool", () => {
 
     expect(r.isError).toBe(false);
     expect(r.output).toContain("commit-helper");
-    const installed = join(workDir, ".swifty", "skills", "commit-helper", "SKILL.md");
+    const installed = join(workDir, ".agents", "skills", "commit-helper", "SKILL.md");
     expect(existsSync(installed)).toBe(true);
     expect(readFileSync(installed, "utf-8")).toContain("conventional-commit");
     // catalog reloaded with the new skill
@@ -81,6 +81,6 @@ describe("InstallSkillTool", () => {
         name: "renamed",
       },
     );
-    expect(existsSync(join(workDir, ".swifty", "skills", "renamed", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(workDir, ".agents", "skills", "renamed", "SKILL.md"))).toBe(true);
   });
 });

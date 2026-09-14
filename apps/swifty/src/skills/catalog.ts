@@ -58,8 +58,8 @@ export class SkillCatalog {
     this.entries.clear();
     this.dirModTimes.clear();
 
-    // Tier 2: User-global ~/.swifty/skills/
-    // Tier 3: Project-level $workDir/.swifty/skills/ (highest priority)
+    // Tier 2: User-global ~/.agents/skills/
+    // Tier 3: Project-level $workDir/.agents/skills/ (highest priority)
     for (const dir of this.skillDirPaths()) {
       if (!existsSync(dir)) {
         continue;
@@ -109,7 +109,7 @@ export class SkillCatalog {
 
   private skillDirPaths(): string[] {
     return [homedir(), ...(this.workDir ? [this.workDir] : [])].flatMap((root) =>
-      [".agents", ".swifty"].map((ecosystem) => join(root, ecosystem, "skills")),
+      [".agents"].map((ecosystem) => join(root, ecosystem, "skills")),
     );
   }
 
@@ -298,7 +298,7 @@ export function buildSkillSection(catalog: SkillCatalog, workDir: string): strin
   if (metas.length === 0) {
     return "";
   }
-  const skillsDir = join(workDir, ".swifty", "skills");
+  const skillsDir = join(workDir, ".agents", "skills");
   const lines = [
     "## Available Skills\n",
     `Skills are installed at: ${skillsDir}`,

@@ -98,13 +98,15 @@ describe("extra allowed roots", () => {
 });
 
 describe("protected paths under bypass", () => {
-  const protectedRelatives = [".swifty/permissions.local.yaml", ".swifty/skills/evil/SKILL.md"];
+  const protectedRelatives = [".swifty/permissions.local.yaml", ".agents/skills/evil/SKILL.md"];
 
   it("denies writing protected paths even in bypass mode", () => {
     const dir = makeTmpDir();
     const checker = new PermissionChecker(dir, "bypassPermissions");
     for (const rel of protectedRelatives) {
-      const result = checker.check("WriteFile", "write", { file_path: join(dir, rel) });
+      const result = checker.check("WriteFile", "write", {
+        file_path: join(dir, rel),
+      });
       expect(result.effect).toBe("deny");
     }
   });
@@ -112,7 +114,9 @@ describe("protected paths under bypass", () => {
   it("leaves ordinary files alone", () => {
     const dir = makeTmpDir();
     const checker = new PermissionChecker(dir, "bypassPermissions");
-    const result = checker.check("WriteFile", "write", { file_path: join(dir, "a.txt") });
+    const result = checker.check("WriteFile", "write", {
+      file_path: join(dir, "a.txt"),
+    });
     expect(result.effect).not.toBe("deny");
   });
 });
@@ -217,12 +221,16 @@ describe("memory background agent sandbox", () => {
       checker.mode = "default";
 
       const userMemFile = join(homedir(), ".swifty", "memory", "MEMORY.md");
-      const allowed = checker.check("WriteFile", "write", { file_path: userMemFile });
+      const allowed = checker.check("WriteFile", "write", {
+        file_path: userMemFile,
+      });
       expect(allowed.reason).not.toContain("outside allowed directories");
 
       // Other directories outside the project are unaffected and still blocked by the sandbox
       const unrelated = join(homedir(), "unrelated-dir", "x.txt");
-      const blocked = checker.check("WriteFile", "write", { file_path: unrelated });
+      const blocked = checker.check("WriteFile", "write", {
+        file_path: unrelated,
+      });
       expect(blocked.effect).toBe("deny");
     } finally {
       spy.mockRestore();

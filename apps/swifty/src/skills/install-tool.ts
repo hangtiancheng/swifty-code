@@ -46,10 +46,10 @@ import { asErrorString, strArg } from "@/utils/index.js";
 const log = createChildLogger({ module: "skills" });
 
 // Installs a skill from a local file path or an https URL into
-// .swifty/skills/<name>/SKILL.md, then reloads the catalog.
+// .agents/skills/<name>/SKILL.md, then reloads the catalog.
 export class InstallSkillTool implements Tool {
   name = "InstallSkill";
-  description = "Install a skill from a local file path or an https URL into .swifty/skills.";
+  description = "Install a skill from a local file path or an https URL into .agents/skills.";
   category = "write" as const;
 
   constructor(
@@ -103,7 +103,10 @@ export class InstallSkillTool implements Tool {
         try {
           const resp = await fetch(source, { signal });
           if (!resp.ok) {
-            return { output: `Error: fetch failed (${String(resp.status)})`, isError: true };
+            return {
+              output: `Error: fetch failed (${String(resp.status)})`,
+              isError: true,
+            };
           }
           content = await resp.text();
           signal.throwIfAborted();
@@ -138,7 +141,7 @@ export class InstallSkillTool implements Tool {
       // Resolve the workspace itself (which may be reached via a symlink), then
       // reject symlinks in every installation component, including dangling links.
       let dir = realpathSync(this.workDir);
-      for (const segment of [".swifty", "skills", name]) {
+      for (const segment of [".agents", "skills", name]) {
         dir = join(dir, segment);
         const stat = lstatSync(dir, { throwIfNoEntry: false });
         if (stat) {
@@ -173,12 +176,15 @@ export class InstallSkillTool implements Tool {
       this.catalog.load(this.workDir);
       this.onInstalled?.();
       return {
-        output: `Skill '${name}' installed to .swifty/skills/${name}/SKILL.md`,
+        output: `Skill '${name}' installed to .agents/skills/${name}/SKILL.md`,
         isError: false,
       };
     } catch (err) {
       log.error({ err }, "skills operation failed");
-      return { output: `Error installing skill: ${asErrorString(err)}`, isError: true };
+      return {
+        output: `Error installing skill: ${asErrorString(err)}`,
+        isError: true,
+      };
     }
   }
 }

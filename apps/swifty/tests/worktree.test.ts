@@ -43,18 +43,18 @@ function initRepo(): string {
 describe("createAgentWorktree .swifty settings propagation", () => {
   it("copies shared settings into the worktree", async () => {
     const repo = initRepo();
-    mkdirSync(join(repo, ".swifty", "skills", "demo"), { recursive: true });
+    mkdirSync(join(repo, ".agents", "skills", "demo"), { recursive: true });
     mkdirSync(join(repo, ".swifty", "memory"), { recursive: true });
     writeFileSync(join(repo, ".swifty", "memory", "notes.md"), "note\n");
     writeFileSync(join(repo, ".swifty", "permissions.yaml"), "rules: []\n");
-    writeFileSync(join(repo, ".swifty", "skills", "demo", "SKILL.md"), "demo\n");
+    writeFileSync(join(repo, ".agents", "skills", "demo", "SKILL.md"), "demo\n");
 
     const wt = await createAgentWorktree("copy-test", repo);
 
     expect(wt.path).toBe(join(repo, ".swifty", "worktrees", "copy-test"));
     expect(existsSync(join(wt.path, ".swifty", "memory", "notes.md"))).toBe(true);
     expect(existsSync(join(wt.path, ".swifty", "permissions.yaml"))).toBe(true);
-    expect(existsSync(join(wt.path, ".swifty", "skills", "demo", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(wt.path, ".agents", "skills", "demo", "SKILL.md"))).toBe(true);
   });
 
   it("excludes runtime state and the nested worktrees directory", async () => {

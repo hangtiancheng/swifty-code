@@ -29,7 +29,7 @@ Beyond interactive use, Swifty supports a non-interactive print mode for scripti
 
 ### Skills and Commands
 
-- Skill catalog with three-tier loading: built-in, user-global (~/.swifty/skills/), and project-level (.swifty/skills/)
+- Skill catalog with three-tier loading: built-in, user-global (~/.agents/skills/), and project-level (.agents/skills/)
 - Hot-reload support for skills edited on disk
 - Inline and fork execution modes for skills
 - Slash command system with built-in commands and user-defined commands from .swifty/commands/

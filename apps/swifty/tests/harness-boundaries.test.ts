@@ -181,8 +181,8 @@ describe("permission path boundaries", () => {
     const { config } = fixture();
     const outside = mkdtempSync(join(tmpdir(), "swifty-outside-"));
     // tmpdir is an allowed root, so use a checker rooted elsewhere to test deny-write aliases instead.
-    mkdirSync(join(config.workDir, ".swifty", "skills"), { recursive: true });
-    symlinkSync(join(config.workDir, ".swifty", "skills"), join(config.workDir, "skill-alias"));
+    mkdirSync(join(config.workDir, ".agents", "skills"), { recursive: true });
+    symlinkSync(join(config.workDir, ".agents", "skills"), join(config.workDir, "skill-alias"));
     expect(
       config.checker.check("WriteFile", "write", {
         file_path: join(config.workDir, "skill-alias", "new", "SKILL.md"),

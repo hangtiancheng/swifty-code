@@ -26,10 +26,10 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { SkillCatalog } from "../src/skills/catalog.js";
-import { runInline } from "../src/skills/executor.js";
-import { LoadSkillTool } from "../src/skills/load-skill-tool.js";
-import type { Skill, SkillForkHost, SkillHost } from "../src/skills/skill.js";
+import { SkillCatalog } from "@/skills/catalog.js";
+import { runInline } from "@/skills/executor.js";
+import { LoadSkillTool } from "@/skills/load-skill-tool.js";
+import type { Skill, SkillForkHost, SkillHost } from "@/skills/skill.js";
 function makeHost() {
   const activated: [string, string][] = [];
   const host: SkillHost = {
@@ -134,7 +134,7 @@ describe("LoadSkillTool fork mode", () => {
 describe("skill frontmatter mode resolution", () => {
   it("treats context: fork as mode: fork", () => {
     const dir = mkdtempSync(join(tmpdir(), "swifty-skill-"));
-    const skillDir = join(dir, ".swifty", "skills", "audit-deps");
+    const skillDir = join(dir, ".agents", "skills", "audit-deps");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(
       join(skillDir, "SKILL.md"),
@@ -149,7 +149,7 @@ describe("skill frontmatter mode resolution", () => {
 
   it("keeps an explicit mode over the legacy context field", () => {
     const dir = mkdtempSync(join(tmpdir(), "swifty-skill-"));
-    const skillDir = join(dir, ".swifty", "skills", "audit-deps");
+    const skillDir = join(dir, ".agents", "skills", "audit-deps");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(
       join(skillDir, "SKILL.md"),

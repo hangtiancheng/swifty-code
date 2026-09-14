@@ -124,7 +124,7 @@ const CONTENT_FIELDS: Record<string, string> = {
   InstallSkill: "source",
 };
 
-const DEFAULT_DENY_WRITE = [".swifty/permissions.local.yaml", ".swifty/skills/"];
+const DEFAULT_DENY_WRITE = [".swifty/permissions.local.yaml", ".agents/skills/"];
 
 export function extractContent(toolName: string, args: Record<string, unknown>): string {
   // The match target for McpCall is not a specific parameter but "which MCP
@@ -450,7 +450,10 @@ export class PermissionChecker {
     const rules = (): Rule[] => (snapshot ??= this.ruleEngine.snapshot());
     const explicitEffect = evaluateRules(rules(), toolName, content);
     if (explicitEffect === "deny" || explicitEffect === "ask") {
-      return { effect: explicitEffect, reason: `Permission rule: ${explicitEffect}` };
+      return {
+        effect: explicitEffect,
+        reason: `Permission rule: ${explicitEffect}`,
+      };
     }
 
     // Layer 0: plan-mode plan-file write exception.
