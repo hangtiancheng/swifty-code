@@ -25,6 +25,7 @@ import { execFile, spawn } from "node:child_process";
 import { asRecord, intArg, strArg } from "../utils/index.js";
 
 import { POWERSHELL_DESCRIPTION } from "./descriptions.js";
+import { exitCodeHint } from "./exit-code-hints.js";
 import {
   formatShellOutput,
   MAX_SHELL_OUTPUT_BYTES,
@@ -42,47 +43,6 @@ import {
 const MAX_TIMEOUT = 600;
 // Grace period between the graceful kill and the forced-kill escalation.
 const KILL_GRACE_MS = 3000;
-
-/**
- * Extract the base command name from a command string.
- * For piped commands, take the last segment (PowerShell surfaces the exit code of the last native command in a pipeline).
- */
-function extractBaseCmd(command: string): string {
-  // Split by pipe, take the last segment command
-  const lastSegment = command.split("|").pop()?.trim() ?? command;
-  // Extract base command name: skip variable assignments and path prefixes
-  const tokens = lastSegment.split(/\s+/);
-  for (const token of tokens) {
-    // Skip tokens like $env:VAR="value" or VAR=value (variable assignments)
-    if (token.includes("=") && !token.startsWith("-")) {
-      continue;
-    }
-    // Strip path prefix (both separators on Windows) and the .exe suffix;
-    // Windows command names are case-insensitive, so normalize to lowercase
-    const base = token.split(/[\\/]/).pop() ?? token;
-    return base.replace(/\.exe$/i, "").toLowerCase();
-  }
-  return "";
-}
-
-// Exit code semantics for special commands, helping the LLM understand non-zero exit codes
-const exitCodeHints = new Map<string, Map<number, string>>([
-  ["findstr", new Map([[1, "no matches found"]])],
-  ["where", new Map([[1, "not found"]])],
-  ["grep", new Map([[1, "no matches found"]])],
-  ["rg", new Map([[1, "no matches found"]])],
-  ["diff", new Map([[1, "files differ"]])],
-]);
-
-/**
- * Return a semantic hint for non-zero exit codes of special commands, helping the LLM understand the exit code meaning.
- * Returns empty string if the command or exit code is not recognized.
- */
-function exitCodeHint(command: string, exitCode: number): string {
-  const baseCmd = extractBaseCmd(command);
-  const hints = exitCodeHints.get(baseCmd);
-  return hints?.get(exitCode) ?? "";
-}
 
 export class PowerShellTool implements Tool {
   // Use a hardcoded string instead of PowerShellTool.name.replace("Tool", "")

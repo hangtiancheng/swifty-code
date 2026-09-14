@@ -36,6 +36,13 @@ export const INSTALL_METHODS = [
       "curl -fsSL https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.sh | bash",
   },
   {
+    id: "powershell",
+    label: "PowerShell",
+    hint: "Windows · one-liner",
+    command:
+      "irm https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.ps1 | iex",
+  },
+  {
     id: "npm",
     label: "npm",
     hint: "Node.js 20+",

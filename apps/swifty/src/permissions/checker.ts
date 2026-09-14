@@ -59,7 +59,190 @@ interface DangerousPattern {
 // Keep it empty array
 const DANGEROUS_PATTERNS: DangerousPattern[] = [];
 
-const UNSAFE_PREFIXES: (string | RegExp)[] = [];
+const SAFE_PREFIXES: (string | RegExp)[] = [
+  "basename",
+  "cat",
+  "cksum",
+  "cmp",
+  "column",
+  "comm",
+  "cut",
+  "df",
+  "dirname",
+  "du",
+  "echo",
+  "expr",
+  "false",
+  "fold",
+  "fmt",
+  "grep",
+  "groups",
+  "head",
+  "id",
+  "jq",
+  "locate",
+  "ls",
+  "md5",
+  "md5sum",
+  "nl",
+  "od",
+  "paste",
+  "pgrep",
+  "printenv",
+  "printf",
+  "ps",
+  "pwd",
+  "readlink",
+  "realpath",
+  "sha1sum",
+  "sha224sum",
+  "sha256sum",
+  "sha384sum",
+  "sha512sum",
+  "shasum",
+  "stat",
+  "strings",
+  "tac",
+  "tail",
+  "tr",
+  "true",
+  "tty",
+  "type",
+  "uname",
+  "uptime",
+  "w",
+  "wc",
+  "whereis",
+  "which",
+  "who",
+  "whoami",
+  "ack",
+  "ag",
+  "alias",
+  "arch",
+  "base64",
+  "bat",
+  "bzcat",
+  "cal",
+  "col",
+  "cloc",
+  "diff",
+  "diff3",
+  "dig",
+  "dmesg",
+  "expand",
+  "factor",
+  "free",
+  "help",
+  "hexdump",
+  "host",
+  "iconv",
+  "info",
+  "locale",
+  "lscpu",
+  "lsblk",
+  "lsof",
+  "lspci",
+  "lsusb",
+  "man",
+  "mdfind",
+  "mdls",
+  "ncal",
+  "netstat",
+  "nproc",
+  "nslookup",
+  "objdump",
+  "otool",
+  "pbpaste",
+  "ping",
+  "readelf",
+  "rev",
+  "sdiff",
+  "seq",
+  "sum",
+  "sw_vers",
+  "tldr",
+  "traceroute",
+  "unexpand",
+  "vm_stat",
+  "whois",
+  "xxd",
+  "xzcat",
+  "zcat",
+  "zgrep",
+  "zipinfo",
+  /^command\s+(?:-v|-V)\s+\S+(?:\s+\S+)*$/,
+  /^date(?!.*\s(?:-s|--set)(?:=|\s|$))(?:\s.*)?$/,
+  /^file(?!.*(?:\s--compile(?:=|\s|$)|\s-[^-\s]*C))(?:\s.*)?$/,
+  /^find(?!.*\s(?:-delete|-exec(?:dir)?|-ok(?:dir)?|-fls|-fprint(?:0)?|-fprintf)(?:\s|$))(?:\s.*)?$/,
+  /^fd(?!.*\s(?:-x|-X|--exec|--exec-batch)(?:=|\s|$))(?:\s.*)?$/,
+  /^hostname(?:\s+(?:-[adfFiIsyVh]|--(?:alias|all-fqdns|all-ip-addresses|domain|fqdn|help|ip-address|long|nis|short|version|yp)))*$/,
+  /^rg(?!.*\s(?:--pre|--pre-glob|--hostname-bin)(?:=|\s|$))(?:\s.*)?$/,
+  /^sort(?!.*\s(?:-o|--output|--compress-program)(?:=|\s|$))(?:\s.*)?$/,
+  /^ss(?!.*\s(?:--kill|-[^-\s]*K)(?:\s|$))(?:\s.*)?$/,
+  /^tree(?!.*\s(?:-o|--output)(?:=|\s|$))(?:\s.*)?$/,
+  /^git\s+(?:--version|version)$/,
+  /^git\s+(?:blame|cat-file|count-objects|describe|for-each-ref|ls-files|ls-tree|merge-base|name-rev|rev-parse|shortlog|show-ref|status|verify-pack)(?:\s.*)?$/,
+  /^git\s+(?:diff|log|show)(?!.*\s(?:--ext-diff|--output)(?:=|\s|$))(?:\s.*)?$/,
+  /^git\s+branch$/,
+  /^git\s+branch(?=.*\s(?:-a|--all|-r|--remotes|--list|--show-current|--contains|--no-contains|--merged|--no-merged)(?:=|\s|$))(?!.*\s(?:-[dDmMcCf]|--(?:copy|create-reflog|delete|edit-description|move|set-upstream-to|unset-upstream))(?:=|\s|$))(?:\s.*)?$/,
+  /^git\s+config(?:\s+(?:--blob(?:=|\s)\S+|--file(?:=|\s)\S+|--fixed-value|--global|--local|--null|--show-names|--show-origin|--show-scope|--system|--worktree|-z))*\s+(?:--get|--get-all|--get-regexp|--get-urlmatch|--list|-l)(?:\s.*)?$/,
+  /^git\s+notes\s+(?:list|show)(?:\s.*)?$/,
+  /^git\s+reflog\s+show(?:\s.*)?$/,
+  /^git\s+remote(?:\s+-v)?$/,
+  /^git\s+remote\s+get-url(?:\s+(?:--all|--push))*\s+\S+$/,
+  /^git\s+remote\s+show(?:\s+-n)?(?:\s+\S+)?$/,
+  /^git\s+stash\s+(?:list|show)(?:\s.*)?$/,
+  /^git\s+submodule\s+(?:status|summary)(?:\s.*)?$/,
+  /^git\s+tag(?:\s+(?:-l|--list)(?:\s.*)?)?$/,
+  /^git\s+worktree\s+list(?:\s.*)?$/,
+  /^(?:bun|npm|pnpm|yarn)\s+(?:explain|help|info|list|ls|outdated|prefix|query|root|search|show|view|why)(?:\s.*)?$/,
+  /^(?:npm|pnpm|yarn)\s+config\s+(?:get|list)(?:\s.*)?$/,
+  /^npm\s+pkg\s+get(?:\s.*)?$/,
+  /^bun\s+pm\s+ls(?:\s.*)?$/,
+  /^(?:bun|cargo|clang|cmake|composer|deno|gcc|gem|node|npm|php|pip|pip3|pnpm|python|python3|ruby|rustc|swift|yarn)\s+(?:--version|-V)$/,
+  /^(?:go|helm|kubectl|podman|terraform)\s+version(?:\s.*)?$/,
+  /^(?:java|javac)\s+-version$/,
+  /^dotnet\s+(?:--info|--list-runtimes|--list-sdks|--version)$/,
+  /^(?:docker|podman)\s+(?:diff|events|images|info|inspect|logs|port|ps|stats|top|version)(?:\s.*)?$/,
+  /^(?:docker|podman)\s+(?:container|image|network|volume)\s+(?:inspect|ls)(?:\s.*)?$/,
+  /^docker\s+compose\s+(?:config|images|logs|ps|top|version)(?:\s.*)?$/,
+  /^kubectl\s+(?:api-resources|api-versions|cluster-info|describe|explain|get|logs|top|version)(?:\s.*)?$/,
+  /^kubectl\s+config\s+(?:current-context|get-contexts|view)(?:\s.*)?$/,
+  /^helm\s+(?:env|get|history|list|search|show|status|version)(?:\s.*)?$/,
+  /^terraform\s+(?:output|providers|show|version)(?:\s.*)?$/,
+  /^terraform\s+workspace\s+(?:list|show)(?:\s.*)?$/,
+  /^systemctl\s+(?:is-active|is-enabled|is-failed|list-dependencies|list-jobs|list-sockets|list-timers|list-unit-files|list-units|show|show-environment|status)(?:\s.*)?$/,
+  /^launchctl\s+(?:error|hostinfo|list|managername|managerpid|manageruid|print|print-cache|procinfo|variant|version)(?:\s.*)?$/,
+  /^journalctl(?!.*\s--(?:rotate|vacuum|flush|sync))(?:\s.*)?$/,
+  /^defaults\s+read(?:\s.*)?$/,
+  /^ifconfig$/,
+  /^ipconfig(?:\s+\/(?:all|allcompartments|displaydns))?\s*$/,
+  /^ip\s+(?:addr(?:ess)?|route)$/,
+  /^ip\s+(?:addr(?:ess)?|link|route|neigh(?:bor)?)\s+(?:show|list)\b(?:\s.*)?$/,
+  /^tar\s+(?:--list\b|-[a-zA-Z]*t[a-zA-Z]*)(?:\s.*)?$/,
+  /^unzip\s+-[a-zA-Z]*l(?:\s.*)?$/,
+  /^git\s+(?:grep|fsck|rev-list|whatchanged|help|diff-tree|diff-index|diff-files|ls-remote|verify-tag|verify-commit)(?:\s.*)?$/,
+  /^git\s+archive(?!.*\s(?:-o|--output)(?:=|\s|$))(?:\s.*)?$/,
+  /^svn\s+(?:status|stat|st|diff|di|log|info|list|ls|cat|blame|ann|annotate|proplist|propget|pg)(?:\s.*)?$/,
+  /^hg\s+(?:status|st|log|diff|summary|id|identify|branches|tags|manifest|cat|files|locate|heads|tip|parents|paths|root)(?:\s.*)?$/,
+  /^cargo\s+(?:tree|search|locate-project|verify-project|config\s+get)(?:\s.*)?$/,
+  /^gem\s+(?:list|search|info|env|dependency|contents|specification|sources\s+(?:-l|--list))(?:\s.*)?$/,
+  /^brew\s+(?:--version|-v|list|info|search|outdated|deps|uses|config|leaves|doctor)(?:\s.*)?$/,
+  /^choco\s+(?:--version|list|info|search|outdated)(?:\s.*)?$/,
+  /^apt(?:-get)?\s+list(?:\s.*)?$/,
+  /^apt-cache\s+(?:search|show|showpkg|policy|depends|rdepends|pkgnames)(?:\s.*)?$/,
+  /^dpkg\s+(?:-l|-L|-s|-S|--list|--listfiles|--status|--search)\b(?:\s.*)?$/,
+  /^rpm\s+-q[a-zA-Z]*(?:\s.*)?$/,
+  /^(?:aws|gh|gcloud|az)\s+--version$/,
+  /^aws\s+(?:\S+\s+)?(?:describe|list|get|wait)-\S+(?:\s.*)?$/,
+  /^aws\s+s3\s+ls(?:\s.*)?$/,
+  /^gcloud\s+\S+(?:\s+\S+)*\s+(?:list|describe)(?:\s.*)?$/,
+  /^az\s+\S+(?:\s+\S+)*\s+(?:list|show)(?:\s.*)?$/,
+  /^gh\s+(?:pr|issue|repo|run|release|gist)\s+(?:view|list|status|checks|diff)(?:\s.*)?$/,
+  /^(?:docker|podman)\s+(?:system\s+(?:df|info)|history|context\s+(?:ls|list|show|inspect))(?:\s.*)?$/,
+  /^(?:Get-(?:Acl|Alias|AuthenticodeSignature|ChildItem|CimInstance|Clipboard|Command|ComputerInfo|Content|Counter|Culture|Date|DnsClientCache|EventLog|ExecutionPolicy|FileHash|Help|History|Host|HotFix|Item|ItemProperty|Location|Member|Module|NetAdapter|NetIPAddress|NetNeighbor|NetIPConfiguration|NetRoute|NetTCPConnection|NetUDPEndpoint|Package|PackageProvider|PnpDevice|Printer|Process|PSDrive|PSProvider|PSRepository|PSSnapin|ScheduledTask|Service|TimeZone|UICulture|Variable|Verb|WinEvent|WmiObject)|Compare-Object|Format-(?:Custom|Hex|List|Table|Wide)|Group-Object|Measure-Object|Out-String|Resolve-Path|Select-Object|Select-String|Sort-Object|Test-Path|Where-Object|Write-(?:Debug|Error|Host|Information|Output|Progress|Verbose|Warning))(?:\s.*)?$/i,
+];
 
 // Per-tool argument field treated as the "content" for safe/dangerous checks and rule matching
 const CONTENT_FIELDS: Record<string, string> = {
@@ -73,7 +256,7 @@ const CONTENT_FIELDS: Record<string, string> = {
   InstallSkill: "source",
 };
 
-const DEFAULT_DENY_WRITE = [".swifty/permissions.yaml", ".agents/skills/"];
+const DEFAULT_DENY_WRITE: string[] = [];
 
 export function extractContent(toolName: string, args: Record<string, unknown>): string {
   // The match target for McpCall is not a specific parameter but "which MCP
@@ -327,22 +510,20 @@ export function isSafeCommand(command: string): boolean {
   const trimmed = command.trim();
   // Reject anything with shell metacharacters: a "safe" prefix like `cat` must
   // not become a gateway to piping/chaining/redirection/substitution.
-  if (
-    trimmed.includes(">") ||
-    trimmed.includes("<") ||
-    /[\r\n&]/.test(trimmed) ||
-    trimmed.includes("|") ||
-    trimmed.includes(";") ||
-    trimmed.includes("&&") ||
-    trimmed.includes("$(") ||
-    trimmed.includes("`")
-  ) {
+  if (/[\r\n&|;<>`(){}[\]]/.test(trimmed)) {
     return false;
   }
-  return !UNSAFE_PREFIXES.some(
-    (prefix) =>
-      trimmed === prefix || trimmed.startsWith(prefix + " ") || trimmed.startsWith(prefix + "\t"),
-  );
+  return SAFE_PREFIXES.some((prefix) => {
+    if (typeof prefix === "string") {
+      return (
+        trimmed === prefix || trimmed.startsWith(prefix + " ") || trimmed.startsWith(prefix + "\t")
+      );
+    }
+    // `g`/`y` regexes keep match state in lastIndex, which would leak between
+    // commands and let a later unsafe command pass, so restart the match.
+    prefix.lastIndex = 0;
+    return prefix.test(trimmed);
+  });
 }
 
 function modeDecide(mode: PermissionMode, category: "read" | "write" | "command"): DecisionEffect {

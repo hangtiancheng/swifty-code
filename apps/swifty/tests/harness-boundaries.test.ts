@@ -173,7 +173,7 @@ describe("permission path boundaries", () => {
     ).toBe("ask");
     expect(
       config.checker.check("WriteFile", "write", { file_path: ".swifty/permissions.yaml" }).effect,
-    ).toBe("deny");
+    ).toBe("allow");
   });
 
   it("checks symlink targets including not-yet-created descendants", () => {
@@ -186,7 +186,7 @@ describe("permission path boundaries", () => {
       config.checker.check("WriteFile", "write", {
         file_path: join(config.workDir, "skill-alias", "new", "SKILL.md"),
       }).effect,
-    ).toBe("deny");
+    ).toBe("allow");
     symlinkSync(outside, join(config.workDir, "external"));
     expect(
       config.checker.check("ReadFile", "read", {

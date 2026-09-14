@@ -36,6 +36,8 @@ Requires **Node.js >= 20**.
 
 ### One-line installer
 
+**macOS / Linux**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.sh | bash
 ```
@@ -45,6 +47,20 @@ The installer supports `--uninstall`, `--version=X.Y.Z`, `--alpha`, `--beta`, `-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.sh | bash -s -- --alpha
 ```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.ps1 | iex
+```
+
+The installer supports `-Uninstall`, `-Version X.Y.Z`, `-Alpha`, `-Beta`, `-Rc`, `-Canary`, `-Nightly` and `-Tag NAME`. Options are passed by invoking the downloaded script as a script block:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.ps1))) -Alpha
+```
+
+If you downloaded the script locally, run it with `powershell -ExecutionPolicy Bypass -File install.ps1 [OPTIONS]`.
 
 ### Via npm
 

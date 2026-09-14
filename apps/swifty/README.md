@@ -60,6 +60,20 @@ Beyond interactive use, Swifty supports a non-interactive print mode for scripti
 npm install -g @swifty.js/swifty
 ```
 
+Or use the one-line installers ([macOS / Linux](../../install.sh), [Windows](../../install.ps1)):
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.sh | bash
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/hangtiancheng/swifty-code/main/install.ps1 | iex
+```
+
+Both installers write a default `~/.swifty/config.yaml` if none exists, verify Node.js >= 20, and support uninstall / pinned-version / dist-tag options (see their `--help` / `-Help` output).
+
 Or run directly from the monorepo:
 
 ```bash

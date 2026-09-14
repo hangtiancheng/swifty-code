@@ -26,6 +26,7 @@ import { isSafeCommand } from "../permissions/checker.js";
 import { intArg, strArg } from "../utils/index.js";
 
 import { BASH_DESCRIPTION } from "./descriptions.js";
+import { exitCodeHint } from "./exit-code-hints.js";
 import {
   formatShellOutput,
   MAX_SHELL_OUTPUT_BYTES,
@@ -45,56 +46,6 @@ import type { Sandbox, SandboxConfig } from "@/sandbox/index.js";
 const MAX_TIMEOUT = 600;
 // Grace period between SIGTERM and the SIGKILL escalation when terminating a command.
 const KILL_GRACE_MS = 3000;
-
-/**
- * Extract the base command name from a command string.
- * For piped commands, take the last segment (bash returns the exit code of the last command in a pipeline by default).
- */
-function extractBaseCmd(command: string): string {
-  // Split by pipe, take the last segment command
-  const lastSegment = command.split("|").pop()?.trim() ?? command;
-  // Extract base command name: skip env variable assignments and path prefixes
-  const tokens = lastSegment.split(/\s+/);
-  for (const token of tokens) {
-    // Skip tokens like VAR=value (environment variable assignments)
-    if (token.includes("=") && !token.startsWith("-")) {
-      continue;
-    }
-    // Strip path prefix, keep only the command name
-    return token.split("/").pop() ?? token;
-  }
-  return "";
-}
-
-// Exit code semantics for special commands, helping the LLM understand non-zero exit codes
-const exitCodeHints = new Map<string, Map<number, string>>([
-  ["grep", new Map([[1, "no matches found"]])],
-  ["egrep", new Map([[1, "no matches found"]])],
-  ["fgrep", new Map([[1, "no matches found"]])],
-  ["rg", new Map([[1, "no matches found"]])],
-  ["diff", new Map([[1, "files differ"]])],
-  ["test", new Map([[1, "condition is false"]])],
-  ["[", new Map([[1, "condition is false"]])],
-  ["find", new Map([[1, "partial success"]])],
-]);
-
-/**
- * Return a semantic hint for non-zero exit codes of special commands, helping the LLM understand the exit code meaning.
- * Returns empty string if the command or exit code is not recognized.
- */
-function exitCodeHint(command: string, exitCode: number): string {
-  const baseCmd = extractBaseCmd(command);
-  const hints = exitCodeHints.get(baseCmd);
-  return hints?.get(exitCode) ?? "";
-}
-
-// const BashErrorSchema = z.object({
-//   status: z.coerce.number().optional(),
-//   stdout: z.string().optional(),
-//   stderr: z.string().optional(),
-//   killed: z.boolean().optional(),
-//   message: z.string().optional(),
-// });
 
 export class BashTool implements Tool {
   // Use a hardcoded string instead of BashTool.name.replace("Tool", "")
