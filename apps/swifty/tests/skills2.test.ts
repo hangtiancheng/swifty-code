@@ -55,7 +55,7 @@ let workDir: string;
 let userDir: string;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "swifty-skills-regression-"));
+  root = mkdtempSync(join(tmpdir(), "swifty-skills2-"));
   workDir = join(root, "project");
   userDir = join(root, "home");
   mkdirSync(workDir);
@@ -123,7 +123,7 @@ describe("skill installation boundaries", () => {
     const fromYaml = await tool.execute({ workDir }, { source });
     expect(overridden.isError).toBe(true);
     expect(fromYaml.isError).toBe(true);
-    expect(existsSync(join(workDir, ".swifty"))).toBe(false);
+    expect(existsSync(join(workDir, ".agents"))).toBe(false);
     expect(catalog.list()).toEqual([]);
     expect(onInstalled).not.toHaveBeenCalled();
   });
@@ -220,9 +220,9 @@ describe("skill installation boundaries", () => {
   it("returns tool errors for unreadable sources and invalid destination directories", async () => {
     const { source, tool } = localInstaller();
     expect((await tool.execute({ workDir }, { source: workDir })).isError).toBe(true);
-    writeFileSync(join(workDir, ".swifty"), "keep me");
+    writeFileSync(join(workDir, ".agents"), "keep me");
     expect((await tool.execute({ workDir }, { source })).isError).toBe(true);
-    expect(readFileSync(join(workDir, ".swifty"), "utf-8")).toBe("keep me");
+    expect(readFileSync(join(workDir, ".agents"), "utf-8")).toBe("keep me");
   });
 });
 
@@ -237,7 +237,7 @@ describe("skill download cancellation", () => {
       expect(result.isError).toBe(true);
       expect(fetcher).not.toHaveBeenCalled();
       expect(onInstalled).not.toHaveBeenCalled();
-      expect(existsSync(join(workDir, ".swifty"))).toBe(false);
+      expect(existsSync(join(workDir, ".agents"))).toBe(false);
     },
   );
 
@@ -264,7 +264,7 @@ describe("skill download cancellation", () => {
     expect((await result).isError).toBe(true);
     expect(receivedSignal?.aborted).toBe(true);
     expect(onInstalled).not.toHaveBeenCalled();
-    expect(existsSync(join(workDir, ".swifty"))).toBe(false);
+    expect(existsSync(join(workDir, ".agents"))).toBe(false);
   });
 
   it.each(["headers", "body"])("times out while waiting for response %s", async (phase) => {
@@ -303,7 +303,7 @@ describe("skill download cancellation", () => {
     expect(receivedSignal?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
     expect(onInstalled).not.toHaveBeenCalled();
-    expect(existsSync(join(workDir, ".swifty"))).toBe(false);
+    expect(existsSync(join(workDir, ".agents"))).toBe(false);
   });
 
   it("checks cancellation after consuming the response body", async () => {
@@ -324,7 +324,7 @@ describe("skill download cancellation", () => {
         )
       ).isError,
     ).toBe(true);
-    expect(existsSync(join(workDir, ".swifty"))).toBe(false);
+    expect(existsSync(join(workDir, ".agents"))).toBe(false);
   });
 
   it("installs raw URLs and releases the deadline after success or HTTP failure", async () => {
@@ -345,26 +345,23 @@ describe("skill download cancellation", () => {
 });
 
 describe("skill catalog reload", () => {
-  it.each([".agents", ".swifty"])(
-    "watches project and user additions/removals in %s",
-    (ecosystem) => {
-      for (const base of [workDir, userDir]) {
-        const catalog = new SkillCatalog();
-        catalog.load(workDir);
-        expect(catalog.needsReload()).toBe(false);
-        const file = writeSkill(base, ecosystem);
-        expect(catalog.needsReload()).toBe(true);
-        catalog.reload();
-        expect(catalog.has("demo")).toBe(true);
-        expect(catalog.needsReload()).toBe(false);
-        rmSync(join(base, ecosystem, "skills"), { recursive: true });
-        expect(catalog.needsReload()).toBe(true);
-        catalog.reload();
-        expect(catalog.has("demo")).toBe(false);
-        expect(existsSync(file)).toBe(false);
-      }
-    },
-  );
+  it.each([".agents"])("watches project and user additions/removals in %s", (ecosystem) => {
+    for (const base of [workDir, userDir]) {
+      const catalog = new SkillCatalog();
+      catalog.load(workDir);
+      expect(catalog.needsReload()).toBe(false);
+      const file = writeSkill(base, ecosystem);
+      expect(catalog.needsReload()).toBe(true);
+      catalog.reload();
+      expect(catalog.has("demo")).toBe(true);
+      expect(catalog.needsReload()).toBe(false);
+      rmSync(join(base, ecosystem, "skills"), { recursive: true });
+      expect(catalog.needsReload()).toBe(true);
+      catalog.reload();
+      expect(catalog.has("demo")).toBe(false);
+      expect(existsSync(file)).toBe(false);
+    }
+  });
 
   it("detects adding and deleting SKILL.md in an existing child directory", () => {
     const dir = join(workDir, ".agents/skills/demo");
@@ -386,19 +383,18 @@ describe("skill catalog reload", () => {
 
   it("clears stale entries on repeated loads and retains source precedence", () => {
     writeSkill(userDir, ".agents", "demo", "global");
-    writeSkill(workDir, ".agents", "demo", "project agents");
-    const preferred = writeSkill(workDir, ".agents", "demo", "project swifty");
+    const preferred = writeSkill(workDir, ".agents", "demo", "project");
     const catalog = new SkillCatalog();
     catalog.load(workDir);
-    expect(catalog.get("demo")?.body).toBe("project swifty");
+    expect(catalog.get("demo")?.body).toBe("project");
     rmSync(preferred);
     catalog.load(workDir);
-    expect(catalog.get("demo")?.body).toBe("project agents");
+    expect(catalog.get("demo")?.body).toBe("global");
     const elsewhere = join(root, "other-project");
     mkdirSync(elsewhere);
     catalog.load(elsewhere);
     expect(catalog.get("demo")?.body).toBe("global");
-    rmSync(join(userDir, ".swifty"), { recursive: true });
+    rmSync(join(userDir, ".agents"), { recursive: true });
     catalog.load(elsewhere);
     expect(catalog.has("demo")).toBe(false);
   });
