@@ -23,11 +23,12 @@
 import { statSync } from "fs";
 import { join, resolve } from "path";
 
-import { Glob } from "@swifty.js/glob-wasm";
+import { globIterate } from "glob";
 
-import { createChildLogger } from "../../logger/logger.js";
-import { asErrorString, strArg } from "../../utils/index.js";
-import { GLOB_DESCRIPTION } from "../descriptions.js";
+import { createChildLogger } from "../logger/logger.js";
+import { asErrorString, strArg } from "../utils/index.js";
+
+import { GLOB_DESCRIPTION } from "./descriptions.js";
 import {
   SKIP_DIRS,
   type Tool,
@@ -35,9 +36,13 @@ import {
   type ToolContext,
   type ToolResult,
   type ToolSchema,
-} from "../types.js";
+} from "./types.js";
 
 const log = createChildLogger({ module: "tools" });
+
+// glob's `ignore` patterns are matched against cwd-relative paths, so each
+// skipped directory needs the `**/<name>/**` form to be pruned at any depth.
+const IGNORE = [...SKIP_DIRS].map((dir) => `**/${dir}/**`);
 
 export class GlobTool implements Tool {
   // Use a hardcoded string instead of GlobTool.name.replace("Tool", "")
@@ -73,33 +78,48 @@ export class GlobTool implements Tool {
     };
   }
 
-  execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  async execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
     const pattern = strArg(args, "pattern");
     if (!pattern) {
-      return Promise.resolve({
+      return {
         output: "Error: pattern is required",
         isError: true,
-      });
+      };
     }
 
     const basePath = resolve(ctx.workDir, strArg(args, "path", ctx.workDir));
+    if (!statSync(basePath, { throwIfNoEntry: false })?.isDirectory()) {
+      return {
+        output: `Error: not a directory, scan '${basePath}'`,
+        isError: true,
+      };
+    }
     const maxResults = 1000;
     try {
-      const g = new Glob(pattern);
-      const matches = g.scan({
+      const matches: string[] = [];
+      // matchBase: patterns without "/" match the basename at any depth,
+      // patterns with "/" match the cwd-relative path. `follow` stays false,
+      // so symlinked directories are never descended (cycle-safe).
+      for await (const match of globIterate(pattern, {
         cwd: basePath,
-        exclude: [...SKIP_DIRS],
+        ignore: IGNORE,
         // Agents need hidden-but-tracked paths (.github/workflows, .eslintrc…);
         // SKIP_DIRS already prunes noisy dot dirs like .git.
         dot: true,
-        maxResults,
-      });
+        matchBase: true,
+        nodir: true,
+      })) {
+        matches.push(match);
+        if (matches.length >= maxResults) {
+          break;
+        }
+      }
 
       if (matches.length === 0) {
-        return Promise.resolve({
+        return {
           output: "No files matched the pattern.",
           isError: false,
-        });
+        };
       }
 
       const mtimes = new Map<string, number>();
@@ -119,16 +139,16 @@ export class GlobTool implements Tool {
         output += `\n(Results limited to ${String(maxResults)} files. Use a more specific pattern.)`;
       }
 
-      return Promise.resolve({
+      return {
         output,
         isError: false,
-      });
+      };
     } catch (err) {
       log.error({ err }, "tool operation failed");
-      return Promise.resolve({
+      return {
         output: `Error: ${asErrorString(err)}`,
         isError: true,
-      });
+      };
     }
   }
 }

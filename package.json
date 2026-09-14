@@ -12,8 +12,6 @@
     "format:sh": "shfmt -w ./install.sh",
     "format": "pnpm --filter @swifty.js/swifty format",
     "build": "pnpm --filter @swifty.js/swifty build",
-    "build:wasm": "pnpm --filter @swifty.js/glob-wasm build",
-    "prebuild": "pnpm build:wasm",
     "prepare": "husky"
   },
   "keywords": [

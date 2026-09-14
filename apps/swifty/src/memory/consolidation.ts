@@ -39,10 +39,10 @@ import { createChildLogger } from "../logger/logger.js";
 import { listSessions } from "../session/session.js";
 import { EditFileTool } from "../tools/edit-file.js";
 import { FileStateCache } from "../tools/file-state-cache.js";
+import { GlobTool } from "../tools/glob.js";
+import { GrepTool } from "../tools/grep.js";
 import { ReadFileTool } from "../tools/read-file.js";
 import { ToolRegistry } from "../tools/registry.js";
-import { GlobTool } from "../tools/wasm/glob.js";
-import { GrepTool } from "../tools/wasm/grep.js";
 import { WriteFileTool } from "../tools/write-file.js";
 
 import { MemoryPermissionChecker } from "./permissions.js";

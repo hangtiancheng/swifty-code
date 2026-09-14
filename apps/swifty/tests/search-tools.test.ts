@@ -26,11 +26,11 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
+import { GlobTool } from "../src/tools/glob.js";
+import { GrepTool } from "../src/tools/grep.js";
 import type { ToolContext } from "../src/tools/types.js";
-import { GlobTool } from "../src/tools/wasm/glob.js";
-import { GrepTool } from "../src/tools/wasm/grep.js";
 
-const workDir = mkdtempSync(join(tmpdir(), "swifty-wasm-tools-"));
+const workDir = mkdtempSync(join(tmpdir(), "swifty-search-tools-"));
 mkdirSync(join(workDir, "src", "js"), { recursive: true });
 mkdirSync(join(workDir, "src", "md"), { recursive: true });
 mkdirSync(join(workDir, "node_modules", "pkg"), { recursive: true });

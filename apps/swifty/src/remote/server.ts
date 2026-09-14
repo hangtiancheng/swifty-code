@@ -90,6 +90,8 @@ import { EnterWorktreeTool } from "../tools/enter-worktree.js";
 import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
 import { ExitWorktreeTool } from "../tools/exit-worktree.js";
 import { FileStateCache } from "../tools/file-state-cache.js";
+import { GlobTool } from "../tools/glob.js";
+import { GrepTool } from "../tools/grep.js";
 import { McpCallTool } from "../tools/mcp-call.js";
 import { PowerShellTool } from "../tools/powershell.js";
 import { ReadFileTool } from "../tools/read-file.js";
@@ -97,8 +99,6 @@ import { ToolRegistry } from "../tools/registry.js";
 import { SyntheticOutputTool } from "../tools/synthetic-output.js";
 import { ToolSearchTool } from "../tools/tool-search.js";
 import type { ToolSchema } from "../tools/types.js";
-import { GlobTool } from "../tools/wasm/glob.js";
-import { GrepTool } from "../tools/wasm/grep.js";
 import { WriteFileTool } from "../tools/write-file.js";
 
 import { parseRemoteAddress } from "./address.js";

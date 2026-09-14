@@ -44,14 +44,14 @@ import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "./teams/tools.j
 import { BashTool } from "./tools/bash.js";
 import { EditFileTool } from "./tools/edit-file.js";
 import { FileStateCache } from "./tools/file-state-cache.js";
+import { GlobTool } from "./tools/glob.js";
+import { GrepTool } from "./tools/grep.js";
 import { McpCallTool } from "./tools/mcp-call.js";
 import { PowerShellTool } from "./tools/powershell.js";
 import { ReadFileTool } from "./tools/read-file.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { SyntheticOutputTool } from "./tools/synthetic-output.js";
 import { ToolSearchTool } from "./tools/tool-search.js";
-import { GlobTool } from "./tools/wasm/glob.js";
-import { GrepTool } from "./tools/wasm/grep.js";
 import { WriteFileTool } from "./tools/write-file.js";
 
 /** Supported output formats for -p (print) mode. */

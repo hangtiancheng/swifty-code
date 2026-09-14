@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { copyFileSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,18 +86,6 @@ const banTuiAndInkPlugin: EsbuildPlugin = {
   },
 };
 
-function copyGlobWasm(destDir: string): void {
-  // Runtime assets are built by `prebuild` (see the root package.json) before
-  // tsup runs. If a file is missing, copyFileSync throws ENOENT — run
-  // `pnpm build:swifty` from the repo root instead of calling tsup directly.
-
-  // glob.wasm — WebAssembly module backing the Glob/Grep tools; the bundled
-  // wrapper loads it from next to the bundle entry at runtime (the wrapper
-  // also embeds the module as base64, but the file keeps the bundle small and
-  // debuggable). Unlike the old native addon this is fully cross-platform.
-  copyFileSync(join(__dirname, "../glob-wasm/build/release.wasm"), join(destDir, "glob.wasm"));
-}
-
 // CLI entry: fully bundled, minified single-graph output with a shebang so the
 // `swifty` bin is self-contained.
 const cliConfig: Options = {
@@ -125,10 +113,6 @@ const cliConfig: Options = {
   define: { __SWIFTY_VERSION__: JSON.stringify(pkg.version) },
   tsconfig: "tsconfig.json",
   esbuildPlugins: [externalizeNodeBuiltinsPlugin],
-  onSuccess: async () => {
-    copyGlobWasm(join(__dirname, "dist"));
-    console.log("copied glob.wasm -> dist/");
-  },
 };
 
 // Library entry: keeps dependencies external (consumers resolve them from
@@ -155,10 +139,6 @@ const libConfig: Options = {
   // ban-tui-and-ink plugin fails the build instead of silently externalizing.
   external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !/^(ink|react)/.test(dep)),
   esbuildPlugins: [externalizeNodeBuiltinsPlugin, banTuiAndInkPlugin],
-  onSuccess: async () => {
-    copyGlobWasm(join(__dirname, "dist", "lib"));
-    console.log("copied glob.wasm -> dist/lib/");
-  },
 };
 
 export default defineConfig([cliConfig, libConfig]);

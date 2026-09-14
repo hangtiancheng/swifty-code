@@ -24,11 +24,12 @@ import type { Stats } from "node:fs";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 
-import { Glob } from "@swifty.js/glob-wasm";
+import { Minimatch } from "minimatch";
 
-import { createChildLogger } from "../../logger/logger.js";
-import { asErrorString, strArg } from "../../utils/index.js";
-import { GREP_DESCRIPTION } from "../descriptions.js";
+import { createChildLogger } from "../logger/logger.js";
+import { asErrorString, strArg } from "../utils/index.js";
+
+import { GREP_DESCRIPTION } from "./descriptions.js";
 import {
   SKIP_DIRS,
   type Tool,
@@ -36,7 +37,7 @@ import {
   type ToolContext,
   type ToolResult,
   type ToolSchema,
-} from "../types.js";
+} from "./types.js";
 
 const log = createChildLogger({ module: "tools" });
 
@@ -167,18 +168,13 @@ export class GrepTool implements Tool {
 
     // dot:true — the walker below surfaces hidden files, so the include
     // filter must match them too (e.g. include "*.yaml" on .github files).
-    const includeGlob = include ? new Glob(include, { dot: true }) : null;
-    // Patterns with "/" match the workDir-relative path (gitignore/ripgrep
-    // semantics, same form as printed results); bare patterns match the
-    // basename so "*.ts" filters at any depth.
-    const includeHasSlash = include.includes("/");
-    const matchesInclude = (fullPath: string, name: string): boolean => {
-      if (!includeGlob) {
-        return true;
-      }
-      const target = includeHasSlash ? relative(ctx.workDir, fullPath).split(sep).join("/") : name;
-      return includeGlob.match(target);
-    };
+    // matchBase: bare patterns ("*.ts") match the basename at any depth;
+    // patterns with "/" match the workDir-relative path (gitignore/ripgrep
+    // semantics, same form as printed results).
+    const includeMatcher = include ? new Minimatch(include, { dot: true, matchBase: true }) : null;
+    const matchesInclude = (fullPath: string): boolean =>
+      includeMatcher === null ||
+      includeMatcher.match(relative(ctx.workDir, fullPath).split(sep).join("/"));
     const results: string[] = [];
 
     const walk = async (dir: string): Promise<void> => {
@@ -221,7 +217,7 @@ export class GrepTool implements Tool {
         if (fileStat.isDirectory()) {
           await walk(fullPath);
         } else if (fileStat.isFile()) {
-          if (!matchesInclude(fullPath, entry)) {
+          if (!matchesInclude(fullPath)) {
             continue;
           }
           await searchFile(fullPath);

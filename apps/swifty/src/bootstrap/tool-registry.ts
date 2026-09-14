@@ -32,13 +32,13 @@ import { EditFileTool } from "../tools/edit-file.js";
 import { EnterWorktreeTool } from "../tools/enter-worktree.js";
 import { ExitPlanModeTool } from "../tools/exit-plan-mode.js";
 import { ExitWorktreeTool } from "../tools/exit-worktree.js";
+import { GlobTool } from "../tools/glob.js";
+import { GrepTool } from "../tools/grep.js";
 import { McpCallTool } from "../tools/mcp-call.js";
 import { PowerShellTool } from "../tools/powershell.js";
 import { ReadFileTool } from "../tools/read-file.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { ToolSearchTool } from "../tools/tool-search.js";
-import { GlobTool } from "../tools/wasm/glob.js";
-import { GrepTool } from "../tools/wasm/grep.js";
 import { WriteFileTool } from "../tools/write-file.js";
 
 export function countMcpTools(registry: ToolRegistry): number {
