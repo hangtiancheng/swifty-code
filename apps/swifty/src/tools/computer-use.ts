@@ -51,7 +51,7 @@ const PathPointSchema = z.object({
 const ComputerUseInputSchema = z.object({
   action: z.enum(ACTIONS),
   coordinate: CoordinateSchema.optional(),
-  duration: z.number().finite().nonnegative().max(60).optional(),
+  duration: z.number().nonnegative().max(60).optional(),
   region: z
     .tuple([
       z.number().int().nonnegative(),
@@ -60,7 +60,7 @@ const ComputerUseInputSchema = z.object({
       z.number().int().nonnegative(),
     ])
     .optional(),
-  scroll_amount: z.number().finite().optional(),
+  scroll_amount: z.number().optional(),
   scroll_direction: z.enum(["up", "down", "left", "right"]).optional(),
   start_coordinate: CoordinateSchema.optional(),
   text: z.string().max(10_000).optional(),
@@ -69,8 +69,8 @@ const ComputerUseInputSchema = z.object({
   button: z.enum(["left", "right", "wheel", "middle", "back", "forward"]).optional(),
   keys: z.array(z.string().min(1)).max(8).optional(),
   path: z.array(PathPointSchema).min(2).max(200).optional(),
-  scroll_x: z.number().finite().optional(),
-  scroll_y: z.number().finite().optional(),
+  scroll_x: z.number().optional(),
+  scroll_y: z.number().optional(),
 });
 
 type ComputerUseInput = z.infer<typeof ComputerUseInputSchema>;
