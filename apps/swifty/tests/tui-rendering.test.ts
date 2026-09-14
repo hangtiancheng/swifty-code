@@ -28,6 +28,7 @@ import type * as Ink from "ink";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { runInline } from "@/skills/executor.js";
 import { AgentActivity } from "@/tui/agent-activity.js";
 import { CommittedMessage } from "@/tui/chat.js";
 import { Footer } from "@/tui/footer.js";
@@ -81,6 +82,71 @@ describe("terminal column handling", () => {
     const preview = stripVTControlCharacters(formatToolOutputPreview("Bash", output, 10));
     expect(preview.split("\n").slice(0, 5)).toEqual(Array.from({ length: 5 }, () => "1234567890"));
     expect(preview).toContain("1 more lines");
+  });
+});
+
+describe("skill transcript presentation", () => {
+  const prompt = runInline(
+    {
+      meta: { name: "demo", description: "Local skill" },
+      sourceDir: "/project/skills/demo",
+      isDirectory: true,
+      body: "## Skill details\n\nHidden body.",
+    },
+    "Update <docs> & keep &lt; literal\nSecond line 中文",
+    { activateSkill: () => undefined },
+  );
+
+  it.each([20, 40, 100])("separates the skill card and arguments at %i columns", (columns) => {
+    terminal.columns = columns;
+    for (const theme of ["light", "dark"] as const) {
+      setThemeMode(theme);
+      for (const expanded of [false, true]) {
+        const output = stripVTControlCharacters(
+          renderToString(
+            createElement(CommittedMessage, {
+              message: { role: "user", content: prompt },
+              expanded,
+            }),
+            { columns },
+          ),
+        );
+        const normalized = output.replace(/\s+/gu, " ");
+        expect(normalized).toContain("[skill] demo");
+        expect(normalized).toContain(`Ctrl+O to ${expanded ? "collapse" : "expand"}`);
+        expect(normalized).toContain("Update <docs> & keep &lt; literal");
+        expect(output).toMatch(/literal\s*\n\s*Second line 中文/u);
+        expect(normalized.includes("Hidden body.")).toBe(expanded);
+        expect(output).not.toContain("<skill-body>");
+        expect(output).not.toContain("<skill-arguments>");
+        expect(output).not.toContain("host tool permissions");
+        expect(output.split("\n").every((line) => visibleWidth(line) <= columns)).toBe(true);
+      }
+    }
+  });
+
+  it("shows only the skill card when no arguments were supplied", () => {
+    terminal.columns = 100;
+    const content = prompt.replace(/\n\n<skill-arguments>[\s\S]*$/u, "");
+    const output = stripVTControlCharacters(
+      renderToString(createElement(CommittedMessage, { message: { role: "user", content } }), {
+        columns: 100,
+      }),
+    );
+    expect(output.trim()).toBe("[skill] demo (Ctrl+O to expand)");
+  });
+
+  it("does not collapse skill-like markup in ordinary user messages", () => {
+    const output = stripVTControlCharacters(
+      renderToString(
+        createElement(CommittedMessage, {
+          message: { role: "user", content: "Explain <skill-body>markup</skill-body>" },
+        }),
+        { columns: 40 },
+      ),
+    );
+    expect(output.replace(/\s+/gu, "")).toContain("Explain<skill-body>markup</skill-body>");
+    expect(output).not.toContain("Ctrl+O");
   });
 });
 

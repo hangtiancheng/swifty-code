@@ -91,7 +91,7 @@ const SCENES: Scene[] = [
         text: "Locating the rate-limit middleware and its config…",
       },
       { kind: "tool", name: "Glob", arg: "src/**/*.ts" },
-      { kind: "tool", name: "Grep", arg: '"rateLimit" · --type ts' },
+      { kind: "tool", name: "Grep", arg: '"rateLimit" · include *.ts' },
       { kind: "tool", name: "ReadFile", arg: "src/middleware/rate-limit.ts" },
       {
         kind: "answer",

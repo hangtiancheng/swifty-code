@@ -34,6 +34,7 @@ const GROUPS: Array<ToolItem["group"]> = [
   "Shell",
   "Search",
   "Orchestrate",
+  "Teams",
   "Integrate",
 ];
 
@@ -85,7 +86,7 @@ export function ToolsShowcase() {
       <div
         className={cn(
           container,
-          "mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5",
+          "mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6",
         )}
       >
         {GROUPS.map((group, index) => (

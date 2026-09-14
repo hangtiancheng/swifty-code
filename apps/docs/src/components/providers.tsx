@@ -62,6 +62,7 @@ const YAML: Array<
     { text: "https://api.anthropic.com", tone: "str" },
   ],
   [{ text: "    model: " }, { text: "claude-sonnet-4-20250514", tone: "str" }],
+  [{ text: "    thinking: " }, { text: "high", tone: "str" }],
   [{ text: "    # api_key falls back to $ANTHROPIC_API_KEY", tone: "comment" }],
   [],
   [{ text: "permission_mode: " }, { text: "default", tone: "str" }],
@@ -81,7 +82,7 @@ export function Providers() {
             Bring your own <span className="text-brand-500">model</span>
           </>
         }
-        description="One YAML file decides everything. Configure several providers and switch per project — keys resolve from the environment, so nothing secret lands in git."
+        description="One YAML file decides everything. Configure several providers and switch live with /provider — keys resolve from the environment, so nothing secret lands in git."
       />
 
       <div
@@ -133,7 +134,7 @@ export function Providers() {
             <div className="border-brand-950/10 flex items-center justify-between border-b px-5 py-3 dark:border-white/8">
               <span className="inline-flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                 <span className="bg-brand-500 h-2 w-2 rounded-full" />
-                .swifty/config.yaml
+                ~/.swifty/config.yaml
               </span>
               <span className="font-mono text-[10px] text-zinc-400 dark:text-zinc-600">
                 yaml

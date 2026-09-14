@@ -23,6 +23,8 @@
 import { Box, Text, useStdout } from "ink";
 import React, { useRef } from "react";
 
+import { parseSkillPrompt } from "../skills/executor.js";
+
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown.js";
 import { THEME } from "./styles.js";
 import { wrapToLines } from "./terminal-text.js";
@@ -124,18 +126,50 @@ function MessageBlock(props: MessageBlockProps) {
 
   switch (message.role) {
     case "user": {
+      const skill = parseSkillPrompt(message.content);
+      const text = skill ? skill.args : message.content;
       return (
-        <Box
-          backgroundColor={THEME.userMessageBg}
-          marginTop={1}
-          paddingLeft={1}
-          paddingRight={1}
-          paddingY={1}
-          width={width}
-        >
-          <Text color={THEME.userMessageText}>
-            {renderMarkdown(message.content, Math.max(1, width - 2), "user")}
-          </Text>
+        <Box flexDirection="column">
+          {skill && (
+            <Box
+              backgroundColor={THEME.customMessageBg}
+              flexDirection="column"
+              marginTop={1}
+              paddingX={1}
+              paddingY={1}
+              width={width}
+            >
+              <Text color={THEME.customMessageText}>
+                <Text bold color={THEME.customMessageLabel}>
+                  [skill]
+                </Text>{" "}
+                {skill.name}{" "}
+                <Text color={THEME.muted}>(Ctrl+O to {expanded ? "collapse" : "expand"})</Text>
+              </Text>
+              {expanded && (
+                <>
+                  <Text color={THEME.muted}>{skill.directory}</Text>
+                  <Text color={THEME.customMessageText}>
+                    {renderMarkdown(skill.body, Math.max(1, width - 2), "user")}
+                  </Text>
+                </>
+              )}
+            </Box>
+          )}
+          {(!skill || text.length > 0) && (
+            <Box
+              backgroundColor={THEME.userMessageBg}
+              marginTop={1}
+              paddingLeft={1}
+              paddingRight={1}
+              paddingY={1}
+              width={width}
+            >
+              <Text color={THEME.userMessageText}>
+                {skill ? text : renderMarkdown(text, Math.max(1, width - 2), "user")}
+              </Text>
+            </Box>
+          )}
         </Box>
       );
     }

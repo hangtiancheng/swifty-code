@@ -61,7 +61,9 @@ export const QUICK_COMMANDS = [
 
 export const navLinks = [
   { label: "Features", href: "#features" },
+  { label: "Workflow", href: "#workflow" },
   { label: "Tools", href: "#tools" },
+  { label: "Providers", href: "#providers" },
   { label: "Safety", href: "#safety" },
   { label: "Agents", href: "#agents" },
   { label: "Install", href: "#install" },
@@ -74,7 +76,7 @@ export interface Stat {
 
 export const stats: Stat[] = [
   { value: "3", label: "LLM protocols" },
-  { value: "20+", label: "Built-in tools" },
+  { value: "27", label: "Built-in tools" },
   { value: "4", label: "Permission modes" },
   { value: "1M", label: "Context window" },
 ];
@@ -93,7 +95,7 @@ export const features: Feature[] = [
     icon: icons.blocks,
     title: "Multi-provider by design",
     description:
-      "Anthropic, OpenAI, or any OpenAI-compatible endpoint. Switch providers per project with a YAML config — API keys resolve from the environment automatically.",
+      "Anthropic, OpenAI, or any OpenAI-compatible endpoint. /login discovers available models automatically, keys resolve from the environment, and /provider switches live.",
     span: "wide",
     accent: "brand",
     decor: "providers",
@@ -102,7 +104,7 @@ export const features: Feature[] = [
     icon: icons.terminal,
     title: "A terminal UI that keeps up",
     description:
-      "Streaming text, thinking indicators and live tool output rendered with React + Ink. Paste images, collapse long pastes, and cycle modes with a keystroke.",
+      "Streaming text, thinking blocks and live tool output rendered with React + Ink. Queue follow-ups while a task runs, paste images, and cycle modes with Shift+Tab.",
     accent: "accent",
   },
   {
@@ -116,7 +118,7 @@ export const features: Feature[] = [
     icon: icons.shieldCheck,
     title: "Safety you can tune",
     description:
-      "Four permission modes, glob-based allow/deny rules, and OS-level sandboxing via seatbelt on macOS and bwrap on Linux.",
+      "Four permission modes, two-tier allow/deny/ask rules, lifecycle hooks, and OS-level sandboxing via seatbelt on macOS and bwrap on Linux.",
     span: "wide",
     accent: "brand",
     decor: "safety",
@@ -125,7 +127,7 @@ export const features: Feature[] = [
     icon: icons.brainCircuit,
     title: "Memory that compounds",
     description:
-      "Long-term memory is extracted in the background and recalled across sessions, so Swifty remembers how your codebase works.",
+      "Memories are extracted in the background, recalled per turn and consolidated overnight, so Swifty remembers how your codebase works.",
     accent: "accent",
   },
   {
@@ -158,12 +160,33 @@ export const features: Feature[] = [
       "Eager, native deferred loading, or dispatch — chosen automatically so a fleet of MCP tools never blows up your context cache.",
     accent: "neutral",
   },
+  {
+    icon: icons.listTree,
+    title: "Plan before it writes",
+    description:
+      "Plan mode locks the agent to read-only exploration. The plan lands in a file, and ExitPlanMode hands you an approval dialog before anything changes.",
+    accent: "brand",
+  },
+  {
+    icon: icons.workflow,
+    title: "Hooks on every event",
+    description:
+      "Fire commands, prompts or HTTP calls on session, turn and tool events — with a condition DSL and the power to reject a tool call before it runs.",
+    accent: "accent",
+  },
+  {
+    icon: icons.monitor,
+    title: "IDE & browser companions",
+    description:
+      "@-mention files straight from VS Code, or run swifty --remote to drive the same agent from a browser over WebSocket.",
+    accent: "neutral",
+  },
 ];
 
 export interface ToolItem {
   name: string;
   icon: string;
-  group: "Files" | "Shell" | "Search" | "Orchestrate" | "Integrate";
+  group: "Files" | "Shell" | "Search" | "Orchestrate" | "Teams" | "Integrate";
 }
 
 export const tools: ToolItem[] = [
@@ -175,16 +198,25 @@ export const tools: ToolItem[] = [
   { name: "Glob", icon: icons.folderTree, group: "Search" },
   { name: "Grep", icon: icons.search, group: "Search" },
   { name: "ToolSearch", icon: icons.search, group: "Search" },
-  { name: "McpCall", icon: icons.plug, group: "Integrate" },
-  { name: "AskUserQuestion", icon: icons.sparkles, group: "Integrate" },
-  { name: "EnterWorktree", icon: icons.network, group: "Orchestrate" },
-  { name: "ExitWorktree", icon: icons.network, group: "Orchestrate" },
-  { name: "ExitPlanMode", icon: icons.listTree, group: "Orchestrate" },
   { name: "TaskCreate", icon: icons.scrollText, group: "Orchestrate" },
+  { name: "TaskGet", icon: icons.scrollText, group: "Orchestrate" },
+  { name: "TaskList", icon: icons.scrollText, group: "Orchestrate" },
   { name: "TaskUpdate", icon: icons.scrollText, group: "Orchestrate" },
-  { name: "SpawnTeammate", icon: icons.network, group: "Orchestrate" },
-  { name: "SendMessage", icon: icons.server, group: "Orchestrate" },
+  { name: "ExitPlanMode", icon: icons.listTree, group: "Orchestrate" },
+  { name: "EnterWorktree", icon: icons.gitBranch, group: "Orchestrate" },
+  { name: "ExitWorktree", icon: icons.gitBranch, group: "Orchestrate" },
+  { name: "Agent", icon: icons.bot, group: "Teams" },
+  { name: "TeamCreate", icon: icons.users, group: "Teams" },
+  { name: "SpawnTeammate", icon: icons.users, group: "Teams" },
+  { name: "SendMessage", icon: icons.inbox, group: "Teams" },
+  { name: "ListTeams", icon: icons.users, group: "Teams" },
+  { name: "TeamDelete", icon: icons.users, group: "Teams" },
+  { name: "TaskStop", icon: icons.x, group: "Teams" },
+  { name: "McpCall", icon: icons.plug, group: "Integrate" },
+  { name: "LoadSkill", icon: icons.sparkles, group: "Integrate" },
   { name: "InstallSkill", icon: icons.sparkles, group: "Integrate" },
+  { name: "AskUserQuestion", icon: icons.sparkles, group: "Integrate" },
+  { name: "SyntheticOutput", icon: icons.sparkle, group: "Integrate" },
 ];
 
 export interface PermissionMode {
@@ -228,20 +260,22 @@ export const permissionModes: PermissionMode[] = [
 
 export const slashCommands = [
   "/login",
+  "/help",
   "/status",
-  "/permission",
-  "/memory",
-  "/skills",
-  "/skill",
+  "/provider",
+  "/thinking",
   "/plan",
-  "/do",
   "/compact",
   "/clear",
   "/resume",
   "/rewind",
-  "/sandbox",
+  "/memory",
+  "/skills",
   "/worktree",
   "/mcp",
+  "/sandbox",
+  "/review",
+  "/code-review",
   "/quit",
 ];
 
@@ -327,12 +361,17 @@ export const faqs: Faq[] = [
   {
     question: "Which models and providers are supported?",
     answer:
-      "Any provider that speaks the Anthropic or OpenAI protocol — Anthropic, OpenAI, and any OpenAI-compatible endpoint such as a local gateway. Configure several and switch per project.",
+      "Any provider that speaks the Anthropic or OpenAI protocol — Anthropic, OpenAI, and any OpenAI-compatible endpoint such as a local gateway. Configure several in ~/.swifty/config.yaml, switch anytime with /provider, and /login discovers available models for you.",
+  },
+  {
+    question: "What is plan mode?",
+    answer:
+      "A read-only mode for investigation and design. Enter it with /plan or Shift+Tab: Swifty explores freely, writes its plan to a file, and only ExitPlanMode ends the mode — with an approval dialog before any write happens.",
   },
   {
     question: "Do I need to run it in a sandbox?",
     answer:
-      "No, but you can. Swifty ships with OS-level sandboxing: seatbelt on macOS and bwrap on Linux. Enable it in config.yaml and command tools run isolated, with optional auto-approval.",
+      "No, but you can. Swifty ships with OS-level sandboxing: seatbelt on macOS and bwrap on Linux. Enable it in config.yaml (or toggle with /sandbox) and command tools run isolated, with optional auto-approval.",
   },
   {
     question: "How does it handle my data?",
@@ -342,12 +381,22 @@ export const faqs: Faq[] = [
   {
     question: "Can it run without a terminal?",
     answer:
-      'Yes. Use print mode for scripts and CI (swifty -p "…" --output-format stream-json), or start remote mode to drive the same agent from a browser over WebSocket.',
+      'Yes. Use print mode for scripts and CI (swifty -p "…" --output-format stream-json), or start remote mode (swifty --remote) to drive the same agent from a browser over WebSocket.',
+  },
+  {
+    question: "Does Swifty work inside my IDE?",
+    answer:
+      "Yes — in VS Code it connects to the Claude Code extension and turns editor @-mentions into file references in your prompt, with line ranges included. Any other editor works through the plain terminal.",
+  },
+  {
+    question: "Can I hook into the agent lifecycle?",
+    answer:
+      "Hooks in config.yaml fire on session, turn and tool events. Actions run shell commands, inject prompts or call HTTP endpoints, and a pre_tool_use hook can even reject a tool call before it runs.",
   },
   {
     question: "What are teammate agents?",
     answer:
-      "A lead agent can spawn named teammates that work in parallel, exchanging messages through file mailboxes and isolating risky work in git worktrees.",
+      "A lead agent can spawn named teammates that work in parallel, exchanging messages through file mailboxes and isolating risky work in git worktrees. Backends: in-process, tmux or iTerm2.",
   },
 ];
 
@@ -356,7 +405,9 @@ export const footerColumns = [
     title: "Product",
     links: [
       { label: "Features", href: "#features" },
+      { label: "Workflow", href: "#workflow" },
       { label: "Tools", href: "#tools" },
+      { label: "Providers", href: "#providers" },
       { label: "Safety", href: "#safety" },
       { label: "Agents", href: "#agents" },
       { label: "Install", href: "#install" },

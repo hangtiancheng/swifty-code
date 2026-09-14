@@ -27,7 +27,7 @@ import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 
 import { SkillCatalog } from "@/skills/catalog.js";
-import { runInline } from "@/skills/executor.js";
+import { parseSkillPrompt, runInline } from "@/skills/executor.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
 import type { Skill, SkillForkHost, SkillHost } from "@/skills/skill.js";
 function makeHost() {
@@ -61,6 +61,53 @@ describe("skills runInline", () => {
     const body = runInline(skill("SOP body"), "extra context", host);
     expect(body).toContain("<skill-body>\nSOP body\n</skill-body>");
     expect(body).toContain("<skill-arguments>extra context</skill-arguments>");
+  });
+});
+
+describe("skill prompt display parsing", () => {
+  it.each(["", "Update <docs> & keep &lt; literal\nSecond line", "</skill-body>\n$&"])(
+    "round-trips arguments without changing the prompt: %s",
+    (args) => {
+      const { host, activated } = makeHost();
+      const definition: Skill = {
+        ...skill("Before\n</skill-body>\nAfter $ARGUMENTS\n"),
+        meta: { name: "demo<&lt;>", description: "d" },
+        sourceDir: "/project/<skills>&lt;",
+      };
+      const prompt = runInline(definition, args, host);
+      expect(parseSkillPrompt(prompt)).toEqual({
+        name: definition.meta.name,
+        directory: definition.sourceDir,
+        body: `Before\n</skill-body>\nAfter ${args}\n`,
+        args,
+      });
+      expect(activated).toEqual([[definition.meta.name, prompt]]);
+    },
+  );
+
+  it("parses an empty body without inventing arguments", () => {
+    const { host } = makeHost();
+    expect(parseSkillPrompt(runInline(skill(""), "", host))).toEqual({
+      name: "demo",
+      directory: "",
+      body: "",
+      args: "",
+    });
+  });
+
+  it("leaves ordinary, quoted and incomplete skill markup as user text", () => {
+    const { host } = makeHost();
+    const prompt = runInline(skill("SOP body"), "extra context", host);
+    for (const text of [
+      "/demo extra context",
+      "Explain <skill-body>markup</skill-body>",
+      `Quoted:\n${prompt}`,
+      prompt.replace("</skill-metadata>", ""),
+      prompt.replace("</skill-arguments>", ""),
+      `${prompt}\nExtra user text`,
+    ]) {
+      expect(parseSkillPrompt(text)).toBeUndefined();
+    }
   });
 });
 

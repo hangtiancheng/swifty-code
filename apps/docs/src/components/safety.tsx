@@ -113,8 +113,8 @@ const SAFETY_FEATURES = [
   },
   {
     icon: icons.shieldAlert,
-    title: "Glob allow / deny rules",
-    body: "Rules like Bash(git push*) or ReadFile(secrets/*) decide before the model ever runs.",
+    title: "Two-tier allow / deny rules",
+    body: "User + project rule files like Bash(git push*). Deny always wins — and Swifty can never rewrite its own permissions.yaml.",
   },
   {
     icon: icons.gitBranch,

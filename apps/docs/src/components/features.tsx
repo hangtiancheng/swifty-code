@@ -201,8 +201,7 @@ export function Features() {
               {unsafeHTML(icon(icons.sparkle, "h-4 w-4"))}
             </span>
             <p className={cn("text-sm", muted)}>
-              Built with TypeScript, React + Ink and a WASM glob engine — MIT
-              licensed.
+              Built with TypeScript and React + Ink — MIT licensed.
             </p>
           </div>
           <a
