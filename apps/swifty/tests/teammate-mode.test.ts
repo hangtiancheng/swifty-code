@@ -60,9 +60,13 @@ beforeEach(() => {
   vi.spyOn(process, "cwd").mockReturnValue(workDir);
   vi.mocked(os.homedir).mockReturnValue(workDir);
   vi.spyOn(process.stdout, "write").mockReturnValue(true);
-  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => {
+    /** noop */
+  });
   vi.spyOn(logger, "initLogger").mockReturnValue(logger.createChildLogger({ module: "test" }));
-  vi.spyOn(logger, "closeLogger").mockImplementation(() => {});
+  vi.spyOn(logger, "closeLogger").mockImplementation(() => {
+    /** noop */
+  });
   exitListeners = process.listenerCount("exit");
   vi.spyOn(config, "loadConfig").mockReturnValue({
     providers: [

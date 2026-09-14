@@ -36,7 +36,7 @@ import {
   toolUsesToRecords,
   toolResultsToRecords,
 } from "@/session/session.js";
-import type { ToolResultContentBlock, ToolSchema } from "@/tools/types.js";
+import type { ProviderToolSchema, ToolResultContentBlock } from "@/tools/types.js";
 import { asErrorString, contentToText, strArg } from "@/utils/index.js";
 
 // Structured outcome of a compaction. When `compacted` is true, `boundary`
@@ -314,7 +314,7 @@ export async function manageContext(
   trackingState: AutoCompactTrackingState,
   recoveryState: RecoveryState | null,
   toolSchemaNames: string[],
-  toolSchemas: ToolSchema[],
+  toolSchemas: ProviderToolSchema[],
   sessionFilePath = "",
   abortSignal?: AbortSignal,
 ): Promise<CompactResult> {
@@ -364,7 +364,7 @@ export async function forceCompact(
   client: LLMClient,
   recoveryState: RecoveryState | null,
   toolSchemaNames: string[],
-  toolSchemas: ToolSchema[],
+  toolSchemas: ProviderToolSchema[],
   sessionFilePath = "",
   abortSignal?: AbortSignal,
   customInstructions = "",
@@ -477,7 +477,7 @@ function formatCompactSummary(raw: string): string {
 async function callSummaryWithCacheSharing(
   client: LLMClient,
   messages: Message[],
-  toolSchemas: ToolSchema[],
+  toolSchemas: ProviderToolSchema[],
   abortSignal?: AbortSignal,
   customInstructions = "",
 ): Promise<string> {
@@ -490,7 +490,7 @@ async function callSummaryWithCacheSharing(
 async function collectSummary(
   client: LLMClient,
   conv: ConversationManager,
-  tools: ToolSchema[],
+  tools: ProviderToolSchema[],
   abortSignal?: AbortSignal,
 ): Promise<string> {
   abortSignal?.throwIfAborted();
@@ -527,7 +527,7 @@ async function collectSummary(
 async function requestSummaryWithPTLRetry(
   client: LLMClient,
   prefix: Message[],
-  toolSchemas: ToolSchema[],
+  toolSchemas: ProviderToolSchema[],
   abortSignal?: AbortSignal,
   customInstructions = "",
 ): Promise<string> {
@@ -564,7 +564,7 @@ async function doCompact(
   client: LLMClient,
   recoveryState: RecoveryState | null,
   toolSchemaNames: string[],
-  toolSchemas: ToolSchema[],
+  toolSchemas: ProviderToolSchema[],
   sessionFilePath = "",
   abortSignal?: AbortSignal,
   customInstructions = "",

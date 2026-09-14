@@ -45,9 +45,9 @@ export default defineConfig(
     files: ["**/*.{ts,tsx}"],
     extends: [
       eslint.configs.recommended,
-      tseslint.configs.recommendedTypeChecked,
-      // tseslint.configs.strictTypeChecked,
-      // tseslint.configs.stylisticTypeChecked,
+      // tseslint.configs.recommendedTypeChecked,
+      tseslint.configs.strictTypeChecked,
+      tseslint.configs.stylisticTypeChecked,
       reactRefresh.configs.vite,
     ],
     languageOptions: {

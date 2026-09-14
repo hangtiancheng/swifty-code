@@ -249,9 +249,15 @@ describe("skill download cancellation", () => {
       vi.fn<typeof fetch>((_input, init) => {
         receivedSignal = init?.signal;
         return new Promise((_resolve, reject) => {
-          receivedSignal?.addEventListener("abort", () => reject(new Error("request aborted")), {
-            once: true,
-          });
+          receivedSignal?.addEventListener(
+            "abort",
+            () => {
+              reject(new Error("request aborted"));
+            },
+            {
+              once: true,
+            },
+          );
         });
       }),
     );
@@ -277,9 +283,15 @@ describe("skill download cancellation", () => {
         receivedSignal = init?.signal;
         if (phase === "headers") {
           return new Promise((_resolve, reject) => {
-            receivedSignal?.addEventListener("abort", () => reject(new Error("timed out")), {
-              once: true,
-            });
+            receivedSignal?.addEventListener(
+              "abort",
+              () => {
+                reject(new Error("timed out"));
+              },
+              {
+                once: true,
+              },
+            );
           });
         }
         return Promise.resolve(
@@ -288,7 +300,9 @@ describe("skill download cancellation", () => {
               start(controller) {
                 receivedSignal?.addEventListener(
                   "abort",
-                  () => controller.error(new Error("timed out")),
+                  () => {
+                    controller.error(new Error("timed out"));
+                  },
                   { once: true },
                 );
               },
@@ -406,7 +420,9 @@ describe("skill catalog reload", () => {
     const linked = writeSkill(root, ".agents", "linked");
     symlinkSync(dirname(linked), join(skillsDir, "linked"));
     const catalog = new SkillCatalog();
-    expect(() => catalog.load(workDir)).not.toThrow();
+    expect(() => {
+      catalog.load(workDir);
+    }).not.toThrow();
     expect(catalog.has("demo")).toBe(true);
     expect(catalog.has("linked")).toBe(true);
   });

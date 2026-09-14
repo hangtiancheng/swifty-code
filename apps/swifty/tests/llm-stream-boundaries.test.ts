@@ -78,6 +78,50 @@ const usage = {
 };
 
 describe("Responses terminal events", () => {
+  it("emits native computer calls as ComputerUse invocations", async () => {
+    const item = {
+      type: "computer_call",
+      id: "item_1",
+      call_id: "call_1",
+      status: "in_progress",
+      actions: [
+        { type: "move", x: 10, y: 20, keys: null },
+        { type: "scroll", x: 10, y: 20, scroll_x: 30, scroll_y: -40, keys: ["SHIFT"] },
+      ],
+      pending_safety_checks: [{ id: "check_1", code: "navigation", message: "Review navigation" }],
+    };
+    mockStream([
+      { type: "response.output_item.added", sequence_number: 0, output_index: 0, item },
+      { type: "response.output_item.done", sequence_number: 1, output_index: 0, item },
+      {
+        type: "response.completed",
+        sequence_number: 2,
+        response: { id: "resp_test", status: "completed", usage },
+      },
+    ]);
+
+    const events = await collect(new OpenAIClient(config("openai"), "system"));
+    expect(events[0]).toEqual({
+      type: "tool_call_start",
+      toolName: "ComputerUse",
+      toolId: "call_1",
+    });
+    expect(events[1]).toEqual({
+      type: "tool_call_complete",
+      toolName: "ComputerUse",
+      toolId: "call_1",
+      providerItemId: "item_1",
+      arguments: {
+        actions: [
+          { type: "move", x: 10, y: 20 },
+          { type: "scroll", x: 10, y: 20, scrollX: 30, scrollY: -40, keys: ["SHIFT"] },
+        ],
+        pendingSafetyChecks: [{ id: "check_1", code: "navigation", message: "Review navigation" }],
+        status: "in_progress",
+      },
+    });
+  });
+
   it.each(["response.completed", "response.incomplete"])(
     "finalizes %s with usage",
     async (type) => {
@@ -244,6 +288,54 @@ describe("Chat Completions terminal boundaries", () => {
 });
 
 describe("Anthropic thinking replay", () => {
+  it("maps the native computer tool name to ComputerUse", async () => {
+    mockStream([
+      {
+        type: "message_start",
+        message: {
+          id: "msg_test",
+          type: "message",
+          role: "assistant",
+          model: "test",
+          content: [],
+          stop_reason: null,
+          stop_sequence: null,
+          usage: { input_tokens: 1, output_tokens: 0 },
+        },
+      },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "tool_use", id: "tool_1", name: "computer", input: {} },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: '{"action":"screenshot"}' },
+      },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "message_delta",
+        delta: { stop_reason: "tool_use", stop_sequence: null },
+        usage: { output_tokens: 1 },
+      },
+      { type: "message_stop" },
+    ]);
+
+    const events = await collect(new AnthropicClient(config("anthropic"), "system"));
+    expect(events).toContainEqual({
+      type: "tool_call_start",
+      toolName: "ComputerUse",
+      toolId: "tool_1",
+    });
+    expect(events).toContainEqual({
+      type: "tool_call_complete",
+      toolName: "ComputerUse",
+      toolId: "tool_1",
+      arguments: { action: "screenshot" },
+    });
+  });
+
   it("assembles every signature fragment before emitting thinking_complete", async () => {
     mockStream([
       {

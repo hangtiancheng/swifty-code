@@ -34,8 +34,12 @@ export function App() {
 
   const { send } = useWebSocket({
     onMessage: dispatchMessage,
-    onOpen: () => setConnection("connected"),
-    onClose: () => setConnection("reconnecting"),
+    onOpen: () => {
+      setConnection("connected");
+    },
+    onClose: () => {
+      setConnection("reconnecting");
+    },
   });
 
   const handleSend = useCallback(

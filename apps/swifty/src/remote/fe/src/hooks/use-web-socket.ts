@@ -130,7 +130,7 @@ export function useWebSocket(opts: UseWebSocketOptions): UseWebSocketResult {
 
   const send = (message: ClientMessage): void => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
     }
   };

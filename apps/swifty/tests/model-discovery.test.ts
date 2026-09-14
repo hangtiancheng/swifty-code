@@ -188,9 +188,15 @@ describe("discoverModels", () => {
     fetchMock.mockImplementation(
       (_input, init) =>
         new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), {
-            once: true,
-          });
+          init?.signal?.addEventListener(
+            "abort",
+            () => {
+              reject(new Error("aborted"));
+            },
+            {
+              once: true,
+            },
+          );
         }),
     );
   }

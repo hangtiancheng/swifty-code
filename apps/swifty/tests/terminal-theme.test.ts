@@ -38,7 +38,9 @@ import {
   thinkingLevelColor,
 } from "@/tui/styles.js";
 
-afterEach(() => setThemeMode("dark"));
+afterEach(() => {
+  setThemeMode("dark");
+});
 
 describe("terminal theme detection", () => {
   it.each(["dark", "light"] satisfies ("dark" | "light")[])(

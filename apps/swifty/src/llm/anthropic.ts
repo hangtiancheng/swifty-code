@@ -50,8 +50,9 @@ import type { ConversationManager, Message } from "@/conversation/conversation.j
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/logger.js";
 import { NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
+import { COMPUTER_USE_TOOL_NAME } from "@/tools/tool-names.js";
 import { normalizeToolResultContentBlock } from "@/tools/types.js";
-import type { ToolSchema } from "@/tools/types.js";
+import type { AnthropicToolSchema, ProviderToolSchema, ToolSchema } from "@/tools/types.js";
 import {
   asErrorString,
   asRecord,
@@ -72,7 +73,7 @@ import {
  * backwards. Built-in tools are never deferred, so a valid slot always exists.
  */
 export function markToolsForCache(
-  tools: Pick<Anthropic.Tool, "defer_loading" | "cache_control">[],
+  tools: { defer_loading?: boolean; cache_control?: Anthropic.CacheControlEphemeral | null }[],
 ): void {
   for (let i = tools.length - 1; i >= 0; i--) {
     const t = tools[i];
@@ -91,8 +92,27 @@ export function markToolsForCache(
  * recognize it reject the request outright, and the dispatch / eager paths do not
  * use it at all.
  */
-export function needsToolSearchBeta(toolSchemas: ToolSchema[]): boolean {
-  return toolSchemas.some((s) => s.defer_loading);
+export function needsToolSearchBeta(toolSchemas: ProviderToolSchema[]): boolean {
+  return toolSchemas.some((schema) => "defer_loading" in schema && schema.defer_loading === true);
+}
+
+const COMPUTER_USE_BETA = "computer-use-2025-11-24";
+
+function toAnthropicToolSchema(schema: ProviderToolSchema): AnthropicToolSchema {
+  if ("type" in schema && schema.type === "computer_20251124") {
+    return { ...schema };
+  }
+  if ("input_schema" in schema) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const tool = schema as ToolSchema;
+    const { cache_control: cacheControl, ...rest } = tool;
+    return {
+      ...rest,
+      type: "custom",
+      ...(tool.defer_loading !== true && cacheControl ? { cache_control: cacheControl } : {}),
+    };
+  }
+  throw new Error("Anthropic received a tool schema serialized for another protocol.");
 }
 
 const log = createChildLogger({ module: "llm" });
@@ -210,7 +230,7 @@ export function buildAnthropicMessages(messages: Message[]): Anthropic.MessagePa
           blocks.push({
             type: "tool_use", // tool use **request**
             id: tu.toolUseId,
-            name: tu.toolName,
+            name: tu.toolName === COMPUTER_USE_TOOL_NAME ? "computer" : tu.toolName,
             input: tu.arguments,
           });
         }
@@ -298,6 +318,8 @@ export function buildAnthropicMessages(messages: Message[]): Anthropic.MessagePa
 }
 
 export class AnthropicClient implements LLMClient {
+  readonly protocol = "anthropic" as const;
+
   private client: Anthropic;
   private model: string;
   /** Effective logical level for budget or explicitly configured adaptive mode. */
@@ -345,7 +367,7 @@ export class AnthropicClient implements LLMClient {
 
   async *stream(
     conversation: ConversationManager,
-    toolSchemas: ToolSchema[],
+    toolSchemas: ProviderToolSchema[],
     abortSignal?: AbortSignal,
   ): AsyncGenerator<StreamEvent> {
     // Reconcile tool-call/result pairing before sending the request: interruptions,
@@ -355,23 +377,10 @@ export class AnthropicClient implements LLMClient {
     // Tools with defer_loading stay in tools[], but the server hides them from the model; the model must first
     // fetch a tool_reference via ToolSearch before it can call them. This field is only accepted with the beta header.
     const sendToolSearchBeta = needsToolSearchBeta(toolSchemas);
-    const antToolSchemas: Anthropic.Tool[] = toolSchemas.map((s) => {
-      const tool: Anthropic.Tool = {
-        name: s.name,
-        description: s.description,
-        // Preserve constraints and definitions, not just properties/required.
-        input_schema: s.input_schema,
-      };
-      if (s.strict !== undefined) {
-        tool.strict = s.strict;
-      }
-      if (s.defer_loading === true) {
-        tool.defer_loading = true;
-      } else if (s.cache_control) {
-        tool.cache_control = s.cache_control;
-      }
-      return tool;
-    });
+    const antToolSchemas = toolSchemas.map(toAnthropicToolSchema);
+    const sendComputerUseBeta = antToolSchemas.some(
+      (schema) => "type" in schema && schema.type === "computer_20251124",
+    );
 
     markToolsForCache(antToolSchemas);
 
@@ -392,7 +401,10 @@ export class AnthropicClient implements LLMClient {
         },
       ],
       messages,
-      ...(antToolSchemas.length > 0 ? { tools: antToolSchemas } : {}),
+      ...(antToolSchemas.length > 0
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        ? { tools: antToolSchemas as Anthropic.Tool[] }
+        : {}),
     };
 
     const level = this.getThinkingLevel();
@@ -432,11 +444,13 @@ export class AnthropicClient implements LLMClient {
     let inThinking = false;
 
     try {
+      const betas = [
+        ...(sendToolSearchBeta ? [NATIVE_TOOL_USE_BETA] : []),
+        ...(sendComputerUseBeta ? [COMPUTER_USE_BETA] : []),
+      ];
       const response = this.client.messages.stream(params, {
         ...(abortSignal ? { signal: abortSignal } : {}),
-        // If any tool uses defer_loading this beta header is required, otherwise the server does not recognize the field.
-        // Only the official endpoint reaches this code path (see mcp/strategy).
-        ...(sendToolSearchBeta ? { headers: { "anthropic-beta": NATIVE_TOOL_USE_BETA } } : {}),
+        ...(betas.length > 0 ? { headers: { "anthropic-beta": betas.join(",") } } : {}),
       });
 
       let currentToolName = "";
@@ -454,7 +468,7 @@ export class AnthropicClient implements LLMClient {
             } // end if (block.type === "thinking")
             else if (block.type === "tool_use") {
               currentToolId = block.id;
-              currentToolName = block.name;
+              currentToolName = block.name === "computer" ? COMPUTER_USE_TOOL_NAME : block.name;
               jsonAccumulate = "";
               yield {
                 type: "tool_call_start",

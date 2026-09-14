@@ -42,10 +42,16 @@ import {
   type ThinkingLevel,
   toReasoningEffort,
 } from "@/config/config.js";
-import type { ConversationManager, Message, ToolResultBlock } from "@/conversation/conversation.js";
+import type {
+  ConversationManager,
+  Message,
+  ToolResultBlock,
+  ToolUseBlock,
+} from "@/conversation/conversation.js";
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/logger.js";
-import type { ToolSchema } from "@/tools/types.js";
+import { COMPUTER_USE_TOOL_NAME } from "@/tools/tool-names.js";
+import type { ProviderToolSchema, ToolSchema } from "@/tools/types.js";
 import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "llm" });
@@ -61,7 +67,97 @@ enum OpenAIErrorCode {
   BadRequest = 400,
 }
 
+type ResponseComputerAction = NonNullable<OpenAI.Responses.ResponseComputerToolCall["action"]>;
+
+function computerActionArguments(
+  action: OpenAI.Responses.ComputerAction | ResponseComputerAction,
+): Record<string, unknown> {
+  switch (action.type) {
+    case "scroll":
+      return {
+        type: "scroll",
+        x: action.x,
+        y: action.y,
+        scrollX: action.scroll_x,
+        scrollY: action.scroll_y,
+        ...(action.keys?.length ? { keys: action.keys } : {}),
+      };
+    case "click":
+    case "double_click":
+    case "drag":
+    case "move": {
+      const { keys, ...rest } = action;
+      return {
+        ...rest,
+        ...(keys?.length ? { keys } : {}),
+      };
+    }
+    default:
+      return { ...action };
+  }
+}
+
+function computerCallArguments(
+  item: OpenAI.Responses.ResponseComputerToolCall,
+): Record<string, unknown> {
+  const actions = item.actions ?? (item.action ? [item.action] : []);
+  return {
+    actions: actions.map(computerActionArguments),
+    pendingSafetyChecks: item.pending_safety_checks.map((check) => ({
+      id: check.id,
+      ...(check.code ? { code: check.code } : {}),
+      ...(check.message ? { message: check.message } : {}),
+    })),
+    status: item.status,
+  };
+}
+
+function toOpenAIResponsesTool(schema: ProviderToolSchema): OpenAI.Responses.Tool {
+  if ("type" in schema && schema.type === "computer") {
+    return { ...schema };
+  }
+  if ("input_schema" in schema) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const tool = schema as ToolSchema;
+    return {
+      type: "function",
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.input_schema,
+      strict: tool.strict ?? false,
+    };
+  }
+  if ("type" in schema && schema.type === "function" && "parameters" in schema) {
+    return { ...schema };
+  }
+  throw new Error("OpenAI Responses received a tool schema serialized for another protocol.");
+}
+
+function toOpenAICompatTool(schema: ProviderToolSchema): OpenAI.ChatCompletionFunctionTool {
+  if ("input_schema" in schema) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const tool = schema as ToolSchema;
+    return {
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.input_schema,
+        strict: tool.strict ?? false,
+      },
+    };
+  }
+  if ("function" in schema) {
+    return { ...schema };
+  }
+  throw new Error(
+    "OpenAI Chat Completions received a tool schema serialized for another protocol.",
+  );
+}
+
 export class OpenAIClient implements LLMClient {
+  readonly protocol = "openai" as const;
+
   private client: OpenAI;
   private model: string;
   private systemPrompt: string;
@@ -89,7 +185,7 @@ export class OpenAIClient implements LLMClient {
   }
   async *stream(
     conversation: ConversationManager,
-    toolSchemas: ToolSchema[],
+    toolSchemas: ProviderToolSchema[],
     abortSignal?: AbortSignal,
   ): AsyncGenerator<StreamEvent> {
     // Reconcile tool-call/result pairing before sending the request, for the same reasons as the Anthropic branch
@@ -105,16 +201,7 @@ export class OpenAIClient implements LLMClient {
       input.push(message);
     }
 
-    const tools: OpenAI.Responses.FunctionTool[] = toolSchemas.map((s) => {
-      const schema = s.input_schema;
-      return {
-        type: "function" as const,
-        name: s.name,
-        description: s.description,
-        parameters: schema,
-        strict: s.strict ?? false,
-      };
-    });
+    const tools = toolSchemas.map(toOpenAIResponsesTool);
 
     const effort = toReasoningEffort(this.getThinkingLevel(), this.config);
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
@@ -182,6 +269,12 @@ export class OpenAIClient implements LLMClient {
               toolName: currentToolName,
               toolId: currentToolId,
             };
+          } else if (event.item.type === "computer_call") {
+            yield {
+              type: "tool_call_start",
+              toolName: COMPUTER_USE_TOOL_NAME,
+              toolId: event.item.call_id,
+            };
           } else if (event.item.type === "reasoning") {
             reasoningId = event.item.id ?? "";
             reasoningText = "";
@@ -211,6 +304,14 @@ export class OpenAIClient implements LLMClient {
             currentToolName = "";
             currentToolId = "";
             jsonAccumulate = "";
+          } else if (event.item.type === "computer_call") {
+            yield {
+              type: "tool_call_complete",
+              toolId: event.item.call_id,
+              toolName: COMPUTER_USE_TOOL_NAME,
+              arguments: computerCallArguments(event.item),
+              providerItemId: event.item.id,
+            };
           }
         } // end if (event.type === "response.output_item.done")
         else if (event.type === "response.completed" || event.type === "response.incomplete") {
@@ -301,6 +402,8 @@ export class OpenAIClient implements LLMClient {
 // converter actually emits (the full ResponseInputItem union is much wider).
 export type OpenAIMessageParam =
   | OpenAI.Responses.EasyInputMessage
+  | OpenAI.Responses.ResponseComputerToolCall
+  | OpenAI.Responses.ResponseInputItem.ComputerCallOutput
   | OpenAI.Responses.ResponseFunctionToolCall
   | OpenAI.Responses.ResponseInputItem.FunctionCallOutput
   | OpenAI.Responses.ResponseReasoningItem;
@@ -395,6 +498,63 @@ function toolOutputForResponses(
   return rich.length > 0 ? rich : tr.content;
 }
 
+function computerActionsForResponses(
+  args: Record<string, unknown>,
+): OpenAI.Responses.ComputerActionList {
+  if (!Array.isArray(args.actions)) {
+    return [];
+  }
+  const actions: OpenAI.Responses.ComputerActionList = [];
+  for (const raw of args.actions) {
+    if (!isRecord(raw) || typeof raw.type !== "string") {
+      continue;
+    }
+    if (raw.type === "scroll") {
+      actions.push({
+        type: "scroll",
+        x: Number(raw.x),
+        y: Number(raw.y),
+        scroll_x: Number(raw.scrollX),
+        scroll_y: Number(raw.scrollY),
+        ...(Array.isArray(raw.keys) ? { keys: raw.keys.map(String) } : {}),
+      });
+      continue;
+    }
+    actions.push(raw as OpenAI.Responses.ComputerAction);
+  }
+  return actions;
+}
+
+function safetyChecksForResponses(
+  args: Record<string, unknown>,
+): OpenAI.Responses.ResponseInputItem.ComputerCallOutput.AcknowledgedSafetyCheck[] {
+  if (!Array.isArray(args.pendingSafetyChecks)) {
+    return [];
+  }
+  return args.pendingSafetyChecks.flatMap((raw) => {
+    if (!isRecord(raw) || typeof raw.id !== "string") {
+      return [];
+    }
+    return [
+      {
+        id: raw.id,
+        ...(typeof raw.code === "string" ? { code: raw.code } : {}),
+        ...(typeof raw.message === "string" ? { message: raw.message } : {}),
+      },
+    ];
+  });
+}
+
+function computerScreenshotUrl(tr: ToolResultBlock): string | undefined {
+  for (const block of tr.contentBlocks ?? []) {
+    const url = imageDataUrl(block);
+    if (url) {
+      return url;
+    }
+  }
+  return undefined;
+}
+
 function collectRichParts(tr: ToolResultBlock): OpenAI.ChatCompletionContentPart[] {
   if (!tr.contentBlocks?.length) {
     return [];
@@ -465,6 +625,15 @@ function userPartsFor(content: Message["content"]): string | OpenAI.ChatCompleti
 // so multi-turn tool use works over the Responses endpoint.
 export function buildOpenAIInput(messages: Message[]): OpenAIMessageParam[] {
   const result: OpenAIMessageParam[] = [];
+  const computerCalls = new Map<string, ToolUseBlock>();
+  for (const message of messages) {
+    for (const toolUse of message.toolUses ?? []) {
+      if (toolUse.toolName === COMPUTER_USE_TOOL_NAME) {
+        computerCalls.set(toolUse.toolUseId, toolUse);
+      }
+    }
+  }
+
   for (const m of messages) {
     if (m.thinkingBlocks) {
       for (const tb of m.thinkingBlocks) {
@@ -486,21 +655,50 @@ export function buildOpenAIInput(messages: Message[]): OpenAIMessageParam[] {
       }
 
       for (const tu of m.toolUses) {
-        result.push({
-          type: "function_call",
-          name: tu.toolName,
-          call_id: tu.toolUseId,
-          arguments: JSON.stringify(tu.arguments),
-        });
+        if (tu.toolName === COMPUTER_USE_TOOL_NAME) {
+          const status = tu.arguments.status;
+          result.push({
+            type: "computer_call",
+            id: tu.providerItemId ?? tu.toolUseId,
+            call_id: tu.toolUseId,
+            status: status === "in_progress" || status === "incomplete" ? status : "completed",
+            actions: computerActionsForResponses(tu.arguments),
+            pending_safety_checks: safetyChecksForResponses(tu.arguments),
+          });
+        } else {
+          result.push({
+            type: "function_call",
+            name: tu.toolName,
+            call_id: tu.toolUseId,
+            arguments: JSON.stringify(tu.arguments),
+          });
+        }
       }
     } // end if (m.toolUses && m.toolUses.length > 0)
     else if (m.toolResults && m.toolResults.length > 0) {
       for (const tr of m.toolResults) {
-        result.push({
-          type: "function_call_output",
-          call_id: tr.toolUseId,
-          output: toolOutputForResponses(tr),
-        });
+        const computerCall = computerCalls.get(tr.toolUseId);
+        if (computerCall) {
+          const imageUrl = computerScreenshotUrl(tr);
+          result.push({
+            type: "computer_call_output",
+            call_id: tr.toolUseId,
+            output: {
+              type: "computer_screenshot",
+              ...(imageUrl ? { image_url: imageUrl } : {}),
+            },
+            acknowledged_safety_checks: safetyChecksForResponses(computerCall.arguments),
+          });
+          if (tr.isError || !imageUrl) {
+            result.push({ role: "user", content: tr.content });
+          }
+        } else {
+          result.push({
+            type: "function_call_output",
+            call_id: tr.toolUseId,
+            output: toolOutputForResponses(tr),
+          });
+        }
       }
       if (m.content.length > 0) {
         result.push({ role: "user", content: userContentsFor(m.content) });
@@ -533,6 +731,8 @@ function containsContextLengthError(msg: string): boolean {
 // Convert Swifty's conversation into Chat Completions messages,
 // preserving assistant tool_calls and tool-result (role: "tool") turns so multi-turn tool use works over the openai-compat (Chat Completions) endpoint.
 export class OpenAICompatClient implements LLMClient {
+  readonly protocol = "openai-compat" as const;
+
   private client: OpenAI;
   private model: string;
   private systemPrompt: string;
@@ -573,7 +773,7 @@ export class OpenAICompatClient implements LLMClient {
 
   async *stream(
     conversation: ConversationManager,
-    toolSchemas: ToolSchema[],
+    toolSchemas: ProviderToolSchema[],
     abortSignal?: AbortSignal,
   ): AsyncGenerator<StreamEvent> {
     const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -585,17 +785,7 @@ export class OpenAICompatClient implements LLMClient {
       ...buildChatCompletionMessages(ensureToolPairing(conversation.getMessages())),
     ];
 
-    const tools: OpenAI.ChatCompletionTool[] = toolSchemas.map((ts) => ({
-      // name: ts.name,
-      // description: ts.description,
-      type: "function" as const,
-      function: {
-        name: ts.name,
-        description: ts.description,
-        parameters: ts.input_schema,
-        strict: ts.strict ?? false,
-      },
-    }));
+    const tools = toolSchemas.map(toOpenAICompatTool);
 
     const effort = toReasoningEffort(this.getThinkingLevel(), this.config);
     const params: OpenAI.ChatCompletionCreateParamsStreaming = {

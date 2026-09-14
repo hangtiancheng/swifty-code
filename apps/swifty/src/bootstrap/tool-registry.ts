@@ -65,7 +65,6 @@ export function createToolRegistry(workDir: string, taskList: TaskList): ToolReg
   registry.register(new WriteFileTool());
   registry.register(new GlobTool());
   registry.register(new GrepTool());
-  void workDir;
   return registry;
 }
 

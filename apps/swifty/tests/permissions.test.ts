@@ -141,7 +141,8 @@ function makeCheckerWithTiers(userRules: string, projectRules: string) {
   } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) {
-        delete process.env[key];
+        // delete process.env[key];
+        Reflect.deleteProperty(process.env, key);
       } else {
         process.env[key] = value;
       }

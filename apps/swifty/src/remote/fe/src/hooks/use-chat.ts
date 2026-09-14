@@ -37,7 +37,7 @@ import { useCallback, useReducer } from "react";
 let idCounter = 0;
 function nextId(prefix: string): string {
   idCounter += 1;
-  return `${prefix}_${idCounter}`;
+  return `${prefix}_${String(idCounter)}`;
 }
 
 export interface ChatState {

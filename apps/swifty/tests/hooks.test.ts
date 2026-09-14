@@ -160,6 +160,8 @@ describe("hook execution boundaries", () => {
     ).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(await engine.fire("pre_send", { event: "pre_send" })).toEqual([]);
-    await vi.waitFor(() => expect(engine.drainNotifications()).toEqual(["finished"]));
+    await vi.waitFor(() => {
+      expect(engine.drainNotifications()).toEqual(["finished"]);
+    });
   });
 });

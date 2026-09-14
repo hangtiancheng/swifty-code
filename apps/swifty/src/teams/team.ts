@@ -283,7 +283,9 @@ export class Team {
     member.active = true;
     member.checker = checker;
     const abortController = new AbortController();
-    member.cancel = () => abortController.abort();
+    member.cancel = () => {
+      abortController.abort();
+    };
 
     // Register the member name in the global name registry so SendMessage can resolve and deliver by name
     getNameRegistry().register(name, name);

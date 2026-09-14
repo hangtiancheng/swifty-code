@@ -43,5 +43,6 @@ export type StreamEvent =
       toolId: string;
       toolName: string;
       arguments: Record<string, unknown>;
+      providerItemId?: string;
     }
   | { type: "stream_end"; stopReason: string; usage: UsageInfo };

@@ -25,3 +25,4 @@
 // importing the concrete implementations and creating a circular dependency.
 export const TOOL_SEARCH_TOOL_NAME = "ToolSearch";
 export const MCP_CALL_TOOL_NAME = "McpCall";
+export const COMPUTER_USE_TOOL_NAME = "ComputerUse";

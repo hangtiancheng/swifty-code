@@ -45,7 +45,9 @@ export async function withFileMutationQueue<T>(
 ): Promise<T> {
   const key = await canonicalPath(filePath);
   const previous = queues.get(key) ?? Promise.resolve();
-  let release: () => void = () => {};
+  let release: () => void = () => {
+    /** noop */
+  };
   const next = new Promise<void>((resolve) => {
     release = resolve;
   });

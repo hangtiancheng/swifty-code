@@ -43,7 +43,9 @@ export function useAutoScroll<T extends HTMLElement>(dep: unknown) {
     const raf = requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
     });
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+    };
   }, [dep, autoScroll]);
 
   useEffect(() => {
@@ -56,7 +58,9 @@ export function useAutoScroll<T extends HTMLElement>(dep: unknown) {
       setAutoScroll(distanceFromBottom < 60);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   return { ref, autoScroll, setAutoScroll };

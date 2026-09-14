@@ -1243,8 +1243,9 @@ export function App({
               );
             }
           : undefined,
-        persistThinkingLevel: (level) =>
-          persistThinkingLevel(selectedProviderRef.current.name, level),
+        persistThinkingLevel: (level) => {
+          persistThinkingLevel(selectedProviderRef.current.name, level);
+        },
       });
       setMessages((prev) => [...prev, { role: "system", content: output }]);
       return true;
@@ -1629,7 +1630,7 @@ export function App({
           { role: "system", content: "Plan approved. Entered YOLO mode." },
         ]);
         if (planContent) {
-          void handleSubmit(`Execute this plan:\n\n${planContent}`);
+          handleSubmit(`Execute this plan:\n\n${planContent}`);
         }
       } else if (choice === "manual") {
         // Exit plan mode and restore the pre-plan permission mode
@@ -1644,10 +1645,10 @@ export function App({
           },
         ]);
         if (planContent) {
-          void handleSubmit(`Execute this plan:\n\n${planContent}`);
+          handleSubmit(`Execute this plan:\n\n${planContent}`);
         }
       } else if (choice === "feedback" && feedback) {
-        void handleSubmit(feedback);
+        handleSubmit(feedback);
       }
     },
     [workDir, prePlanMode],
@@ -1752,7 +1753,9 @@ export function App({
       askRequest !== null ||
       teamsDialogOpen,
     send: processSubmission,
-    onError: (error) => setError(asErrorString(error)),
+    onError: (error) => {
+      setError(asErrorString(error));
+    },
   });
   const pendingMessages = followUps.messages;
   const handleSubmit = followUps.enqueue;
@@ -1809,7 +1812,13 @@ export function App({
       <ProviderLogin
         initialValues={loginInitialValues}
         onSubmit={handleLogin}
-        onCancel={() => (providers.length === 0 ? requestExit() : setLoginActive(false))}
+        onCancel={() => {
+          if (providers.length === 0) {
+            requestExit();
+          } else {
+            setLoginActive(false);
+          }
+        }}
       />
     );
   }
@@ -1872,7 +1881,9 @@ export function App({
             ? {
                 initialValues: loginInitialValues,
                 onSubmit: handleLogin,
-                onCancel: () => setLoginActive(false),
+                onCancel: () => {
+                  setLoginActive(false);
+                },
               }
             : undefined
         }
@@ -1898,7 +1909,9 @@ export function App({
                   setThinkingDialogActive(false);
                   void handleSlashCommand(`/thinking ${level}`);
                 },
-                onCancel: () => setThinkingDialogActive(false),
+                onCancel: () => {
+                  setThinkingDialogActive(false);
+                },
               }
             : undefined
         }
@@ -1977,7 +1990,7 @@ export function App({
         }
         composer={{
           onSubmit: (text) => {
-            void handleSubmit(text);
+            handleSubmit(text);
           },
           disabled: providerSwitching,
           history: promptHistory,

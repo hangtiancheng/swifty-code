@@ -336,5 +336,69 @@ describe("ConversationManager", () => {
       expect(strArg(asRecord(result[0]), "type")).toBe("function_call_output");
       expect(strArg(asRecord(result[0]), "output")).toBe("output");
     });
+
+    it("round-trips native computer calls and screenshot outputs", () => {
+      const result = buildOpenAIInput([
+        {
+          role: "assistant",
+          content: "",
+          toolUses: [
+            {
+              toolUseId: "call_1",
+              providerItemId: "item_1",
+              toolName: "ComputerUse",
+              arguments: {
+                actions: [
+                  { type: "move", x: 10, y: 20 },
+                  { type: "scroll", x: 10, y: 20, scrollX: 30, scrollY: -40 },
+                ],
+                pendingSafetyChecks: [{ id: "check_1", code: "navigation" }],
+                status: "in_progress",
+              },
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: "",
+          toolResults: [
+            {
+              toolUseId: "call_1",
+              content: "Screenshot 800x600.",
+              contentBlocks: [
+                {
+                  type: "image",
+                  source: { type: "base64", media_type: "image/png", data: "QUJD" },
+                },
+              ],
+              isError: false,
+            },
+          ],
+        },
+      ]);
+
+      expect(result).toEqual([
+        {
+          type: "computer_call",
+          id: "item_1",
+          call_id: "call_1",
+          status: "in_progress",
+          actions: [
+            { type: "move", x: 10, y: 20 },
+            { type: "scroll", x: 10, y: 20, scroll_x: 30, scroll_y: -40 },
+          ],
+          pending_safety_checks: [{ id: "check_1", code: "navigation" }],
+        },
+        {
+          type: "computer_call_output",
+          call_id: "call_1",
+          output: {
+            type: "computer_screenshot",
+            image_url: "data:image/png;base64,QUJD",
+          },
+          acknowledged_safety_checks: [{ id: "check_1", code: "navigation" }],
+        },
+      ]);
+    });
   });
 });

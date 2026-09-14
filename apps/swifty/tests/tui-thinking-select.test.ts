@@ -76,7 +76,9 @@ function send(key: Partial<Key>, text = "") {
   if (!handler) {
     throw new Error("Thinking selector input is not mounted");
   }
-  act(() => handler(text, { ...noKey, ...key }));
+  act(() => {
+    handler(text, { ...noKey, ...key });
+  });
 }
 
 beforeEach(() => {
@@ -174,12 +176,13 @@ describe("thinking selector controls", () => {
 
   it("retains focused identity on reorder and handles removal and empty level updates", () => {
     const callbacks = mount({ currentLevel: "medium", levels: ["low", "medium", "high"] });
-    const update = (levels: readonly ThinkingLevel[]) =>
+    const update = (levels: readonly ThinkingLevel[]) => {
       act(() => {
         instance?.rerender(
           createElement(ThinkingSelect, { currentLevel: "medium", levels, ...callbacks }),
         );
       });
+    };
     send({ downArrow: true });
     update(["high", "low", "medium"]);
     expect(frame).toContain(`${ICONS.arrow} high`);

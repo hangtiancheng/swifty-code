@@ -72,8 +72,12 @@ beforeEach(() => {
   vi.spyOn(process, "cwd").mockReturnValue(workDir);
   vi.mocked(os.homedir).mockReturnValue(workDir);
   stdoutWrite = vi.spyOn(process.stdout, "write").mockReturnValue(true);
-  vi.spyOn(console, "log").mockImplementation(() => {});
-  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => {
+    /** noop */
+  });
+  vi.spyOn(console, "error").mockImplementation(() => {
+    /** noop */
+  });
   previousExitCode = process.exitCode;
   process.exitCode = 0;
   cfg = {
@@ -215,9 +219,15 @@ describe("print mode delegation", () => {
         return Promise.reject(new Error("Missing teammate cancellation signal"));
       }
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new Error("stopped")), {
-          once: true,
-        });
+        signal.addEventListener(
+          "abort",
+          () => {
+            reject(new Error("stopped"));
+          },
+          {
+            once: true,
+          },
+        );
       });
     });
     let stoppedBeforeDisconnect = false;

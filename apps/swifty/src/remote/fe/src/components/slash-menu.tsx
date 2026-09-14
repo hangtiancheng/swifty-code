@@ -49,7 +49,9 @@ export function SlashMenu({ commands, cursor, onSelect, onHover }: SlashMenuProp
             e.preventDefault();
             onSelect(i);
           }}
-          onMouseEnter={() => onHover(i)}
+          onMouseEnter={() => {
+            onHover(i);
+          }}
           className={`flex w-full cursor-pointer items-baseline gap-2.5 px-3.5 py-2 text-left ${
             i === cursor ? "bg-accent/8" : ""
           }`}

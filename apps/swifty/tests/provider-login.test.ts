@@ -188,7 +188,9 @@ describe("provider login", () => {
 
   it("throws when persisting a thinking level for an unknown provider", () => {
     saveProvider(input, []);
-    expect(() => persistThinkingLevel("nope", "max")).toThrow();
+    expect(() => {
+      persistThinkingLevel("nope", "max");
+    }).toThrow();
   });
 
   it("applies defaults to old configuration without model-name inference", () => {

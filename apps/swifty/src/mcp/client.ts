@@ -41,6 +41,7 @@ import { isRecord } from "@/utils/index.js";
 import { version } from "@/version.js";
 
 const log = createChildLogger({ module: "mcp" });
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 type MCPTransport = StdioClientTransport | StreamableHTTPClientTransport | SSEClientTransport;
 
 export interface MCPTool {
@@ -184,6 +185,7 @@ export class MCPClient {
 
       this.transport =
         this.config.transport === "sse"
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           ? new SSEClientTransport(url, opts)
           : new StreamableHTTPClientTransport(url, opts);
     } else {

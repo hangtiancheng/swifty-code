@@ -140,7 +140,7 @@ class Renderer {
   private readonly transform: StyleFn;
 
   private parser: Parser | undefined;
-  markedOptions: MarkedOptions<string, string> | undefined;
+  markedOptions: MarkedOptions | undefined;
 
   constructor(options?: Partial<TerminalRendererOptions>, highlightOptions?: HighlightOptions) {
     this.config = { ...defaultOptions, ...options };
@@ -252,11 +252,11 @@ class Renderer {
           if (firstToken.type === "paragraph") {
             modified = true;
 
-            firstToken.text = checkbox + " " + firstToken.text;
+            firstToken.text = checkbox + " " + String(firstToken.text);
             if (firstToken.tokens && firstToken.tokens.length > 0) {
               const innerFirst = firstToken.tokens[0];
               if (innerFirst.type === "text") {
-                innerFirst.text = checkbox + " " + innerFirst.text;
+                innerFirst.text = checkbox + " " + String(innerFirst.text);
               }
             }
           }
@@ -276,7 +276,7 @@ class Renderer {
     text += this.getParser().parse(item.tokens);
 
     const transform = compose(this.config.listitem, this.transform);
-    const isNested = text.indexOf("\n") !== -1;
+    const isNested = text.includes("\n");
     if (isNested) {
       text = text.trim();
     }
@@ -402,10 +402,10 @@ export default Renderer;
 export function markedTerminal(
   options?: Partial<TerminalRendererOptions>,
   highlightOptions?: HighlightOptions,
-): MarkedExtension<string, string> {
+): MarkedExtension {
   const r = new Renderer(options, highlightOptions);
 
-  const renderer: RendererObject<string, string> = {
+  const renderer: RendererObject = {
     space() {
       r.setContext(this.parser, this.options);
       return "";
@@ -638,7 +638,7 @@ function bulletPointLines(lines: string, indent: string): string {
 }
 
 function numberedPoint(n: number): string {
-  return n + ". ";
+  return String(n) + ". ";
 }
 
 function numberedLine(indent: string, line: string, num: number): { num: number; line: string } {

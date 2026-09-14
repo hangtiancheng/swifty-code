@@ -2,17 +2,26 @@ import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import sharp from "sharp";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { createToolRegistry } from "@/bootstrap/tool-registry.js";
+import { ConversationManager } from "@/conversation/conversation.js";
+import { AnthropicClient } from "@/llm/anthropic.js";
+import { OpenAIClient } from "@/llm/openai.js";
 import { extractContent } from "@/permissions/checker.js";
 import { cloneRegistryForFork, filterToolsForAgent } from "@/subagent/tool-filter.js";
 import { TaskList } from "@/todo/todo.js";
 import { ComputerUseTool } from "@/tools/computer-use.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { ToolContext } from "@/tools/types.js";
+import { asRecord } from "@/utils/index.js";
 
 const context: ToolContext = { workDir: tmpdir() };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("ComputerUseTool", () => {
   it("exposes Anthropic actions and OpenAI aliases through one custom schema", () => {
@@ -22,7 +31,8 @@ describe("ComputerUseTool", () => {
 
     expect(tool.name).toBe("ComputerUse");
     expect(tool.category).toBe("command");
-    expect(tool.isConcurrencySafe()).toBe(false);
+    expect(tool.deferred).toBe(false);
+    expect(tool.isConcurrencySafe({ action: "screenshot" })).toBe(false);
     expect(action).toMatchObject({ type: "string" });
     expect(action).toHaveProperty(
       "enum",
@@ -94,17 +104,132 @@ describe("ComputerUseTool", () => {
     registry.register(new ComputerUseTool({ platform: "linux" }));
 
     expect(registry.getAllSchemas("anthropic")[0]).toMatchObject({
-      name: "ComputerUse",
-      type: "custom",
+      name: "computer",
+      type: "computer_20251124",
+      display_width_px: 1366,
+      display_height_px: 900,
+      enable_zoom: true,
     });
-    expect(registry.getAllSchemas("openai")[0]).toMatchObject({
-      type: "function",
-      name: "ComputerUse",
-    });
+    expect(registry.getAllSchemas("openai")[0]).toEqual({ type: "computer" });
     expect(registry.getAllSchemas("openai-compat")[0]).toMatchObject({
       type: "function",
       function: { name: "ComputerUse" },
     });
+  });
+
+  it("sends the native OpenAI computer declaration through the Responses SDK", async () => {
+    let request: Record<string, unknown> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init: RequestInit) => {
+        request = asRecord(JSON.parse(z.string().parse(init.body)));
+        return Promise.resolve(
+          new Response(
+            `event: response.completed\ndata: ${JSON.stringify({
+              type: "response.completed",
+              sequence_number: 0,
+              response: {
+                id: "resp_test",
+                status: "completed",
+                usage: { input_tokens: 1, output_tokens: 1 },
+              },
+            })}\n\n`,
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
+      }),
+    );
+    const registry = new ToolRegistry();
+    registry.register(new ComputerUseTool({ platform: "linux" }));
+    const conversation = new ConversationManager();
+    conversation.addUserMessage("take a screenshot");
+    const client = new OpenAIClient(
+      {
+        name: "test",
+        protocol: "openai",
+        base_url: "https://example.invalid",
+        api_key: "test",
+        model: "test",
+      },
+      "system",
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _event of client.stream(conversation, registry.getAllSchemas("openai"))) {
+      // drain
+    }
+
+    expect(request.tools).toEqual([{ type: "computer" }]);
+  });
+
+  it("sends the native Anthropic declaration and computer-use beta header", async () => {
+    let request: Record<string, unknown> = {};
+    let betaHeader = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init: RequestInit) => {
+        request = asRecord(JSON.parse(z.string().parse(init.body)));
+        betaHeader = new Headers(init.headers).get("anthropic-beta") ?? "";
+        const events = [
+          {
+            type: "message_start",
+            message: {
+              id: "msg_test",
+              type: "message",
+              role: "assistant",
+              model: "test",
+              content: [],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: 1, output_tokens: 0 },
+            },
+          },
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: 1 },
+          },
+          { type: "message_stop" },
+        ];
+        return Promise.resolve(
+          new Response(
+            events
+              .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+              .join(""),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
+      }),
+    );
+    const registry = new ToolRegistry();
+    registry.register(new ComputerUseTool({ platform: "linux" }));
+    const conversation = new ConversationManager();
+    conversation.addUserMessage("take a screenshot");
+    const client = new AnthropicClient(
+      {
+        name: "test",
+        protocol: "anthropic",
+        base_url: "https://example.invalid",
+        api_key: "test",
+        model: "test",
+      },
+      "system",
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _event of client.stream(conversation, registry.getAllSchemas("anthropic"))) {
+      // drain
+    }
+
+    expect(request.tools).toEqual([
+      expect.objectContaining({
+        type: "computer_20251124",
+        name: "computer",
+        display_width_px: 1366,
+        display_height_px: 900,
+      }),
+    ]);
+    expect(betaHeader).toContain("computer-use-2025-11-24");
   });
 
   it("runs an OpenAI-style batch in order and returns the post-batch screenshot", async () => {

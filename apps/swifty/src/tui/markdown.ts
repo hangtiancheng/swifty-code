@@ -103,9 +103,12 @@ function createMarkdown(width: number, kind: MarkdownKind, streaming = false) {
             opening &&
             lastLine &&
             lastLine.length < opening.length &&
-            [...lastLine].every((character) => character === opening[0])
+            Array.from(lastLine).every((character) => character === opening[0])
           ) {
-            token = { ...token, text: token.text.slice(0, -lastLine.length).replace(/\n$/u, "") };
+            token = {
+              ...token,
+              text: token.text.slice(0, -lastLine.length).replace(/\n$/u, ""),
+            };
           }
         }
         const language = token.lang?.trim().split(/\s+/u)[0];

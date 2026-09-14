@@ -4,7 +4,7 @@ import type { ProviderConfig } from "@/config/config.js";
 
 const DISCOVERY_TIMEOUT_MS = 5_000;
 const MAX_MODEL_PAGES = 10;
-const HttpUrlSchema = z.string().trim().url();
+const HttpUrlSchema = z.url();
 const ModelSchema = z.object({
   id: z.string().trim().min(1),
   display_name: z.string().optional(),
@@ -53,7 +53,9 @@ export async function discoverModels(
   }
 
   const controller = new AbortController();
-  const abort = () => controller.abort();
+  const abort = () => {
+    controller.abort();
+  };
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) {
     abort();

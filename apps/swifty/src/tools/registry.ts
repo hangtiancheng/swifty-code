@@ -20,11 +20,17 @@
  * SOFTWARE.
  */
 
-import type { ChatCompletionFunctionTool } from "openai/resources/chat/completions";
-import type { FunctionTool as OpenAITool } from "openai/resources/responses/responses";
-
 import { MCP_CALL_TOOL_NAME, TOOL_SEARCH_TOOL_NAME } from "./tool-names.js";
-import type { McpLoadingMode, Tool, ToolSchema } from "./types.js";
+import type {
+  AnthropicToolSchema,
+  McpLoadingMode,
+  OpenAICompatToolSchema,
+  OpenAIResponsesToolSchema,
+  ProviderToolSchema,
+  Tool,
+  ToolProtocol,
+  ToolSchema,
+} from "./types.js";
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
@@ -60,13 +66,20 @@ export class ToolRegistry {
     return [...this.tools.values()];
   }
 
-  getAllSchemas(protocol?: "anthropic"): ToolSchema[];
-  getAllSchemas(protocol: "openai"): OpenAITool[];
-  getAllSchemas(protocol: "openai-compat"): ChatCompletionFunctionTool[];
+  getAllSchemas(): ToolSchema[];
+  getAllSchemas(protocol: "anthropic", filter?: (name: string) => boolean): AnthropicToolSchema[];
   getAllSchemas(
-    protocol: "anthropic" | "openai" | "openai-compat" = "anthropic",
-  ): (ToolSchema | OpenAITool | ChatCompletionFunctionTool)[] {
-    const isOpenAI = protocol === "openai" || protocol === "openai-compat";
+    protocol: "openai",
+    filter?: (name: string) => boolean,
+  ): OpenAIResponsesToolSchema[];
+  getAllSchemas(
+    protocol: "openai-compat",
+    filter?: (name: string) => boolean,
+  ): OpenAICompatToolSchema[];
+  getAllSchemas(protocol: ToolProtocol, filter?: (name: string) => boolean): ProviderToolSchema[];
+  getAllSchemas(protocol?: ToolProtocol, filter?: (name: string) => boolean): ProviderToolSchema[] {
+    const resolvedProtocol = protocol ?? "anthropic";
+    const isOpenAI = resolvedProtocol === "openai" || resolvedProtocol === "openai-compat";
     // The official endpoint uses native deferral: tools stay in tools[] but are
     // flagged with defer_loading, and the server decides whether to show them to
     // the model. This keeps the tools array byte-identical even when new tools are
@@ -74,8 +87,11 @@ export class ToolRegistry {
     // back on McpCall.
     const native = this.mcpLoadingMode === "native" && !isOpenAI;
 
-    const schemas: (ToolSchema | OpenAITool | ChatCompletionFunctionTool)[] = [];
+    const schemas: ProviderToolSchema[] = [];
     for (const tool of this.tools.values()) {
+      if (filter && !filter(tool.name)) {
+        continue;
+      }
       // Only expose search and dispatch in modes where they're useful. In eager
       // mode there are no deferred tools to search and no need to dispatch; sending
       // both would only waste tokens and might tempt the model into a detour.
@@ -89,8 +105,13 @@ export class ToolRegistry {
       if (deferred && !native) {
         continue;
       }
+      const providerSchema = protocol ? tool.providerSchema?.(resolvedProtocol) : undefined;
+      if (providerSchema) {
+        schemas.push(providerSchema);
+        continue;
+      }
       const s = tool.schema();
-      if (protocol === "openai") {
+      if (resolvedProtocol === "openai") {
         schemas.push({
           strict: s.strict ?? false,
           type: "function",
@@ -98,7 +119,7 @@ export class ToolRegistry {
           description: s.description,
           parameters: s.input_schema,
         });
-      } else if (protocol === "openai-compat") {
+      } else if (resolvedProtocol === "openai-compat") {
         schemas.push({
           type: "function",
           function: {

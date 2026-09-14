@@ -36,7 +36,9 @@ import type { SessionMessage } from "@/session/session.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 
 function deferred<T>() {
-  let resolve: (value: T) => void = () => {};
+  let resolve: (value: T) => void = () => {
+    /** noop */
+  };
   const promise = new Promise<T>((complete) => {
     resolve = complete;
   });

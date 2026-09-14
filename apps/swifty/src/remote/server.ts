@@ -1372,7 +1372,9 @@ export class RemoteServer {
             handle.provider.thinking = handle.client.getThinkingLevel?.() ?? level;
           }
         : undefined,
-      persistThinkingLevel: (level) => persistThinkingLevel(handle.provider.name, level),
+      persistThinkingLevel: (level) => {
+        persistThinkingLevel(handle.provider.name, level);
+      },
     };
   }
 

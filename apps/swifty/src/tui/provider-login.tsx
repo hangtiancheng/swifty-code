@@ -65,9 +65,7 @@ interface FormState {
   max_output_tokens: string;
 }
 
-interface FieldErrors {
-  [key: string]: string | undefined;
-}
+type FieldErrors = Record<string, string | undefined>;
 
 interface ModelDiscoveryState {
   status: "idle" | "loading" | "ready" | "empty" | "error";
@@ -500,7 +498,7 @@ export function ProviderLogin({ initialValues, onSubmit, onCancel }: ProviderLog
       ? "Tab to finish connection and fetch models"
       : "Models: waiting for a valid URL",
     loading: "Fetching models…",
-    ready: `${discovery.models.length} models available · ←→ cycle`,
+    ready: `${String(discovery.models.length)} models available · ←→ cycle`,
     empty: "No models returned",
     error: "Model discovery unavailable",
   };

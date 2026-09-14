@@ -27,6 +27,7 @@ export interface ToolUseBlock {
   toolUseId: string;
   toolName: string;
   arguments: Record<string, unknown>;
+  providerItemId?: string;
 }
 
 export interface ToolResultBlock {

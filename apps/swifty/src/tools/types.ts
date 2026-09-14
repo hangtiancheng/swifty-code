@@ -21,6 +21,8 @@
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
+import type { BetaToolComputerUse20251124 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type OpenAI from "openai";
 
 import type { FileStateCache } from "./file-state-cache.js";
 
@@ -249,6 +251,21 @@ export interface ToolSchema {
   eager_input_streaming?: boolean;
 }
 
+export type ToolProtocol = "anthropic" | "openai" | "openai-compat";
+
+export type AnthropicToolSchema = ToolSchema | Anthropic.Tool | BetaToolComputerUse20251124;
+export type OpenAIResponsesToolSchema =
+  | OpenAI.Responses.FunctionTool
+  | OpenAI.Responses.ComputerTool;
+export type OpenAICompatToolSchema = OpenAI.ChatCompletionFunctionTool;
+export type ProviderToolSchema =
+  | ToolSchema
+  | AnthropicToolSchema
+  | OpenAIResponsesToolSchema
+  | OpenAICompatToolSchema;
+
+export type ProviderNativeToolSchema = BetaToolComputerUse20251124 | OpenAI.Responses.ComputerTool;
+
 export interface Tool {
   name: string;
   description: string;
@@ -268,6 +285,13 @@ export interface Tool {
    * trip, so they are never deferred and always ship their full schema.
    */
   deferred?: boolean;
+
+  /**
+   * Return a provider-native declaration when the protocol supports this tool
+   * natively. Returning undefined lets the registry serialize schema() as a
+   * regular custom/function tool.
+   */
+  providerSchema?(protocol: ToolProtocol): ProviderNativeToolSchema | undefined;
 
   /**
    * Whether this particular invocation can run concurrently with others,

@@ -18,7 +18,9 @@ function queue(): Queue {
   return current;
 }
 function pending() {
-  let resolve = () => {};
+  let resolve = () => {
+    /** noop */
+  };
   const promise = new Promise<void>((done) => {
     resolve = done;
   });

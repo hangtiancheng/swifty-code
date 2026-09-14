@@ -24,7 +24,7 @@ import type { StreamEvent } from "./events.js";
 
 import type { ProviderConfig, ThinkingLevel } from "@/config/config.js";
 import type { ConversationManager } from "@/conversation/conversation.js";
-import type { ToolSchema } from "@/tools/types.js";
+import type { ProviderToolSchema, ToolProtocol } from "@/tools/types.js";
 
 // export interface ToolSchema {
 // 	name: string;
@@ -70,9 +70,11 @@ import type { ToolSchema } from "@/tools/types.js";
 // }
 
 export interface LLMClient extends Partial<MaxTokensSetter>, Partial<ThinkingLevelControl> {
+  readonly protocol?: ToolProtocol;
+
   stream(
     conversationManager: ConversationManager,
-    toolSchemas: ToolSchema[],
+    toolSchemas: ProviderToolSchema[],
     abortSignal?: AbortSignal,
   ): AsyncGenerator<StreamEvent>;
 

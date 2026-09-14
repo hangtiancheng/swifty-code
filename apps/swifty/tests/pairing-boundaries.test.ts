@@ -130,7 +130,10 @@ describe("Anthropic conversation cache tail", () => {
   it("marks only the latest user tail and preserves the original history", () => {
     const history: Message[] = [];
     for (let i = 0; i < 6; i++) {
-      history.push({ role: "user", content: `turn ${i}` }, { role: "assistant", content: "ok" });
+      history.push(
+        { role: "user", content: `turn ${String(i)}` },
+        { role: "assistant", content: "ok" },
+      );
     }
     const original = structuredClone(history);
     const messages = buildAnthropicMessages(history);

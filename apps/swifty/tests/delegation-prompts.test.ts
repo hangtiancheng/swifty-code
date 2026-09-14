@@ -155,7 +155,7 @@ describe("provider tool declarations", () => {
     const responses = registry.getAllSchemas("openai")[0];
     const chat = registry.getAllSchemas("openai-compat")[0];
     expect(native.input_schema).toEqual(inputSchema);
-    expect(responses.parameters).toEqual(inputSchema);
+    expect(responses).toMatchObject({ parameters: inputSchema });
     expect(responses).not.toHaveProperty("function");
     expect(chat.function.parameters).toEqual(inputSchema);
     expect(chat).not.toHaveProperty("parameters");

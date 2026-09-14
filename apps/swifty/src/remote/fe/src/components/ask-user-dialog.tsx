@@ -51,7 +51,7 @@ export function AskUserDialog({ item, onAnswer }: AskUserDialogProps) {
   const handleSubmit = () => {
     const answers: Record<string, string> = {};
     item.questions.forEach((q, qi) => {
-      const d = getDraft(`${item.id}_${qi}`);
+      const d = getDraft(`${item.id}_${String(qi)}`);
       answers[q.question] = buildAnswer(q, d);
     });
     onAnswer(item.id, answers);
@@ -77,14 +77,16 @@ export function AskUserDialog({ item, onAnswer }: AskUserDialogProps) {
         Question
       </div>
       {item.questions.map((q, qi) => {
-        const key = `${item.id}_${qi}`;
+        const key = `${item.id}_${String(qi)}`;
         return (
           <QuestionRow
             key={key}
             question={q}
-            name={`ask_${item.id}_${qi}`}
+            name={`ask_${item.id}_${String(qi)}`}
             draft={getDraft(key)}
-            onChange={(patch) => updateDraft(key, patch)}
+            onChange={(patch) => {
+              updateDraft(key, patch);
+            }}
           />
         );
       })}
@@ -160,7 +162,9 @@ function QuestionRow({ question, name, draft, onChange }: QuestionRowProps) {
               name={name}
               value={opt.label}
               checked={checked}
-              onChange={() => toggleOption(opt.label)}
+              onChange={() => {
+                toggleOption(opt.label);
+              }}
               className="mt-0.5 accent-accent"
             />
             <span className="min-w-0">
@@ -182,19 +186,21 @@ function QuestionRow({ question, name, draft, onChange }: QuestionRowProps) {
           name={name}
           value="__other__"
           checked={draft.useOther}
-          onChange={() =>
-            onChange({ useOther: true, selected: question.multiSelect ? draft.selected : [] })
-          }
+          onChange={() => {
+            onChange({ useOther: true, selected: question.multiSelect ? draft.selected : [] });
+          }}
           className="accent-accent"
         />
         <span className="text-sm text-dim">Other:</span>
         <input
           type="text"
           value={draft.other}
-          onFocus={() =>
-            onChange({ useOther: true, selected: question.multiSelect ? draft.selected : [] })
-          }
-          onChange={(e) => onChange({ other: e.target.value, useOther: true })}
+          onFocus={() => {
+            onChange({ useOther: true, selected: question.multiSelect ? draft.selected : [] });
+          }}
+          onChange={(e) => {
+            onChange({ other: e.target.value, useOther: true });
+          }}
           placeholder="Type a custom answer..."
           className="min-w-0 flex-1 rounded-md border border-border bg-bg px-2 py-1 text-[13px] text-bright outline-none placeholder:text-dim/70 focus:border-accent"
         />

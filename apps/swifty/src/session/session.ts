@@ -63,6 +63,7 @@ const ToolUseRecordSchema = z.object({
   tool_use_id: z.string(),
   tool_name: z.string(),
   arguments: z.record(z.string(), z.unknown()).optional(),
+  provider_item_id: z.string().optional(),
 });
 export type ToolUseRecord = z.infer<typeof ToolUseRecordSchema>;
 
@@ -108,12 +109,14 @@ export function toolUsesToRecords(
     toolUseId: string;
     toolName: string;
     arguments?: Record<string, unknown>;
+    providerItemId?: string;
   }[],
 ): ToolUseRecord[] {
   return (toolUses ?? []).map((tu) => ({
     tool_use_id: tu.toolUseId,
     tool_name: tu.toolName,
     ...(tu.arguments && Object.keys(tu.arguments).length ? { arguments: tu.arguments } : {}),
+    ...(tu.providerItemId ? { provider_item_id: tu.providerItemId } : {}),
   }));
 }
 
@@ -230,6 +233,7 @@ export interface RestoredMessage {
     toolUseId: string;
     toolName: string;
     arguments?: Record<string, unknown>;
+    providerItemId?: string;
   }[];
   toolResults?: ToolResultBlock[];
 }
@@ -240,6 +244,7 @@ function recordsToCamelUses(recs?: ToolUseRecord[]) {
     toolUseId: tu.tool_use_id,
     toolName: tu.tool_name,
     arguments: tu.arguments,
+    providerItemId: tu.provider_item_id,
   }));
 }
 

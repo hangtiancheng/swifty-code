@@ -11,10 +11,13 @@ import MACOS_SWIFT from "./snippets/macos.swift?raw";
 import WIN32_SCRIPT_PS1 from "./snippets/win32-script.ps1?raw";
 import WINDOWS_CS from "./snippets/windows.cs?raw";
 import WINDOWS_PS1 from "./snippets/windows.ps1?raw";
+import { COMPUTER_USE_TOOL_NAME } from "./tool-names.js";
 import type {
+  ProviderNativeToolSchema,
   Tool,
   ToolCategory,
   ToolContext,
+  ToolProtocol,
   ToolResult,
   ToolResultContentBlock,
   ToolSchema,
@@ -114,7 +117,10 @@ const ComputerUseInputSchema = z.object({
 type ComputerUseInput = z.infer<typeof ComputerUseInputSchema>;
 type OpenAIAction = z.infer<typeof OpenAIActionSchema>;
 type ComputerUseEnvironment = "windows" | "mac" | "browser" | "linux" | "ubuntu";
-type Point = { x: number; y: number };
+interface Point {
+  x: number;
+  y: number;
+}
 type NativeAction =
   | "cursor_position"
   | "hold_key"
@@ -161,6 +167,10 @@ type CommandRunner = (
 ) => Promise<CommandResult>;
 
 export interface ComputerUseToolOptions {
+  displayHeightPx?: number;
+  displayNumber?: number;
+  displayWidthPx?: number;
+  enableZoom?: boolean;
   environment?: ComputerUseEnvironment;
   platform?: NodeJS.Platform;
   runCommand?: CommandRunner;
@@ -269,7 +279,7 @@ function requiredPoint(input: ComputerUseInput): Point {
   if (input.x !== undefined && input.y !== undefined) {
     return { x: input.x, y: input.y };
   }
-  throw new Error(`action=${input.action} requires coordinate or x and y.`);
+  throw new Error(`action=${String(input.action)} requires coordinate or x and y.`);
 }
 
 function keysFor(input: ComputerUseInput): string[] {
@@ -473,10 +483,15 @@ function commandError(command: string, result: CommandResult): Error {
 }
 
 export class ComputerUseTool implements Tool {
-  name = "ComputerUse";
+  name = COMPUTER_USE_TOOL_NAME;
   description: string;
   category: ToolCategory = "command";
+  deferred = false;
 
+  private readonly displayHeightPx: number;
+  private readonly displayNumber?: number;
+  private readonly displayWidthPx: number;
+  private readonly enableZoom: boolean;
   private readonly environment: ComputerUseEnvironment;
   private readonly platform: NodeJS.Platform;
   private readonly run: CommandRunner;
@@ -485,6 +500,10 @@ export class ComputerUseTool implements Tool {
   private macHelperPromise?: Promise<string>;
 
   constructor(options: ComputerUseToolOptions = {}) {
+    this.displayHeightPx = options.displayHeightPx ?? MAX_SCREENSHOT_HEIGHT;
+    this.displayNumber = options.displayNumber;
+    this.displayWidthPx = options.displayWidthPx ?? MAX_SCREENSHOT_WIDTH;
+    this.enableZoom = options.enableZoom ?? true;
     this.platform = options.platform ?? process.platform;
     this.environment = options.environment ?? defaultEnvironment(this.platform);
     this.run = options.runCommand ?? runCommand;
@@ -496,8 +515,25 @@ export class ComputerUseTool implements Tool {
       "a screenshot is returned after the batch). Flat OpenAI aliases (action=click/drag/keypress/move) are also accepted.";
   }
 
-  isConcurrencySafe(): boolean {
+  isConcurrencySafe(_args: Record<string, unknown>): boolean {
     return false;
+  }
+
+  providerSchema(protocol: ToolProtocol): ProviderNativeToolSchema | undefined {
+    if (protocol === "anthropic") {
+      return {
+        type: "computer_20251124",
+        name: "computer",
+        display_width_px: this.displayWidthPx,
+        display_height_px: this.displayHeightPx,
+        ...(this.displayNumber !== undefined ? { display_number: this.displayNumber } : {}),
+        ...(this.enableZoom ? { enable_zoom: true } : {}),
+      };
+    }
+    if (protocol === "openai") {
+      return { type: "computer" };
+    }
+    return undefined;
   }
 
   schema(): ToolSchema {

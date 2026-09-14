@@ -212,10 +212,10 @@ export class Agent {
   async *run(): AsyncGenerator<AgentEvent> {
     this.restoreContext();
     // The filter is the sole authority — no exception branches.
-    let toolSchemas = this.registry.getAllSchemas();
-    if (this.toolFilter) {
-      toolSchemas = toolSchemas.filter((s) => this.toolFilter?.(s.name));
-    }
+    const toolSchemas = this.registry.getAllSchemas(
+      this.client.protocol ?? "anthropic",
+      this.toolFilter,
+    );
     const toolSchemaNames = this.registry.listTools().map((t) => t.name);
 
     let maxTokensEscalated = false;
@@ -393,6 +393,7 @@ export class Agent {
                     toolUseId: event.toolId,
                     toolName: event.toolName,
                     arguments: event.arguments,
+                    ...(event.providerItemId ? { providerItemId: event.providerItemId } : {}),
                   });
                   yield {
                     type: "tool_use",

@@ -59,10 +59,7 @@ const tokenLimit = (fallback: number, min: number, max: number) =>
 
 export const ProviderLoginSchema = ProviderConfigSchema.extend({
   name: z.string().trim().min(1, "Name is required"),
-  base_url: z
-    .string()
-    .trim()
-    .url("Enter a valid HTTP(S) URL")
+  base_url: z.url("Enter a valid HTTP(S) URL")
     .refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL"),
   api_key: z.string().trim().min(1, "API key is required"),
   model: z.string().trim().min(1, "Model is required"),

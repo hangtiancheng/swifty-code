@@ -79,7 +79,9 @@ export function PermissionDialog({ item, onRespond }: PermissionDialogProps) {
             <button
               key={opt.value}
               type="button"
-              onClick={() => onRespond(item.id, opt.value)}
+              onClick={() => {
+                onRespond(item.id, opt.value);
+              }}
               className={`cursor-pointer rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-colors ${opt.className}`}
             >
               {opt.label}

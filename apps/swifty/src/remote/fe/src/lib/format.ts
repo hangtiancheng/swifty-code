@@ -70,7 +70,7 @@ export function splitThinking(text: string): {
   thinking: string;
   body: string;
 } {
-  const match = text.match(/^<think\s*>([\s\S]*?)<\/think\s*>\s*([\s\S]*)$/);
+  const match = /^<think\s*>([\s\S]*?)<\/think\s*>\s*([\s\S]*)$/.exec(text);
   if (match) {
     return { thinking: match[1].trim(), body: match[2].trim() };
   }

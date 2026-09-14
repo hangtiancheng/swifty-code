@@ -153,7 +153,9 @@ describe("file tool boundaries", () => {
     const context = makeContext();
     const path = join(context.workDir, "locked.txt");
     writeFileSync(path, "before");
-    let release: () => void = () => {};
+    let release: () => void = () => {
+      /** noop */
+    };
     const blocker = withFileMutationQueue(
       path,
       () =>
@@ -228,7 +230,9 @@ describe("shell tool boundaries", () => {
       { ...context, abortSignal: controller.signal },
       { command: "printf before; sleep 10" },
     );
-    setTimeout(() => controller.abort(), 50);
+    setTimeout(() => {
+      controller.abort();
+    }, 50);
     const result = await pending;
     expect(result.isError).toBe(true);
     expect(result.output).toContain("before");
@@ -242,7 +246,9 @@ describe("shell tool boundaries", () => {
       { ...context, abortSignal: controller.signal },
       { command: "printf before; sleep 2 &" },
     );
-    setTimeout(() => controller.abort(), 100);
+    setTimeout(() => {
+      controller.abort();
+    }, 100);
     const result = await pending;
     expect(result.isError).toBe(true);
     expect(result.output).toContain("before");

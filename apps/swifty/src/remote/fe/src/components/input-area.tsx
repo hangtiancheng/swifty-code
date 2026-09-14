@@ -61,7 +61,7 @@ export function InputArea({ streaming, commands, onSend, onCancel }: InputAreaPr
       return;
     }
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.height = `${String(Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT))}px`;
   }, [value]);
 
   // Focus on mount and whenever streaming flips back to false.
@@ -135,7 +135,9 @@ export function InputArea({ streaming, commands, onSend, onCancel }: InputAreaPr
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+            }}
             onKeyDown={onKeyDown}
             placeholder="Send a message... (Enter to send, Shift+Enter for newline)"
             aria-label="Message"

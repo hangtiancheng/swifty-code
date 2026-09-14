@@ -383,7 +383,9 @@ const footerProps = {
 describe.each(["dark", "light"] satisfies ("dark" | "light")[])(
   "%s compact presentation",
   (mode) => {
-    beforeEach(() => setThemeMode(mode));
+    beforeEach(() => {
+      setThemeMode(mode);
+    });
 
     it.each([1, 20, 32, 48, 80, 120])(
       "fits footer, tools and reasoning within %i columns",
