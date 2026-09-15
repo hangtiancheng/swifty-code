@@ -75,7 +75,7 @@ interface TeammateArgs {
   teamName: string;
   memberName: string;
   initialTask: string;
-  providerName?: string;
+  providerBaseUrl?: string;
 }
 
 export function parseTeammateFlags(args: string[]): TeammateArgs | null {
@@ -87,7 +87,7 @@ export function parseTeammateFlags(args: string[]): TeammateArgs | null {
   let teamName = "";
   let memberName = "";
   let initialTask = "";
-  let providerName: string | undefined;
+  let providerBaseUrl: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--team-dir" && args[i + 1]) {
@@ -103,8 +103,8 @@ export function parseTeammateFlags(args: string[]): TeammateArgs | null {
     if (args[i] === "--task" && args[i + 1]) {
       initialTask = args[++i];
     }
-    if (args[i] === "--provider" && args[i + 1]) {
-      providerName = args[++i];
+    if (args[i] === "--provider-base-url" && args[i + 1]) {
+      providerBaseUrl = args[++i];
     }
   }
 
@@ -115,7 +115,7 @@ export function parseTeammateFlags(args: string[]): TeammateArgs | null {
     const leaf = basename(teamDir);
     teamName = leaf === "inboxes" ? basename(dirname(teamDir)) : leaf;
   }
-  return { teamDir, teamName, memberName, initialTask, providerName };
+  return { teamDir, teamName, memberName, initialTask, providerBaseUrl };
 }
 
 // ShutdownPrefix marks a mailbox message as a request to terminate the teammate.
@@ -234,9 +234,12 @@ export async function runTeammate(args: TeammateArgs): Promise<void> {
   try {
     const workDir = process.cwd();
     const cfg = withProjectMcpServers(loadConfig(), workDir);
-    const provider = args.providerName
-      ? (cfg.providers.find((p) => p.name === args.providerName) ?? cfg.providers[0])
+    const provider = args.providerBaseUrl
+      ? cfg.providers.find((p) => p.base_url === args.providerBaseUrl)
       : cfg.providers[0];
+    if (!provider) {
+      throw new Error(`Provider with base URL "${args.providerBaseUrl ?? ""}" is not configured.`);
+    }
     const conversation = new ConversationManager();
 
     // The skill catalog feeds both the system prompt (so the model knows which

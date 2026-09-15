@@ -152,8 +152,7 @@ export class GrepTool implements Tool {
     try {
       regex = new RegExp(toUnicodePattern(pattern), "iu");
     } catch {
-      // Legacy fallback keeps every pattern the old Bun implementation
-      // accepted compiling (e.g. "interface{" — invalid in u-mode), with the
+      // Accepted compiling (e.g. "interface{" — invalid in u-mode), with the
       // old ASCII \w/\b/\d semantics.
       try {
         regex = new RegExp(pattern, "i");

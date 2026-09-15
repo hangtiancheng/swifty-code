@@ -49,7 +49,7 @@ export function ProviderSelect({
   const fuse = useMemo(
     () =>
       new Fuse(providers, {
-        keys: ["name", "model", "protocol"],
+        keys: ["name", "protocol", "base_url", "model"],
         threshold: 0.35,
         ignoreLocation: true,
       }),

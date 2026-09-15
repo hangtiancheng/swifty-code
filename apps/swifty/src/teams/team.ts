@@ -201,13 +201,19 @@ export class Team {
    * Falls back to in-process when the external backend is unavailable (tmux not installed,
    * non-iTerm environment, etc.) to avoid crashes.
    */
-  spawnTeammate(name: string, task: string, runAgent: RunAgent, checker?: PermissionChecker): void {
+  spawnTeammate(
+    name: string,
+    task: string,
+    runAgent: RunAgent,
+    checker?: PermissionChecker,
+    providerBaseUrl?: string,
+  ): void {
     if (this.mode === "in-process") {
       this.spawnInProcess(name, task, runAgent, checker);
       return;
     }
     try {
-      this.spawnExternal(name, task);
+      this.spawnExternal(name, task, providerBaseUrl);
     } catch {
       // Fall back to in-process mode when the external backend fails to launch (missing dependency / unsupported platform)
       this.spawnInProcess(name, task, runAgent, checker);
@@ -220,7 +226,7 @@ export class Team {
    * by `--team-dir`; task assignments from the lead and idle/result notifications from the
    * worker all land in this directory, keeping both sides in sync.
    */
-  private spawnExternal(name: string, task: string): void {
+  private spawnExternal(name: string, task: string, providerBaseUrl?: string): void {
     const member = this.addMember(name);
     member.active = true;
 
@@ -237,13 +243,13 @@ export class Team {
       spinnerVerb: randomVerb(),
     };
 
-    // Teammate entry point mirrors main.tsx: bun runs this repo's entry script with --teammate flags.
+    // Teammate entry point mirrors main.tsx: node runs this repo's entry script with --teammate flags.
     // Flag names align with parseTeammateFlags in teammate.ts. The team name is
     // passed explicitly so the shared task board resolves to the same tasks.json.
     const entry = process.argv[1] ?? "src/main.tsx";
     const config: SpawnConfig = {
       mode: this.mode,
-      command: "bun",
+      command: "node",
       args: [
         "run",
         entry,
@@ -256,6 +262,8 @@ export class Team {
         name,
         "--task",
         task,
+        ...(providerBaseUrl ? ["--provider-base-url", providerBaseUrl] : []),
+        "--input-type=module",
       ],
       cwd: this.workDir,
     };

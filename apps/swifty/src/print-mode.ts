@@ -207,6 +207,7 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
           teamChecker,
           { abortSignal },
         ),
+    provider.base_url,
   );
   registry.register(agentTool);
 

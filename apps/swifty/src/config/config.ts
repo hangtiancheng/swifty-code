@@ -370,6 +370,10 @@ function loadSingleFile(path: string): AppConfig {
     const parsed = safeParse(z.array(MCPServerConfigSchema), raw.mcp_servers);
     if (parsed.success) {
       mcpServers = parsed.data;
+    } else {
+      throw new ConfigError(
+        `Invalid MCP server configuration in ${path}: ${getParseErrorMessage(parsed.error)}`,
+      );
     }
   }
   if ("hooks" in raw) {
@@ -407,6 +411,7 @@ function validateProviders(config: AppConfig): void {
   }
 
   const requiredFields = ["name", "protocol", "base_url", "model"] as const;
+  const baseUrls = new Map<string, number>();
   for (let i = 0; i < config.providers.length; i++) {
     const p = config.providers[i];
     const values = {
@@ -424,6 +429,46 @@ function validateProviders(config: AppConfig): void {
       throw new ConfigError(
         `Provider #${String(i + 1)}: invalid protocol '${p.protocol}', MUST be one of: ${Array.from(VALID_PROTOCOLS).join(", ")}`,
       );
+    }
+
+    const previous = baseUrls.get(p.base_url);
+    if (previous !== undefined) {
+      throw new ConfigError(
+        `Provider #${String(i + 1)}: duplicate base_url '${p.base_url}' (already used by provider #${String(previous + 1)}).`,
+      );
+    }
+    baseUrls.set(p.base_url, i);
+  }
+}
+
+function validateMcpServers(config: AppConfig): void {
+  const names = new Map<string, number>();
+  for (let i = 0; i < config.mcp_servers.length; i++) {
+    const server = config.mcp_servers[i];
+    const position = `MCP server #${String(i + 1)}`;
+    if (!server.name.trim()) {
+      throw new ConfigError(`${position}: name must not be empty.`);
+    }
+    const previous = names.get(server.name);
+    if (previous !== undefined) {
+      throw new ConfigError(
+        `${position}: duplicate name '${server.name}' (already used by MCP server #${String(previous + 1)}).`,
+      );
+    }
+    names.set(server.name, i);
+
+    const hasCommand = Boolean(server.command?.trim());
+    const hasUrl = Boolean(server.url?.trim());
+    if (hasCommand === hasUrl) {
+      throw new ConfigError(
+        `${position} '${server.name}': configure exactly one of command or url.`,
+      );
+    }
+    if (hasCommand && server.transport && server.transport !== "stdio") {
+      throw new ConfigError(`${position} '${server.name}': command servers must use stdio.`);
+    }
+    if (hasUrl && server.transport && !["http", "sse"].includes(server.transport)) {
+      throw new ConfigError(`${position} '${server.name}': URL transport must be http or sse.`);
     }
   }
 }
@@ -443,7 +488,9 @@ const McpJsonEntrySchema = z.looseObject({
 type McpJsonEntry = z.infer<typeof McpJsonEntrySchema>;
 
 const McpJsonFileSchema = z.looseObject({
-  mcpServers: z.record(z.string(), McpJsonEntrySchema).default({}),
+  // Parse entries independently below so one bad server does not disable every
+  // valid server in the project file.
+  mcpServers: z.record(z.string(), z.unknown()).default({}),
 });
 
 /**
@@ -454,12 +501,12 @@ const McpJsonFileSchema = z.looseObject({
 function mcpServerFromJsonEntry(name: string, entry: McpJsonEntry): MCPServerConfig | null {
   const transport = entry.type ?? (entry.command !== undefined ? "stdio" : "http");
   if (transport === "stdio") {
-    if (!entry.command) {
+    if (!entry.command || entry.url !== undefined) {
       return null;
     }
     return { name, command: entry.command, args: entry.args, env: entry.env };
   }
-  if (!entry.url) {
+  if (!entry.url || entry.command !== undefined) {
     return null;
   }
   return { name, url: entry.url, transport, headers: entry.headers };
@@ -467,8 +514,9 @@ function mcpServerFromJsonEntry(name: string, entry: McpJsonEntry): MCPServerCon
 
 /**
  * Reads project-level MCP servers from `<workDir>/.mcp.json`. A missing or
- * malformed file yields [] with a log entry instead of an error: a broken
- * repo-side config must not prevent Swifty from starting.
+ * malformed file normally yields [] with a log entry so a broken repo-side
+ * config does not prevent startup. Reload callers can request strict handling
+ * to keep the live connections unchanged when an edit is incomplete.
  */
 export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
   const path = join(workDir, PROJECT_MCP_FILENAME);
@@ -488,8 +536,16 @@ export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
     return [];
   }
   const servers: MCPServerConfig[] = [];
-  for (const [name, entry] of Object.entries(parsed.data.mcpServers)) {
-    const server = mcpServerFromJsonEntry(name, entry);
+  for (const [name, rawEntry] of Object.entries(parsed.data.mcpServers)) {
+    const parsedEntry = safeParse(McpJsonEntrySchema, rawEntry);
+    if (!name.trim() || !parsedEntry.success) {
+      log.warn(
+        { name, path, error: parsedEntry.success ? undefined : parsedEntry.error },
+        "skipping invalid .mcp.json server entry",
+      );
+      continue;
+    }
+    const server = mcpServerFromJsonEntry(name, parsedEntry.data);
     if (server) {
       servers.push(server);
     } else {
@@ -503,7 +559,8 @@ export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
  * Returns a copy of `config` with the servers from `<workDir>/.mcp.json`
  * appended. User-level (config.yaml) entries win on a name collision: the
  * project file ships with the repository and is less trusted than the user's
- * own config.
+ * own config. Strict parsing is useful for reloads that must preserve the
+ * current live state when the project file is temporarily invalid.
  */
 export function withProjectMcpServers(config: AppConfig, workDir: string): AppConfig {
   const projectServers = loadProjectMcpServers(workDir);
@@ -523,6 +580,7 @@ export function loadConfig(
 ): AppConfig {
   if (path) {
     const config = loadSingleFile(path);
+    validateMcpServers(config);
     if (!options.allowEmptyProviders || config.providers.length > 0) {
       validateProviders(config);
     }
@@ -539,6 +597,7 @@ export function loadConfig(
   }
 
   const config = loadSingleFile(candidate);
+  validateMcpServers(config);
   if (!options.allowEmptyProviders || config.providers.length > 0) {
     validateProviders(config);
   }

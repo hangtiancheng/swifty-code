@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+import { isDeepStrictEqual } from "node:util";
+
 import { MCPClient } from "./client.js";
 import type { MCPTool } from "./client.js";
 
@@ -36,8 +38,27 @@ export interface ConnectResult {
   instructions: { serverName: string; text: string }[];
 }
 
+export interface ReconcileResult extends ConnectResult {
+  added: string[];
+  removed: string[];
+  restarted: string[];
+  unchanged: string[];
+}
+
 export class MCPManager {
   private clients = new Map<string, MCPClient>();
+  private configs = new Map<string, MCPServerConfig>();
+  private operation = Promise.resolve();
+
+  /** Serialize lifecycle changes so startup, retries, and `/mcp reload` cannot race. */
+  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.operation.then(fn, fn);
+    this.operation = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
 
   /**
    * Brings up every configured server that has no live connection yet and reports what
@@ -46,6 +67,13 @@ export class MCPManager {
    * without disturbing the working ones.
    */
   async connectAll(configs: MCPServerConfig[]): Promise<ConnectResult> {
+    return this.runExclusive(() => this.connectAllNow(configs));
+  }
+
+  private async connectAllNow(
+    configs: MCPServerConfig[],
+    reusable = new Map<string, MCPClient>(),
+  ): Promise<ConnectResult> {
     const result: ConnectResult = {
       tools: [],
       servers: [],
@@ -57,8 +85,11 @@ export class MCPManager {
       if (this.clients.has(cfg.name)) {
         continue;
       }
-      const client = new MCPClient(cfg);
+      const client = reusable.get(cfg.name) ?? new MCPClient(cfg);
       try {
+        if (reusable.has(cfg.name)) {
+          client.configure(cfg);
+        }
         await client.connect();
         const tools = await client.listTools();
 
@@ -66,6 +97,7 @@ export class MCPManager {
         // listed is of no use, and keeping it here would make it look connected
         // on the next pass.
         this.clients.set(cfg.name, client);
+        this.configs.set(cfg.name, structuredClone(cfg));
         result.servers.push(cfg.name);
         for (const tool of tools) {
           result.tools.push({ serverName: cfg.name, tool });
@@ -91,6 +123,49 @@ export class MCPManager {
     return result;
   }
 
+  /**
+   * Applies a freshly loaded config without disturbing unchanged connections.
+   * A same-named server whose transport settings changed is restarted.
+   */
+  async reconcile(configs: MCPServerConfig[]): Promise<ReconcileResult> {
+    return this.runExclusive(async () => {
+      const desired = new Map(configs.map((config) => [config.name, config]));
+      const removed: string[] = [];
+      const restarted: string[] = [];
+      const unchanged: string[] = [];
+      const reusable = new Map<string, MCPClient>();
+
+      for (const [name, client] of [...this.clients]) {
+        const next = desired.get(name);
+        const current = this.configs.get(name);
+        if (next && current && isDeepStrictEqual(current, next)) {
+          unchanged.push(name);
+          continue;
+        }
+
+        await client.disconnect();
+        this.clients.delete(name);
+        this.configs.delete(name);
+        if (next) {
+          restarted.push(name);
+          reusable.set(name, client);
+        } else {
+          removed.push(name);
+        }
+      }
+
+      const connected = await this.connectAllNow(configs, reusable);
+      const restartedSet = new Set(restarted);
+      return {
+        ...connected,
+        added: connected.servers.filter((name) => !restartedSet.has(name)),
+        removed,
+        restarted,
+        unchanged,
+      };
+    });
+  }
+
   getClient(name: string): MCPClient | undefined {
     return this.clients.get(name);
   }
@@ -100,15 +175,30 @@ export class MCPManager {
     return [...this.clients.keys()];
   }
 
+  /** Instructions advertised by every currently connected server. */
+  connectedInstructions(): { serverName: string; text: string }[] {
+    const instructions: { serverName: string; text: string }[] = [];
+    for (const [serverName, client] of this.clients) {
+      const text = client.getInstructions();
+      if (text) {
+        instructions.push({ serverName, text });
+      }
+    }
+    return instructions;
+  }
+
   /** The configured servers that are still not connected. */
   missingServers(configs: MCPServerConfig[]): string[] {
     return configs.filter((cfg) => !this.clients.has(cfg.name)).map((cfg) => cfg.name);
   }
 
   async disconnectAll(): Promise<void> {
-    for (const client of this.clients.values()) {
-      await client.disconnect();
-    }
-    this.clients.clear();
+    await this.runExclusive(async () => {
+      for (const client of this.clients.values()) {
+        await client.disconnect();
+      }
+      this.clients.clear();
+      this.configs.clear();
+    });
   }
 }

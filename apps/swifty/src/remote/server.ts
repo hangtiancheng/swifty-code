@@ -593,7 +593,7 @@ export async function createRemoteAgent(
   );
   // Wire the team manager into AgentTool so the team_name teammate path takes effect (teammates receive shared team task-board tools)
   agentTool.forkDisabled = forkDisabled ?? false;
-  agentTool.setTeamManager(teamManager, teamRunAgentFactory);
+  agentTool.setTeamManager(teamManager, teamRunAgentFactory, provider.base_url);
   registry.register(agentTool);
 
   // 16. Load user-defined slash commands

@@ -50,19 +50,59 @@ export interface MCPTool {
   inputSchema: ToolSchema["input_schema"];
 }
 
-// Expand ${VAR} / $VAR references in config values from the environment so
-// secrets (API keys etc.) can live in env vars rather than the config file.
-
-// expandEnv("api_key: ${OPENAI_API_KEY}")
-// if OPENAI_API_KEY=sk-xxx, returns "api_key: sk-xxx"
-
-// expandEnv("host: $DATABASE_HOST")
-// if DATABASE_HOST=localhost, returns "host: localhost"
-function expandEnv(value: string): string {
+// Claude-compatible environment expansion. Missing required variables fail the
+// connection instead of silently becoming an empty command, URL, or credential.
+function expandEnv(value: string, environment: NodeJS.ProcessEnv): string {
   return value.replace(
-    /\$\{(\w+)\}|\$(\w+)/g,
-    (_, a: string, b: string) => process.env[a || b] ?? "",
+    /\$\{([A-Za-z_]\w*)(?::-([^}]*))?\}|\$([A-Za-z_]\w*)/g,
+    (
+      _match,
+      braced: string | undefined,
+      fallback: string | undefined,
+      bare: string | undefined,
+    ) => {
+      const name = braced ?? bare ?? "";
+      const resolved = environment[name];
+      if (resolved !== undefined) {
+        return resolved;
+      }
+      if (fallback !== undefined) {
+        return fallback;
+      }
+      throw new Error(`MCP config references unset environment variable "${name}"`);
+    },
   );
+}
+
+/**
+ * Expands environment references in every location supported by project
+ * `.mcp.json` files without mutating either the config or `process.env`.
+ */
+export function expandMcpServerConfigEnvironment(
+  config: MCPServerConfig,
+  environment: NodeJS.ProcessEnv = process.env,
+): MCPServerConfig {
+  return {
+    ...config,
+    command: config.command === undefined ? undefined : expandEnv(config.command, environment),
+    args: config.args?.map((arg) => expandEnv(arg, environment)),
+    url: config.url === undefined ? undefined : expandEnv(config.url, environment),
+    env:
+      config.env === undefined
+        ? undefined
+        : Object.fromEntries(
+            Object.entries(config.env).map(([key, value]) => [key, expandEnv(value, environment)]),
+          ),
+    headers:
+      config.headers === undefined
+        ? undefined
+        : Object.fromEntries(
+            Object.entries(config.headers).map(([key, value]) => [
+              key,
+              expandEnv(value, environment),
+            ]),
+          ),
+  };
 }
 
 function asDict(obj: Record<string, string | undefined>): Record<string, string> {
@@ -152,39 +192,44 @@ export class MCPClient {
     this.config = config;
   }
 
+  /** Reconfigure a disconnected client while preserving wrapper references. */
+  configure(config: MCPServerConfig): void {
+    if (this.client || this.transport) {
+      throw new Error(`MCP server '${this.name}' must be disconnected before reconfiguration`);
+    }
+    this.name = config.name;
+    this.config = config;
+  }
+
   async connect(): Promise<void> {
-    if (this.config.command) {
+    const config = expandMcpServerConfigEnvironment(this.config);
+    if (config.command) {
       // stdio transport
-      const env: NodeJS.ProcessEnv = process.env;
-      if (this.config.env) {
-        for (const [k, v] of Object.entries(this.config.env)) {
-          env[k] = expandEnv(v);
+      const env: NodeJS.ProcessEnv = { ...process.env };
+      if (config.env) {
+        for (const [k, v] of Object.entries(config.env)) {
+          env[k] = v;
         }
       }
 
       this.transport = new StdioClientTransport({
-        command: this.config.command,
-        args: this.config.args ?? [],
+        command: config.command,
+        args: config.args ?? [],
         env: asDict(env),
         stderr: "ignore",
       });
-    } else if (this.config.url) {
+    } else if (config.url) {
       // http / sse transport
 
-      const url = new URL(this.config.url);
-      const headers: Record<string, string> = {};
-      if (this.config.headers) {
-        for (const [k, v] of Object.entries(this.config.headers)) {
-          headers[k] = expandEnv(v);
-        }
-      }
+      const url = new URL(config.url);
+      const headers = config.headers ?? {};
 
       const opts: StreamableHTTPClientTransportOptions | SSEClientTransportOptions = {
         requestInit: { headers },
       };
 
       this.transport =
-        this.config.transport === "sse"
+        config.transport === "sse"
           ? // eslint-disable-next-line @typescript-eslint/no-deprecated
             new SSEClientTransport(url, opts)
           : new StreamableHTTPClientTransport(url, opts);

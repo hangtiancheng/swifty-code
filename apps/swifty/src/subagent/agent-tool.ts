@@ -89,6 +89,7 @@ export class AgentTool implements Tool {
     checker?: PermissionChecker,
     workDir?: string,
   ) => RunAgent;
+  private teamProviderBaseUrl?: string;
 
   private spawnHandler: (
     definition: AgentDefinition,
@@ -146,9 +147,11 @@ export class AgentTool implements Tool {
       checker?: PermissionChecker,
       workDir?: string,
     ) => RunAgent,
+    providerBaseUrl?: string,
   ): void {
     this.teamManager = mgr;
     this.teamRunAgentFactory = runAgentFactory;
+    this.teamProviderBaseUrl = providerBaseUrl;
   }
 
   schema(): ToolSchema {
@@ -403,7 +406,7 @@ ${prompt}`;
     const runAgent = this.teamRunAgentFactory?.(teammateRegistry, checker, memberWorkDir);
 
     if (runAgent) {
-      team.spawnTeammate(memberName, teammatePrompt, runAgent, checker);
+      team.spawnTeammate(memberName, teammatePrompt, runAgent, checker, this.teamProviderBaseUrl);
       if (worktreeIsolation) {
         team.setMemberMeta(memberName, { worktreePath: memberWorkDir });
       }
