@@ -47,6 +47,38 @@ export function wrapToLines(text: string, width: number): string[] {
   }).split("\n");
 }
 
+/** Tab stop interval terminals use when advancing past a TAB character. */
+const TAB_SIZE = 8;
+
+/**
+ * Replace TAB characters with the spaces a terminal would render them as.
+ *
+ * string-width counts a TAB as zero columns, but terminals advance to the next
+ * 8-column stop. Text that fits under the wrong measurement is left unwrapped by
+ * Ink and then fills the row past the terminal width, so the surplus columns
+ * wrap onto a bogus extra line.
+ */
+export function expandTabs(text: string, tabSize = TAB_SIZE): string {
+  if (!text.includes("\t")) {
+    return text;
+  }
+  return text
+    .split("\n")
+    .map((line) => {
+      if (!line.includes("\t")) {
+        return line;
+      }
+      const segments = line.split("\t");
+      let expanded = segments[0];
+      for (const segment of segments.slice(1)) {
+        const advance = tabSize - (visibleWidth(expanded) % tabSize);
+        expanded += " ".repeat(advance) + segment;
+      }
+      return expanded;
+    })
+    .join("\n");
+}
+
 /** Return the UTF-16 index immediately before the grapheme at `index`. */
 export function previousGraphemeBoundary(text: string, index: number): number {
   const bounded = Math.max(0, Math.min(index, text.length));

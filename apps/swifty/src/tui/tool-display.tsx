@@ -23,7 +23,7 @@
 import { Box, Text, useStdout } from "ink";
 
 import { DiffLines } from "./diff-render.js";
-import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
+import { expandTabs, truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 import { formatToolOutputPreview } from "./tool-preview.js";
 
 import { isDiffTool } from "@/tools/is-diff-tool.js";
@@ -81,7 +81,7 @@ export function ToolCard({
   const titleWidth = inlineMetadata ? contentWidth - visibleWidth(metadata) - 2 : contentWidth;
   const preview = output
     ? expanded
-      ? output.trimEnd()
+      ? expandTabs(output.trimEnd())
       : formatToolOutputPreview(toolName, output, contentWidth)
     : "";
   // A wide grapheme cannot fit in a one-column terminal, even with hard wrapping.

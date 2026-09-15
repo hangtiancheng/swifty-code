@@ -409,6 +409,46 @@ describe("shared live and committed tool cards", () => {
     expect(expanded).toContain("line-19");
     expect(expanded).not.toContain("more lines");
   });
+
+  it("expands ReadFile tabs so the card never overflows the terminal", () => {
+    // ReadFile numbers lines with a literal TAB. string-width counts a TAB as
+    // zero columns while a terminal advances to the next 8-column stop, so an
+    // unwrapped row fills past the terminal width and wraps onto a bogus
+    // background-colored line.
+    const output = [
+      '1\timport { createFileRoute } from "@tanstack/react-router";',
+      "2\t",
+      "3\t\tconst nested = 1;",
+    ].join("\n");
+    const physicalColumns = (row: string): number => {
+      let col = 0;
+      for (const character of row) {
+        col += character === "\t" ? 8 - (col % 8) : 1;
+      }
+      return col;
+    };
+
+    for (const columns of [74, 80, 120, 200]) {
+      terminal.columns = columns;
+      const frame = renderToString(
+        createElement(ToolBlock, {
+          tool: {
+            toolId: "read",
+            toolName: "ReadFile",
+            args: { file_path: "src/session.ts" },
+            output,
+            isError: false,
+            elapsed: 0.9,
+          },
+          expanded: true,
+        }),
+        { columns },
+      );
+      const rows = frame.split("\n").map(stripVTControlCharacters);
+      expect(rows.some((row) => row.includes("\t"))).toBe(false);
+      expect(rows.every((row) => physicalColumns(row) <= columns)).toBe(true);
+    }
+  });
 });
 
 const footerProps = {
