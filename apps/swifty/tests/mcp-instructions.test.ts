@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ConversationManager } from "@/conversation/conversation.js";
 import {
   MCP_INSTRUCTIONS_MARKER,
   syncMcpInstructions,
@@ -7,6 +8,7 @@ import {
   type McpInstructionSource,
   type ReminderHistory,
 } from "@/mcp/instructions.js";
+import { contentToText } from "@/utils/index.js";
 
 class FakeHistory implements ReminderHistory {
   reminders: string[] = [];
@@ -93,5 +95,25 @@ describe("MCP instruction announcements", () => {
     expect(compacted.reminders[0]).toContain("## a\na guidance");
     expect(compacted.reminders[0]).not.toContain("no longer apply");
     expect(compacted.reminders).toHaveLength(1);
+  });
+
+  it("announces once per conversation against the real history, and again after it is rebuilt", () => {
+    // The remote handle keeps its conversation across runs and rebuilds it when a
+    // session is restored, so the marker scan has to see the real reminder text.
+    const conv = new ConversationManager();
+    const announced = new Set<string>();
+    const mgr = source(["a"], [guidance("a")]);
+
+    conv.addUserMessage("inspect the project");
+    expect(syncMcpInstructions(conv, announced, mgr)).toBe(true);
+    expect(syncMcpInstructions(conv, announced, mgr)).toBe(false);
+    const announcements = conv
+      .getMessages()
+      .filter((m) => contentToText(m.content).includes(MCP_INSTRUCTIONS_MARKER));
+    expect(announcements).toHaveLength(1);
+
+    conv.reset();
+    conv.addUserMessage("inspect the project again");
+    expect(syncMcpInstructions(conv, announced, mgr)).toBe(true);
   });
 });

@@ -61,6 +61,7 @@ import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
 import { createClient, type LLMClient } from "@/llm/client.js";
 import { resolveModelId } from "@/llm/model-resolver.js";
 import { createChildLogger } from "@/logger/logger.js";
+import { syncMcpInstructions as announceMcpInstructions } from "@/mcp/instructions.js";
 import { MCPManager } from "@/mcp/manager.js";
 import { decideAndApply } from "@/mcp/strategy.js";
 import { MCPToolWrapper } from "@/mcp/tool-wrapper.js";
@@ -209,7 +210,6 @@ export interface RemoteAgentHandle {
   contextWindow: number;
   longTermMemoryInstructions: string;
   longTermMemoryMemoryContent: string;
-  mcpInstructions: string;
   provider: ProviderConfig;
   workDir: string;
 
@@ -243,9 +243,14 @@ class AgentHandleImpl implements RemoteAgentHandle {
   contextWindow: number;
   longTermMemoryInstructions: string;
   longTermMemoryMemoryContent: string;
-  mcpInstructions: string;
   provider: ProviderConfig;
   workDir: string;
+
+  // Servers whose instructions this conversation has already been told about. The
+  // remote handle connects MCP once and never reloads it, so nothing is ever
+  // retracted here; the record keeps later runs from repeating the guidance, and
+  // history decides whether it has to be replayed (compaction, session restore).
+  private mcpAnnounced = new Set<string>();
 
   private abortController: AbortController | null = null;
 
@@ -270,7 +275,6 @@ class AgentHandleImpl implements RemoteAgentHandle {
     this.contextWindow = agentHandleImpl.contextWindow;
     this.longTermMemoryInstructions = agentHandleImpl.longTermMemoryInstructions;
     this.longTermMemoryMemoryContent = agentHandleImpl.longTermMemoryMemoryContent;
-    this.mcpInstructions = agentHandleImpl.mcpInstructions;
     this.provider = agentHandleImpl.provider;
     this.workDir = agentHandleImpl.workDir;
     this.abortController = null;
@@ -280,10 +284,11 @@ class AgentHandleImpl implements RemoteAgentHandle {
     // Add user message to conversation
     this.conv.addUserMessage(text);
 
-    // One-time MCP instructions injection
-    if (this.mcpInstructions) {
-      this.conv.addSystemReminder(this.mcpInstructions);
-      this.mcpInstructions = "";
+    // Announce the instructions of every connected MCP server this conversation has
+    // not seen yet. Nothing goes out while the announcement is still in history, and
+    // it is replayed once that history no longer holds it.
+    if (this.mcpManager) {
+      announceMcpInstructions(this.conv, this.mcpAnnounced, this.mcpManager);
     }
 
     // Create abort controller for this run
@@ -611,7 +616,6 @@ export async function createRemoteAgent(
 
   // 18. Initialize MCP servers
   let mcpManager: MCPManager | null = null;
-  let mcpInstructions = "";
 
   if (mcpConfigs && mcpConfigs.length > 0) {
     const mgr = new MCPManager();
@@ -635,14 +639,6 @@ export async function createRemoteAgent(
     // Only decide the load mode after all tools are registered: it compares total schema size against the context window
     if (result.tools.length > 0) {
       decideAndApply(registry, provider.base_url, getContextWindow(provider));
-    }
-
-    // Collect MCP instructions
-    if (result.instructions.length > 0) {
-      const parts = result.instructions.map(({ serverName, text }) => `## ${serverName}\n${text}`);
-      mcpInstructions =
-        "# MCP Server Instructions\n\nThe following MCP servers are connected. Use their tools when the user asks.\n\n" +
-        parts.join("\n\n");
     }
   }
 
@@ -668,7 +664,6 @@ export async function createRemoteAgent(
     contextWindow,
     longTermMemoryInstructions: instructions,
     longTermMemoryMemoryContent: memReminder,
-    mcpInstructions,
     provider,
     workDir,
   });
@@ -1205,7 +1200,7 @@ export class RemoteServer {
           };
 
           let streamBuf = "";
-          // handle.run() adds the prompt to conv and injects MCP instructions
+          // handle.run() adds the prompt to conv and announces MCP instructions
           for await (const ev of handle.run(prompt, callbacks)) {
             if (
               ev.type === "tool_result" ||
