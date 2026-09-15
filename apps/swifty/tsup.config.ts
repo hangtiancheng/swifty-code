@@ -22,8 +22,8 @@
 
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { builtinModules } from "node:module";
-import { dirname, join, resolve, sep } from "node:path";
+import { builtinModules, createRequire } from "node:module";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "tsup";
 import type { Options } from "tsup";
@@ -39,6 +39,36 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
   dependencies?: Record<string, string>;
 };
 
+// Terminal-only dependencies: reached exclusively from the terminal layer
+// (src/main.tsx and src/tui/**). The library barrel must never pull them in, or
+// a consumer embedding the library in a non-terminal host would get a
+// terminal-bound graph. `tests/build-guards.test.ts` recomputes this set from
+// the actual import sites and fails on drift, so it cannot go stale silently.
+// react/react-dom are deliberately absent: the cross-platform hooks under
+// src/ui/** are public API and depend on them.
+const terminalOnlyDeps = [
+  "ink",
+  "ansi-escapes",
+  "ansi-regex",
+  "chalk",
+  "cli-highlight",
+  "cli-table3",
+  "fuse.js",
+  "node-emoji",
+  "slice-ansi",
+  "string-width",
+  "supports-hyperlinks",
+  "wrap-ansi",
+];
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Matches the package itself and any subpath ("chalk" and "chalk/source/index.js").
+const terminalOnlyPattern = new RegExp(
+  `^(?:${terminalOnlyDeps.map(escapeRegExp).join("|")})(?:/|$)`,
+);
+const terminalOnlySet = new Set<string>(terminalOnlyDeps);
+
 // CLI build bundles everything (noExternal), so CJS deps (e.g. signal-exit)
 // use bare require("assert") which esbuild can't shim in ESM output —
 // externalize all Node.js built-ins instead.
@@ -50,14 +80,18 @@ const externalizeNodeBuiltinsPlugin: EsbuildPlugin = {
       path: args.path,
       external: true,
     }));
-    build.onResolve({ filter: /^react-devtools-core$/ }, () => ({
-      path: "react-devtools-core",
-      external: true,
-    }));
     // sharp is a native module (prebuilt binaries) — esbuild cannot
     // bundle it, so keep it external and resolved from node_modules.
     build.onResolve({ filter: /^sharp$/ }, () => ({
       path: "sharp",
+      external: true,
+    }));
+    // Not referenced by src/: ink itself requires it from its devtools entry
+    // (ink/build/devtools.js) and declares it a peer dependency. Since the CLI
+    // build bundles ink, the resolution happens here, and the peer is not
+    // installed — keep it external instead of failing the bundle.
+    build.onResolve({ filter: /^react-devtools-core$/ }, () => ({
+      path: "react-devtools-core",
       external: true,
     }));
   },
@@ -82,29 +116,111 @@ const rawImportPlugin: EsbuildPlugin = {
 };
 
 // Library-build guard: the barrel entry (src/index.ts) must never reach the
-// ink/react TUI layer, neither via bare specifiers nor via a path resolving
-// into either TUI implementation. Failing the build is the point.
-const banTuiAndInkPlugin: EsbuildPlugin = {
-  name: "ban-tui-and-ink",
+// terminal layer, neither through a bare terminal-only specifier nor through a
+// path resolving into src/tui. Failing the build is the point.
+//
+// The bare-specifier rule only fires because libConfig lists the terminal-only
+// packages in `noExternal`: tsup registers its own resolver ahead of user
+// plugins and auto-externalizes every `dependencies` entry, so without
+// `noExternal` those requests are resolved as external before this plugin sees
+// them and the guard degrades to dead code.
+const banTerminalOnlyPlugin: EsbuildPlugin = {
+  name: "ban-terminal-only-deps",
   setup(build) {
-    const ban = (importer: string, path: string): never => {
+    const ban = (importer: string, path: string, kind: string): never => {
       throw new Error(
-        `[library-build] TUI dependency "${path}" (imported by ${importer || "entry"}) must not be reachable from src/index.ts`,
+        `[library-build] ${kind} "${path}" (imported by ${importer || "entry"}) must not be reachable from src/index.ts`,
       );
     };
-    build.onResolve({ filter: /^(ink|react|@\/tui)/ }, (args) => ban(args.importer, args.path));
+    build.onResolve({ filter: terminalOnlyPattern }, (args) =>
+      ban(args.importer, args.path, "terminal-only dependency"),
+    );
+    build.onResolve({ filter: /^@\/tui(\/|$)/ }, (args) =>
+      ban(args.importer, args.path, "TUI module"),
+    );
     build.onResolve({ filter: /^\.\.?\// }, (args) => {
       const resolved = resolve(dirname(args.importer), args.path);
       if (tuiDirs.some((directory) => resolved.startsWith(directory))) {
-        ban(args.importer, args.path);
+        ban(args.importer, args.path, "TUI module");
       }
       return undefined;
     });
   },
 };
 
+// Ambiguous-export scan. When two modules reached through `export *` from the
+// barrel export the same name, esbuild drops that name from the output without
+// any warning, silently shrinking the published API. tsc reports the same
+// situation as TS2308, which is what this scan collects.
+//
+// It runs once the bundle is written (tsup awaits onSuccess inside the build)
+// and reads only sources, never dist/lib/index.d.ts: tsup runs the dts worker
+// concurrently, so the declaration file is not guaranteed to exist yet.
+const AMBIGUOUS_EXPORT_DIAGNOSTIC = 2308;
+
+type ExportConflict = {
+  file: string;
+  line: number;
+  column: number;
+  message: string;
+};
+
+const findAmbiguousExports = (tsconfigPath: string, projectRoot: string): ExportConflict[] => {
+  const nodeRequire = createRequire(import.meta.url);
+  const ts = nodeRequire("typescript") as typeof import("typescript");
+
+  const read = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+  if (read.error) {
+    throw new Error(
+      `[library-build] cannot read ${tsconfigPath}: ${ts.flattenDiagnosticMessageText(read.error.messageText, " ")}`,
+    );
+  }
+  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, projectRoot);
+  const program = ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options });
+
+  const srcPrefix = join(projectRoot, "src") + sep;
+  const conflicts: ExportConflict[] = [];
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile || !sourceFile.fileName.startsWith(srcPrefix)) {
+      continue;
+    }
+    for (const diagnostic of program.getSemanticDiagnostics(sourceFile)) {
+      if (diagnostic.code !== AMBIGUOUS_EXPORT_DIAGNOSTIC) {
+        continue;
+      }
+      const position = sourceFile.getLineAndCharacterOfPosition(diagnostic.start ?? 0);
+      conflicts.push({
+        file: relative(projectRoot, sourceFile.fileName),
+        line: position.line + 1,
+        column: position.character + 1,
+        message: ts.flattenDiagnosticMessageText(diagnostic.messageText, " "),
+      });
+    }
+  }
+  return conflicts;
+};
+
+const assertNoAmbiguousExports = (): void => {
+  const conflicts = findAmbiguousExports(join(__dirname, "tsconfig.build.json"), __dirname);
+  if (conflicts.length === 0) {
+    console.log("[library-build] ambiguous-export scan: no conflicting `export *` names");
+    return;
+  }
+  throw new Error(
+    [
+      "[library-build] ambiguous exports — a name exported by two `export *` sources is dropped from the bundle without warning:",
+      ...conflicts.map(
+        (conflict) => `  ${conflict.file}:${conflict.line}:${conflict.column} ${conflict.message}`,
+      ),
+      "  Resolve each one with an explicit named re-export in src/index.ts.",
+    ].join("\n"),
+  );
+};
+
 // CLI entry: fully bundled, minified single-graph output with a shebang so the
-// `swifty` bin is self-contained.
+// `swifty` bin is self-contained. `!lib/**` keeps its clean sweep out of the
+// library output below — tsup runs an array config concurrently, so a `**/*`
+// sweep here races with, and can delete, dist/lib.
 const cliConfig: Options = {
   entry: ["src/main.tsx"],
   format: ["esm"],
@@ -114,7 +230,7 @@ const cliConfig: Options = {
   platform: "node",
   target: "node20",
   outDir: "dist",
-  clean: true,
+  clean: ["!lib/**"],
   minify: true,
   banner: {
     js: [
@@ -132,10 +248,9 @@ const cliConfig: Options = {
   esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin],
 };
 
-// Library entry: keeps dependencies external (consumers resolve them from
-// their own node_modules), emits bundled d.ts, and must never reach src/tui.
-// outDir is nested under dist/ (cleaned by the CLI build that runs first) so
-// the two builds' chunk graphs never overwrite each other.
+// Library entry: keeps dependencies external (consumers resolve them from their
+// own node_modules), emits bundled d.ts, and must never reach src/tui. outDir is
+// nested under dist/ so the two builds' chunk graphs never overwrite each other.
 const libConfig: Options = {
   entry: ["src/index.ts"],
   format: ["esm"],
@@ -151,11 +266,19 @@ const libConfig: Options = {
   dts: true,
   tsconfig: "tsconfig.build.json",
   define: { __SWIFTY_VERSION__: JSON.stringify(pkg.version) },
-  // TUI-only deps (ink, ink-spinner, ink-text-input, react, react-dom) are
-  // deliberately NOT external: if the library graph ever reaches them, the
-  // ban-tui-and-ink plugin fails the build instead of silently externalizing.
-  external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !/^(ink|react)/.test(dep)),
-  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin, banTuiAndInkPlugin],
+  // Runtime dependencies stay external, except the terminal-only ones: those
+  // must reach banTerminalOnlyPlugin, so a reachable terminal-only package fails
+  // the build instead of being silently kept as an external import.
+  external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !terminalOnlySet.has(dep)),
+  noExternal: [terminalOnlyPattern],
+  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin, banTerminalOnlyPlugin],
+  onSuccess: async () => {
+    assertNoAmbiguousExports();
+  },
 };
 
 export default defineConfig([cliConfig, libConfig]);
+
+// Exported for tests/build-guards.test.ts, which asserts the declared set still
+// matches the import sites and that the scan detects an injected conflict.
+export { findAmbiguousExports, terminalOnlyDeps, terminalOnlyPattern };

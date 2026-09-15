@@ -237,3 +237,20 @@ Inside the TUI, these commands are available:
 Pastes longer than 10 lines or 1,000 characters collapse to `[paste #1 +124 lines]` or `[paste #1 1234 chars]`. Clipboard images appear as `[Image #1]`. Arrow keys move across each placeholder as a unit, and Backspace/Delete remove it as a unit. Placeholders survive dialog switches; submitting restores the full text and image attachments.
 
 Pasting an image saves it as a PNG under `.swifty/file-history/<session-id>/`. Its placeholder expands to a workDir-relative `@` reference on submit and loads as an inline image block. Linux requires `wl-clipboard` (Wayland) or `xclip` (X11).
+
+## Library Build
+
+Besides the `swifty` CLI, the package ships a library entry for embedding Swifty in another host process.
+
+| Entry          | Output                                     | Contents                                                                                                      |
+| -------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| CLI (`swifty`) | `dist/main.js`                             | Fully bundled, minified single file with a shebang; only Node built-ins stay external.                        |
+| Library        | `dist/lib/index.js`, `dist/lib/index.d.ts` | The `src/index.ts` barrel; runtime dependencies stay external and resolve from the consumer's `node_modules`. |
+
+The library entry is terminal-independent by contract: it must never reach `src/tui/**` or a terminal-only dependency, so a host without a TTY (a server, an editor extension, a test harness) can import it. `pnpm build` enforces that contract:
+
+- **Terminal-only dependency ban** — the `ban-terminal-only-deps` plugin in `tsup.config.ts` fails the build when a bundle-reachable module imports one of the terminal-only packages (`ink`, `chalk`, `ansi-escapes`, …) or a path inside `src/tui`. The list is declared once in `tsup.config.ts` and re-derived from the actual import sites by `tests/build-guards.test.ts`, which fails if the two drift apart.
+- **`react` and `react-dom` are allowed** — the cross-platform hooks under `src/ui/**` are public API and depend on them.
+- **Ambiguous export scan** — once the bundle is written, the build runs the TypeScript ambiguous-export check (`TS2308`) over the library graph. A name exported by two `export *` sources is dropped by the bundler without any warning; the scan turns that into a build failure instead of a quietly smaller public API.
+
+In a long-lived host process, prefer the composable modules (`Agent`, `ToolRegistry`, …) over the process-level entry points (`print-mode`, `recover`, `teammate`), which may write crash dumps or call `process.exit()`.

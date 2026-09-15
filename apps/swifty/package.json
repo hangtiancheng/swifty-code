@@ -1,12 +1,12 @@
 {
   "name": "@swifty.js/swifty",
   "version": "0.0.31",
-  "description": "Swifty — CLI coding agent",
+  "description": "Swifty is a terminal-based AI coding agent. It provides an interactive TUI (terminal user interface) for conversing with large language models, executing code, manipulating files, and orchestrating multi-agent workflows, all from the command line.",
   "keywords": [
     "agent",
     "cli",
     "coding-agent",
-    "swifty"
+    "swifty.js"
   ],
   "homepage": "https://github.com/hangtiancheng/swifty-code",
   "bugs": {
@@ -24,7 +24,6 @@
   },
   "files": [
     "dist",
-    "docs",
     "README.md"
   ],
   "type": "module",
@@ -53,7 +52,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
-    "all": "pnpm typecheck && pnpm test && pnpm lint && pnpm build",
+    "all": "pnpm typecheck && pnpm lint && pnpm build && pnpm test",
     "prepublishOnly": "pnpm build",
     "add:user": "pnpm adduser --registry=https://registry.npmjs.org/",
     "publish:latest": "pnpm publish --access public --registry=https://registry.npmjs.org/",
@@ -71,8 +70,6 @@
     "fuse.js": "^7.5.0",
     "glob": "^13.0.6",
     "ink": "^7.1.1",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
     "js-yaml": "^4.3.2",
     "koa": "^3.2.1",
     "marked": "^18.0.13",

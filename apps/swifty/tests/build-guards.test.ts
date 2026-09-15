@@ -1,0 +1,189 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import ts from "typescript";
+import { describe, expect, it } from "vitest";
+
+import pkg from "../package.json";
+import { findAmbiguousExports, terminalOnlyDeps, terminalOnlyPattern } from "../tsup.config.js";
+
+const appRoot = join(import.meta.dirname, "..");
+const srcRoot = join(appRoot, "src");
+const dependencyNames = Object.keys(pkg.dependencies);
+
+/**
+ * Recompute the terminal-only set from the sources: a dependency is terminal-only
+ * when every module importing it belongs to the terminal layer (src/main.tsx and
+ * src/tui/**). Type-only imports are ignored — they are erased and cannot make a
+ * package reachable at runtime.
+ */
+const deriveTerminalOnlyDeps = (): string[] => {
+  const importSites = new Map<string, Set<string>>();
+
+  const visit = (file: string): void => {
+    const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.ESNext);
+    const relativePath = file.slice(appRoot.length + 1).replaceAll("\\", "/");
+    const specifiers: string[] = [];
+    const collect = (node: ts.Node): void => {
+      if (ts.isImportDeclaration(node)) {
+        const isTypeOnlyImport = node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword;
+        if (!isTypeOnlyImport && ts.isStringLiteral(node.moduleSpecifier)) {
+          specifiers.push(node.moduleSpecifier.text);
+        }
+      } else if (
+        ts.isExportDeclaration(node) &&
+        !node.isTypeOnly &&
+        node.moduleSpecifier &&
+        ts.isStringLiteral(node.moduleSpecifier)
+      ) {
+        specifiers.push(node.moduleSpecifier.text);
+      } else if (ts.isCallExpression(node) && node.arguments.length > 0) {
+        const [firstArgument] = node.arguments;
+        const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+        const isRequireCall =
+          ts.isIdentifier(node.expression) && node.expression.text === "require";
+        if (ts.isStringLiteral(firstArgument) && (isDynamicImport || isRequireCall)) {
+          specifiers.push(firstArgument.text);
+        }
+      }
+      ts.forEachChild(node, collect);
+    };
+    collect(source);
+
+    for (const specifier of specifiers) {
+      const dependency = dependencyNames.find(
+        (name) => specifier === name || specifier.startsWith(`${name}/`),
+      );
+      if (!dependency) {
+        continue;
+      }
+      const sites = importSites.get(dependency) ?? new Set<string>();
+      sites.add(relativePath);
+      importSites.set(dependency, sites);
+    }
+  };
+
+  const walk = (directory: string): void => {
+    for (const entry of ts.sys.readDirectory(directory, [".ts", ".tsx"])) {
+      visit(entry);
+    }
+  };
+  walk(srcRoot);
+
+  const isTerminalLayer = (path: string): boolean =>
+    path.startsWith("src/tui/") || path === "src/main.tsx";
+
+  return dependencyNames
+    .filter((dependency) => {
+      const sites = importSites.get(dependency);
+      return sites !== undefined && sites.size > 0 && [...sites].every(isTerminalLayer);
+    })
+    .sort();
+};
+
+describe("library build terminal-only dependency guard", () => {
+  it("declares every entry as a real dependency", () => {
+    const undeclared = terminalOnlyDeps.filter(
+      (dependency) => !dependencyNames.includes(dependency),
+    );
+    expect(undeclared).toEqual([]);
+  });
+
+  it("matches the set derived from the actual import sites", () => {
+    expect(deriveTerminalOnlyDeps()).toEqual([...terminalOnlyDeps].sort());
+  });
+
+  it("matches a terminal-only package and its subpaths only", () => {
+    expect(terminalOnlyPattern.test("ink")).toBe(true);
+    expect(terminalOnlyPattern.test("ink/build/devtools.js")).toBe(true);
+    expect(terminalOnlyPattern.test("chalk")).toBe(true);
+    expect(terminalOnlyPattern.test("chalk/source/index.js")).toBe(true);
+    expect(terminalOnlyPattern.test("fuse.js")).toBe(true);
+    // Prefixes of a listed name are different packages.
+    expect(terminalOnlyPattern.test("ink-foo")).toBe(false);
+    expect(terminalOnlyPattern.test("chalkboard")).toBe(false);
+  });
+
+  it("keeps react and other non-terminal dependencies out of the ban", () => {
+    for (const specifier of [
+      "react",
+      "react/jsx-runtime",
+      "react-dom",
+      "react-dom/client",
+      "marked",
+      "zod",
+      "@anthropic-ai/sdk",
+      "koa",
+      "sharp",
+      "ws",
+    ]) {
+      expect(terminalOnlyPattern.test(specifier)).toBe(false);
+    }
+    expect(terminalOnlyDeps).not.toContain("react");
+    expect(terminalOnlyDeps).not.toContain("react-dom");
+  });
+});
+
+describe("ambiguous-export scan", () => {
+  const withTempProject = (files: Record<string, string>, run: (root: string) => void): void => {
+    const root = mkdtempSync(join(tmpdir(), "swifty-guard-"));
+    try {
+      for (const [path, contents] of Object.entries(files)) {
+        const target = join(root, path);
+        mkdirSync(join(target, ".."), { recursive: true });
+        writeFileSync(target, contents);
+      }
+      run(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  };
+
+  const tsconfig = JSON.stringify({
+    compilerOptions: {
+      module: "esnext",
+      moduleResolution: "bundler",
+      target: "esnext",
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+    },
+    include: ["src"],
+  });
+
+  it("detects a name exported by two `export *` sources", () => {
+    withTempProject(
+      {
+        "tsconfig.json": tsconfig,
+        "src/a.ts": "export const dup = 1;\n",
+        "src/b.ts": "export const dup = 2;\n",
+        "src/index.ts": 'export * from "./a.js";\nexport * from "./b.js";\n',
+      },
+      (root) => {
+        const conflicts = findAmbiguousExports(join(root, "tsconfig.json"), root);
+        expect(conflicts).toHaveLength(1);
+        expect(conflicts[0]?.file).toBe("src/index.ts");
+        expect(conflicts[0]?.message).toContain("already exported a member named 'dup'");
+      },
+    );
+  });
+
+  it("accepts the same symbol re-exported through two paths", () => {
+    withTempProject(
+      {
+        "tsconfig.json": tsconfig,
+        "src/a.ts": "export const shared = 1;\n",
+        "src/b.ts": 'export * from "./a.js";\n',
+        "src/index.ts": 'export * from "./a.js";\nexport * from "./b.js";\n',
+      },
+      (root) => {
+        expect(findAmbiguousExports(join(root, "tsconfig.json"), root)).toEqual([]);
+      },
+    );
+  });
+
+  it("reports no conflict for the published barrel", () => {
+    expect(findAmbiguousExports(join(appRoot, "tsconfig.build.json"), appRoot)).toEqual([]);
+  });
+});

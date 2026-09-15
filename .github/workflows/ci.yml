@@ -53,15 +53,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # --- @swifty.js/glob-wasm (must build first: swifty's typecheck/tests
-      # resolve it from dist/, and swifty's tsup build copies release.wasm) ---
-
-      - name: Test glob-wasm
-        run: pnpm --filter @swifty.js/glob-wasm test
-
-      - name: Build glob-wasm
-        run: pnpm --filter @swifty.js/glob-wasm build
-
       # --- @swifty.js/swifty ---
 
       - name: Typecheck swifty

@@ -20,11 +20,12 @@
  * SOFTWARE.
  */
 
-// Library entry: re-exports every TUI-independent module of @swifty.js/swifty.
-// The CLI entry (bin) is dist/main.js; nothing here may import from src/tui or
-// any ink/react dependency (enforced at build time by the ban-tui-and-ink
-// esbuild plugin in tsup.config.ts and by import/no-restricted-paths in
-// eslint.config.js).
+// Library entry: re-exports every terminal-independent module of
+// @swifty.js/swifty. The CLI entry (bin) is dist/main.js; nothing here may
+// import from src/tui or any terminal-only dependency (ink, chalk, ...). That is
+// enforced at build time by the ban-terminal-only-deps esbuild plugin in
+// tsup.config.ts: reaching one of them fails the build. react/react-dom are not
+// in that set — the cross-platform hooks under src/ui/** are public API.
 
 // === agent ===
 export * from "./agent/agent.js";

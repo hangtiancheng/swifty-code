@@ -28,10 +28,18 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { terminalOnlyPattern } from "../tsup.config.js";
+
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const libDir = join(pkgRoot, "dist", "lib");
 const libEntry = join(libDir, "index.js");
 const cliEntry = join(pkgRoot, "dist", "main.js");
+
+// Module specifiers quoted in import/export statements (including dynamic import).
+const moduleSpecifier = /(?:from|import)\s*\(?\s*["']([^"']+)["']/g;
+// JSDoc examples may quote specifiers that are not real dependencies.
+const stripComments = (text: string): string =>
+  text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("cli entry (dist/main.js)", () => {
   it("keeps the shebang for the bin target", () => {
@@ -41,20 +49,35 @@ describe("cli entry (dist/main.js)", () => {
 });
 
 describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
-  it("contains no ink/react/tui imports in any emitted module", () => {
-    const banned = /(from|import)\s*\(?\s*["'][^"']*(\bink\b|\breact\b|\btui(?:-v2)?\/)/;
-    const atAlias = /["']@\/[^"']*["']/;
+  it("imports no terminal-only dependency or src/tui module", () => {
     for (const file of readdirSync(libDir)) {
       if (!file.endsWith(".js") && !file.endsWith(".d.ts")) {
         continue;
       }
-      const text = readFileSync(join(libDir, file), "utf-8");
-      expect(banned.exec(text), `${file} must not reference TUI modules`).toBeNull();
-      if (file.endsWith(".d.ts")) {
-        // JSDoc examples may quote "@/..." specifiers; only real imports count.
-        const code = text.replace(/\/\*[\s\S]*?\*\//g, "");
-        expect(atAlias.exec(code), `${file} must not leak unresolved @/ type imports`).toBeNull();
+      const code = stripComments(readFileSync(join(libDir, file), "utf-8"));
+      for (const [, specifier] of code.matchAll(moduleSpecifier)) {
+        expect(
+          terminalOnlyPattern.test(specifier),
+          `${file} must not import the terminal-only dependency "${specifier}"`,
+        ).toBe(false);
+        expect(
+          specifier.startsWith("@/tui"),
+          `${file} must not import the TUI layer via "${specifier}"`,
+        ).toBe(false);
       }
+    }
+  });
+
+  it("leaks no unresolved @/ type imports", () => {
+    for (const file of readdirSync(libDir)) {
+      if (!file.endsWith(".d.ts")) {
+        continue;
+      }
+      const code = stripComments(readFileSync(join(libDir, file), "utf-8"));
+      expect(
+        /["']@\/[^"']*["']/.exec(code),
+        `${file} must not leak unresolved @/ type imports`,
+      ).toBeNull();
     }
   });
 
