@@ -38,11 +38,13 @@ import { InputBox } from "@/tui/input.js";
 import type { InputDraft } from "@/tui/input.js";
 import { InteractionDock } from "@/tui/interaction-dock.js";
 import { StatusBorder } from "@/tui/status-border.js";
-import { ICONS, THEME } from "@/tui/cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
+import { ICONS, THEME } from "@/ui/styles.js";
 
 const terminal = vi.hoisted(() => {
-  const input: { current: ((text: string, key: Key) => void) | null } = { current: null };
+  const input: { current: ((text: string, key: Key) => void) | null } = {
+    current: null,
+  };
   const paste: { current: ((text: string) => void) | null } = { current: null };
   return { columns: 80, rows: 24, files: ["one.ts", "two.ts"], input, paste };
 });
@@ -54,7 +56,9 @@ vi.mock("ink", async (importOriginal) => {
   const { useEffect } = await import("react");
   return {
     ...ink,
-    useStdout: () => ({ stdout: { columns: terminal.columns, rows: terminal.rows } }),
+    useStdout: () => ({
+      stdout: { columns: terminal.columns, rows: terminal.rows },
+    }),
     useInput: (handler: (text: string, key: Key) => void, options?: { isActive?: boolean }) => {
       useEffect(() => {
         if (options?.isActive === false) {
@@ -122,7 +126,13 @@ let instance: Instance | undefined;
 
 function draftRef(lines = [""], cursorLine = 0, cursorCol = lines[cursorLine].length) {
   const ref: { current: InputDraft | null } = {
-    current: { lines, cursorLine, cursorCol, historyIndex: -1, historyDraft: null },
+    current: {
+      lines,
+      cursorLine,
+      cursorCol,
+      historyIndex: -1,
+      historyDraft: null,
+    },
   };
   return ref;
 }
@@ -161,7 +171,9 @@ function composer(columns: number, props: Partial<ComponentProps<typeof InputBox
 function footer(columns: number, props: Partial<ComponentProps<typeof Footer>> = {}) {
   terminal.columns = columns;
   return stripVTControlCharacters(
-    renderToString(createElement(Footer, { ...footerProps, ...props }), { columns }),
+    renderToString(createElement(Footer, { ...footerProps, ...props }), {
+      columns,
+    }),
   );
 }
 
@@ -216,7 +228,10 @@ afterEach(() => {
 describe("composer status borders", () => {
   it("keeps a useful truncated status on narrow terminals", () => {
     const output = renderToString(
-      createElement(StatusBorder, { width: 24, statusLabel: "Retrying: service unavailable" }),
+      createElement(StatusBorder, {
+        width: 24,
+        statusLabel: "Retrying: service unavailable",
+      }),
       { columns: 24 },
     );
     expect(output).toContain("Retrying:");
@@ -229,7 +244,12 @@ describe("composer status borders", () => {
       for (const statusLabel of [undefined, "\x1b[35m思考 e\u0301\x1b[0m"]) {
         for (const direction of ["up", "down"] satisfies ("up" | "down")[]) {
           const output = renderToString(
-            createElement(StatusBorder, { width, statusLabel, hiddenLineCount: 123, direction }),
+            createElement(StatusBorder, {
+              width,
+              statusLabel,
+              hiddenLineCount: 123,
+              direction,
+            }),
             { columns: width },
           );
           expect(output.split("\n")).toHaveLength(1);
@@ -242,7 +262,11 @@ describe("composer status borders", () => {
   it("keeps the status left and centers the overflow independently", () => {
     const width = 80;
     const output = renderToString(
-      createElement(StatusBorder, { width, statusLabel: "思考 e\u0301", hiddenLineCount: 4 }),
+      createElement(StatusBorder, {
+        width,
+        statusLabel: "思考 e\u0301",
+        hiddenLineCount: 4,
+      }),
       { columns: width },
     );
     expect(output.startsWith("── ⠋ 思考 e\u0301 ")).toBe(true);
@@ -268,7 +292,11 @@ describe("composer status borders", () => {
 
   it("centers lower overflow without inventing a status", () => {
     const output = renderToString(
-      createElement(StatusBorder, { width: 40, direction: "down", hiddenLineCount: 5 }),
+      createElement(StatusBorder, {
+        width: 40,
+        direction: "down",
+        hiddenLineCount: 5,
+      }),
       { columns: 40 },
     );
     expect(output.indexOf(" ↓ 5 more ")).toBe(15);
@@ -349,8 +377,14 @@ describe("composer completion rows", () => {
   });
 
   it("keeps long wide-character command names in a single row", () => {
-    const longCommand: Command = { ...commands[0], name: "很长的命令名称".repeat(4) };
-    const output = composer(18, { commands: [longCommand], draftRef: draftRef(["/"]) });
+    const longCommand: Command = {
+      ...commands[0],
+      name: "很长的命令名称".repeat(4),
+    };
+    const output = composer(18, {
+      commands: [longCommand],
+      draftRef: draftRef(["/"]),
+    });
     expect(output.split("\n")).toHaveLength(5);
     expect(output.split("\n").every((line) => visibleWidth(line) <= 18)).toBe(true);
     expect(output).toContain("…");
@@ -358,7 +392,10 @@ describe("composer completion rows", () => {
 
   it("paints a full-width selected @file row and aligns its arrow with slash rows", () => {
     chalk.level = 3;
-    const output = composer(30, { workDir: "/virtual", draftRef: draftRef(["@"]) });
+    const output = composer(30, {
+      workDir: "/virtual",
+      draftRef: draftRef(["@"]),
+    });
     const row = output.split("\n").find((line) => line.includes("@one.ts")) ?? "";
     expect(stripVTControlCharacters(row).startsWith(` ${ICONS.arrow} @one.ts`)).toBe(true);
     expect(visibleWidth(row)).toBe(30);
@@ -369,7 +406,10 @@ describe("composer completion rows", () => {
 
   it("clips long @file suggestions to one row", () => {
     terminal.files = ["很长的文件路径/".repeat(8) + "file.ts"];
-    const output = composer(20, { workDir: "/virtual", draftRef: draftRef(["@"]) });
+    const output = composer(20, {
+      workDir: "/virtual",
+      draftRef: draftRef(["@"]),
+    });
     expect(output.split("\n")).toHaveLength(5);
     expect(output.split("\n").every((line) => visibleWidth(line) <= 20)).toBe(true);
   });
@@ -379,7 +419,11 @@ describe("composer queue recall and visual navigation", () => {
   it("falls back to history when the queue is empty and restores the clean draft", () => {
     const ref = draftRef();
     const onRecallQueuedMessage = vi.fn(() => undefined);
-    mount({ draftRef: ref, history: ["older", "newer"], onRecallQueuedMessage });
+    mount({
+      draftRef: ref,
+      history: ["older", "newer"],
+      onRecallQueuedMessage,
+    });
     press("", { upArrow: true });
     expect(onRecallQueuedMessage).toHaveBeenCalledOnce();
     expect(ref.current?.lines).toEqual(["newer"]);
@@ -493,7 +537,12 @@ describe("composer queue recall and visual navigation", () => {
     vi.mocked(saveClipboardImage).mockReturnValue(pending);
     const ref = draftRef();
     const onSubmit = vi.fn();
-    mount({ draftRef: ref, onSubmit, onRecallQueuedMessage: () => "queued", workDir: "/virtual" });
+    mount({
+      draftRef: ref,
+      onSubmit,
+      onRecallQueuedMessage: () => "queued",
+      workDir: "/virtual",
+    });
     act(() => {
       terminal.paste.current?.("");
     });
@@ -511,7 +560,12 @@ describe("composer queue recall and visual navigation", () => {
   it.each(["/help", "@one"])("submits recalled %s literally rather than completing it", (text) => {
     const ref = draftRef();
     const onSubmit = vi.fn();
-    mount({ draftRef: ref, commands, onSubmit, onRecallQueuedMessage: () => text });
+    mount({
+      draftRef: ref,
+      commands,
+      onSubmit,
+      onRecallQueuedMessage: () => text,
+    });
     press("", { upArrow: true });
     press("", { return: true });
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith(text);
@@ -521,7 +575,12 @@ describe("composer queue recall and visual navigation", () => {
     terminal.columns = 3;
     const ref = draftRef(["/"]);
     const onRecallQueuedMessage = vi.fn(() => "queued");
-    mount({ draftRef: ref, commands, history: ["history"], onRecallQueuedMessage });
+    mount({
+      draftRef: ref,
+      commands,
+      history: ["history"],
+      onRecallQueuedMessage,
+    });
     press("", { upArrow: true });
     expect(ref.current?.cursorCol).toBe(1);
     expect(ref.current?.lines).toEqual(["/"]);
@@ -571,7 +630,9 @@ describe("composer queue recall and visual navigation", () => {
     "resets the vertical goal after a %s action",
     (action) => {
       const ref = draftRef(["abcdef", "x", "abcdef"], 2, 5);
-      const insertTextRef: { current: ((text: string) => void) | null } = { current: null };
+      const insertTextRef: { current: ((text: string) => void) | null } = {
+        current: null,
+      };
       mount({ draftRef: ref, insertTextRef });
       press("", { upArrow: true });
       if (action === "horizontal") {
@@ -750,7 +811,10 @@ describe("persistent composer drafts and input behavior", () => {
       });
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     act(() => {
-      instance = render(view(false), { interactive: false, patchConsole: false });
+      instance = render(view(false), {
+        interactive: false,
+        patchConsole: false,
+      });
     });
     press("draft");
     press("", { leftArrow: true });
@@ -841,7 +905,9 @@ describe("persistent composer drafts and input behavior", () => {
 
   it("saves imperative insertion before unmount and clears the saved draft via clearRef", () => {
     const ref = draftRef(["hello"]);
-    const insertTextRef: { current: ((text: string) => void) | null } = { current: null };
+    const insertTextRef: { current: ((text: string) => void) | null } = {
+      current: null,
+    };
     const clearRef: { current: (() => void) | null } = { current: null };
     mount({ draftRef: ref, insertTextRef, clearRef });
     act(() => {
@@ -877,10 +943,18 @@ describe("persistent composer drafts and input behavior", () => {
   });
 
   it("collapses a clipboard image and submits the existing quoted @file mention", async () => {
-    vi.mocked(saveClipboardImage).mockResolvedValue({ ok: true, value: "/virtual/image.png" });
+    vi.mocked(saveClipboardImage).mockResolvedValue({
+      ok: true,
+      value: "/virtual/image.png",
+    });
     const ref = draftRef(["hello"]);
     const onSubmit = vi.fn();
-    mount({ draftRef: ref, onSubmit, workDir: "/virtual", sessionId: "session" });
+    mount({
+      draftRef: ref,
+      onSubmit,
+      workDir: "/virtual",
+      sessionId: "session",
+    });
     await act(async () => {
       terminal.paste.current?.("");
       await Promise.resolve();
@@ -985,7 +1059,10 @@ describe("persistent composer drafts and input behavior", () => {
   });
 
   it("numbers images independently, restores them with the draft, and resets after clear", async () => {
-    vi.mocked(saveClipboardImage).mockResolvedValue({ ok: true, value: "/virtual/image.png" });
+    vi.mocked(saveClipboardImage).mockResolvedValue({
+      ok: true,
+      value: "/virtual/image.png",
+    });
     const ref = draftRef();
     const onSubmit = vi.fn();
     const clearRef: { current: (() => void) | null } = { current: null };

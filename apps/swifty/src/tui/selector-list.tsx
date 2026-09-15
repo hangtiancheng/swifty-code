@@ -27,8 +27,9 @@ import type { ReactNode } from "react";
 
 import { getListWindowStart } from "./list-window.js";
 import { SelectorFrame } from "./selector-frame.js";
-import { ICONS, THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
+
+import { ICONS, THEME } from "@/ui/styles.js";
 
 interface SelectorListProps {
   children: (start: number, count: number, width: number) => ReactNode;

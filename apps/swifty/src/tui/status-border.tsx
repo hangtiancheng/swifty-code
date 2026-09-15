@@ -22,8 +22,9 @@
 
 import { Text } from "ink";
 
-import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
+
+import { THEME } from "@/ui/styles.js";
 
 interface StatusBorderProps {
   width: number;

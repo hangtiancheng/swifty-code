@@ -22,11 +22,11 @@
 
 import { Box, Text } from "ink";
 
-import { THEME } from "./cross-platform/styles.js";
 import { TeammateSpinnerTree } from "./teammate-spinner-tree.js";
 import { ToolDisplay, type ToolBlockInfo } from "./tool-display.js";
 
 import type { TeammateUIState } from "@/teams/progress.js";
+import { THEME } from "@/ui/styles.js";
 
 export interface SubagentProgress {
   id: number;

@@ -33,11 +33,11 @@ import { AgentActivity } from "@/tui/agent-activity.js";
 import { CommittedMessage } from "@/tui/chat.js";
 import { Footer } from "@/tui/footer.js";
 import { renderMarkdown, renderStreamingMarkdown, type MarkdownCache } from "@/tui/markdown.js";
-import { setThemeMode, THEME, thinkingLevelColor } from "@/tui/cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
 import { ThinkingBlock } from "@/tui/thinking-block.js";
 import { ToolBlock } from "@/tui/tool-display.js";
 import { formatToolOutputPreview } from "@/tui/tool-preview.js";
+import { setThemeMode, THEME, thinkingLevelColor } from "@/ui/styles.js";
 
 // ToolCard and ThinkingBlock size themselves from useStdout().stdout.columns, which
 // renderToString never provides — Ink returns the process.stdout default (columns
@@ -140,7 +140,10 @@ describe("skill transcript presentation", () => {
     const output = stripVTControlCharacters(
       renderToString(
         createElement(CommittedMessage, {
-          message: { role: "user", content: "Explain <skill-body>markup</skill-body>" },
+          message: {
+            role: "user",
+            content: "Explain <skill-body>markup</skill-body>",
+          },
         }),
         { columns: 40 },
       ),
@@ -152,7 +155,12 @@ describe("skill transcript presentation", () => {
 
 describe("pi Markdown presentation", () => {
   it.each(["```", "~~~~"])("does not flash partial closing %s fences during streaming", (fence) => {
-    const cache: MarkdownCache = { prefix: "", rendered: "", width: 0, theme: "" };
+    const cache: MarkdownCache = {
+      prefix: "",
+      rendered: "",
+      width: 0,
+      theme: "",
+    };
     const source = `${fence}ts\nconst value = 1;\n`;
     const expected = renderMarkdown(source + fence, 40);
     for (let count = 1; count < fence.length; count++) {
@@ -192,7 +200,12 @@ describe("pi Markdown presentation", () => {
   });
 
   it("keeps streamed fences, lists and reference links consistent with committed Markdown", () => {
-    const cache: MarkdownCache = { prefix: "", rendered: "", width: 0, theme: "" };
+    const cache: MarkdownCache = {
+      prefix: "",
+      rendered: "",
+      width: 0,
+      theme: "",
+    };
     const sources = [
       "Intro\n\n```ts\nconst first = 1;\n\nconst second",
       "Intro\n\n```ts\nconst first = 1;\n\nconst second = 2;\n```\n\nDone",
@@ -226,8 +239,18 @@ describe("shared live and committed tool cards", () => {
       renderToString(
         createElement(AgentActivity, {
           tools: [
-            { toolId: "a", toolName: "Agent", args: { description: "first-task" }, loading: true },
-            { toolId: "b", toolName: "Agent", args: { description: "second-task" }, loading: true },
+            {
+              toolId: "a",
+              toolName: "Agent",
+              args: { description: "first-task" },
+              loading: true,
+            },
+            {
+              toolId: "b",
+              toolName: "Agent",
+              args: { description: "second-task" },
+              loading: true,
+            },
           ],
           subagents: [{ id: 2, label: "explorer", turn: 3 }],
           teammates: [],
@@ -256,7 +279,9 @@ describe("shared live and committed tool cards", () => {
         isError: false,
         elapsed: 0.5,
       };
-      const live = renderToString(createElement(ToolBlock, { tool }), { columns: 40 });
+      const live = renderToString(createElement(ToolBlock, { tool }), {
+        columns: 40,
+      });
       const saved = renderToString(
         createElement(CommittedMessage, {
           message: {
@@ -290,7 +315,12 @@ describe("shared live and committed tool cards", () => {
     terminal.columns = 20;
     const output = renderToString(
       createElement(ToolBlock, {
-        tool: { toolId: "bash-a", toolName: "Bash", args: { command: "pwd" }, loading: true },
+        tool: {
+          toolId: "bash-a",
+          toolName: "Bash",
+          args: { command: "pwd" },
+          loading: true,
+        },
       }),
       { columns: 20 },
     );
@@ -323,7 +353,13 @@ describe("shared live and committed tool cards", () => {
         chalk.level = 0;
         const plain = renderToString(
           createElement(ToolBlock, {
-            tool: { toolId: "status", toolName: "Read", args: {}, loading, isError: !loading },
+            tool: {
+              toolId: "status",
+              toolName: "Read",
+              args: {},
+              loading,
+              isError: !loading,
+            },
           }),
           { columns: 40 },
         );
@@ -334,7 +370,12 @@ describe("shared live and committed tool cards", () => {
       for (const expanded of [false, true]) {
         const diff = renderToString(
           createElement(ToolBlock, {
-            tool: { toolId: "edit", toolName: "EditFile", args: {}, output: "- old\n+ new" },
+            tool: {
+              toolId: "edit",
+              toolName: "EditFile",
+              args: {},
+              output: "- old\n+ new",
+            },
             expanded,
           }),
           { columns: 40 },
@@ -360,7 +401,9 @@ describe("shared live and committed tool cards", () => {
     expect(collapsed).toContain("line-19");
     expect(collapsed).toContain("Ctrl+O");
     const expanded = stripVTControlCharacters(
-      renderToString(createElement(ToolBlock, { tool, expanded: true }), { columns: 40 }),
+      renderToString(createElement(ToolBlock, { tool, expanded: true }), {
+        columns: 40,
+      }),
     );
     expect(expanded).toContain("line-0\n");
     expect(expanded).toContain("line-19");

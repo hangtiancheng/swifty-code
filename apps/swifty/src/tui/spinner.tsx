@@ -23,8 +23,7 @@
 import { Text } from "ink";
 import React, { useEffect, useRef, useState } from "react";
 
-import { THEME } from "./cross-platform/styles.js";
-
+import { THEME } from "@/ui/styles.js";
 import { randomVerb } from "@/utils/verbs.js";
 
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;

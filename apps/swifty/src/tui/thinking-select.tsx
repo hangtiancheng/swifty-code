@@ -4,10 +4,10 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import { getListWindowStart } from "./list-window.js";
 import { SelectorFrame } from "./selector-frame.js";
-import { ICONS, THEME, thinkingLevelColor } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
+import { ICONS, THEME, thinkingLevelColor } from "@/ui/styles.js";
 
 interface ThinkingSelectProps {
   currentLevel: ThinkingLevel;

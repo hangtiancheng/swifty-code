@@ -24,9 +24,9 @@ import { Box, Text, useInput } from "ink";
 import { useReducer } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
-import { ICONS, THEME } from "./cross-platform/styles.js";
 
 import type { Question } from "@/tools/ask-user.js";
+import { ICONS, THEME } from "@/ui/styles.js";
 
 interface Props {
   questions: Question[];

@@ -25,7 +25,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
-import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth } from "./terminal-text.js";
 
 import {
@@ -39,6 +38,7 @@ import {
 } from "@/config/config.js";
 import { ProviderLoginSchema } from "@/config/provider-login.js";
 import { discoverModels, modelListUrl, type DiscoveredModel } from "@/llm/model-discovery.js";
+import { THEME } from "@/ui/styles.js";
 
 const PROTOCOLS = ["anthropic", "openai", "openai-compat"] as const;
 const FIELD_KEYS = [

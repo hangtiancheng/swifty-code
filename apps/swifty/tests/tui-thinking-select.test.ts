@@ -9,9 +9,9 @@ import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
-import { ICONS, setThemeMode, thinkingLevelColor } from "@/tui/cross-platform/styles.js";
 import { visibleWidth } from "@/tui/terminal-text.js";
 import { ThinkingSelect } from "@/tui/thinking-select.js";
+import { ICONS, setThemeMode, thinkingLevelColor } from "@/ui/styles.js";
 
 vi.mock("ink", async (importOriginal) => ({
   ...(await importOriginal<typeof Ink>()),
@@ -166,7 +166,10 @@ describe("thinking selector controls", () => {
   });
 
   it("falls back to the first allowed level when current is unavailable", () => {
-    const { onSelect } = mount({ currentLevel: "max", levels: ["off", "medium"] });
+    const { onSelect } = mount({
+      currentLevel: "max",
+      levels: ["off", "medium"],
+    });
     expect(frame).toContain(`${ICONS.arrow} off`);
     expect(frame).not.toContain(ICONS.success);
     expect(frame).not.toContain("max");
@@ -175,11 +178,18 @@ describe("thinking selector controls", () => {
   });
 
   it("retains focused identity on reorder and handles removal and empty level updates", () => {
-    const callbacks = mount({ currentLevel: "medium", levels: ["low", "medium", "high"] });
+    const callbacks = mount({
+      currentLevel: "medium",
+      levels: ["low", "medium", "high"],
+    });
     const update = (levels: readonly ThinkingLevel[]) => {
       act(() => {
         instance?.rerender(
-          createElement(ThinkingSelect, { currentLevel: "medium", levels, ...callbacks }),
+          createElement(ThinkingSelect, {
+            currentLevel: "medium",
+            levels,
+            ...callbacks,
+          }),
         );
       });
     };

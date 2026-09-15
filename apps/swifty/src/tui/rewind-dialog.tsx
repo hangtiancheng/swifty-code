@@ -24,9 +24,9 @@ import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
-import { ICONS, THEME } from "./cross-platform/styles.js";
 
 import type { Snapshot } from "@/file-history/file-history.js";
+import { ICONS, THEME } from "@/ui/styles.js";
 
 export type RewindAction =
   | { type: "code_and_conversation"; snapshotIndex: number }
@@ -77,7 +77,10 @@ function RewindDialog({ snapshots, onComplete, onCancel }: Props) {
       setPhase(0);
     } else if (key.return) {
       if (optionCursor === 0) {
-        onComplete({ type: "code_and_conversation", snapshotIndex: selectedIndex });
+        onComplete({
+          type: "code_and_conversation",
+          snapshotIndex: selectedIndex,
+        });
       } else if (optionCursor === 1) {
         onComplete({ type: "conversation_only", snapshotIndex: selectedIndex });
       } else if (optionCursor === 2) {

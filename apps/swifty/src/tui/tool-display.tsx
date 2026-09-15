@@ -23,11 +23,11 @@
 import { Box, Text, useStdout } from "ink";
 
 import { DiffLines } from "./diff-render.js";
-import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 import { formatToolOutputPreview } from "./tool-preview.js";
 
 import { isDiffTool } from "@/tools/is-diff-tool.js";
+import { THEME } from "@/ui/styles.js";
 import { formatToolArgs } from "@/utils/utils.js";
 
 export interface ToolBlockInfo {

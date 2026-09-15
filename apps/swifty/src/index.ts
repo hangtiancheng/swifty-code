@@ -190,11 +190,11 @@ export * from "./tools/tool-search.js";
 export * from "./tools/types.js";
 export * from "./tools/write-file.js";
 
-// === tui () ===
-export * from "./tui/cross-platform/styles.js";
-export * from "./tui/cross-platform/use-follow-up-queue.js";
-export * from "./tui/cross-platform/use-ide-input.js";
-export * from "./tui/cross-platform/use-teammate-states.js";
+// === ui ===
+export * from "./ui/styles.js";
+export * from "./ui/use-follow-up-queue.js";
+export * from "./ui/use-ide-input.js";
+export * from "./ui/use-teammate-states.js";
 
 // === utils ===
 export * from "./utils/paths.js";

@@ -24,10 +24,10 @@ import chalk from "chalk";
 import { supportsLanguage } from "cli-highlight";
 import { Marked } from "marked";
 
-import { THEME } from "./cross-platform/styles.js";
 import { visibleWidth, wrapToLines } from "./terminal-text.js";
 
 import { markedTerminal } from "@/tui/marked-terminal.js";
+import { THEME } from "@/ui/styles.js";
 
 chalk.level = 3;
 
@@ -117,7 +117,10 @@ function createMarkdown(width: number, kind: MarkdownKind, streaming = false) {
           .map((line) => "  " + chalk.hex(THEME.mdCodeBlock)(line))
           .join("\n");
         if (language && supportsLanguage(language)) {
-          const highlighted = terminal.renderer?.code?.call(this, { ...token, lang: language });
+          const highlighted = terminal.renderer?.code?.call(this, {
+            ...token,
+            lang: language,
+          });
           if (typeof highlighted === "string") {
             body = highlighted;
           }
@@ -205,6 +208,8 @@ export function renderStreamingMarkdown(text: string, width: number, cache: Mark
     cache.width = width;
     cache.theme = theme;
   }
-  const tail = markdown.parse(normalized.slice(prefix.length), { async: false });
+  const tail = markdown.parse(normalized.slice(prefix.length), {
+    async: false,
+  });
   return wrapToLines((cache.rendered + tail).trimEnd(), width).join("\n");
 }

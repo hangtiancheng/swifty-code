@@ -22,10 +22,9 @@
 
 import { Box, Text } from "ink";
 
-import { THEME } from "./cross-platform/styles.js";
-
 import type { TeammateUIState } from "@/teams/progress.js";
 import { formatTokens, summarizeActivities } from "@/teams/progress.js";
+import { THEME } from "@/ui/styles.js";
 
 interface TeammateSpinnerLineProps {
   state: TeammateUIState;

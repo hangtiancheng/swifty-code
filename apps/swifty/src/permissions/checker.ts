@@ -29,8 +29,8 @@ import z, { parse } from "zod";
 
 import { createChildLogger } from "@/logger/logger.js";
 import { mcpCallPermissionContent } from "@/tools/mcp-call.js";
-import { isRecord, strArg } from "@/utils/utils.js";
 import { canonicalPath, isPathWithin } from "@/utils/paths.js";
+import { isRecord, strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "permissions" });
 

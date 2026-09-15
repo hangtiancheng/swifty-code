@@ -40,8 +40,8 @@ import { SelectorFrame } from "@/tui/selector-frame.js";
 import { SelectorListRow } from "@/tui/selector-list.js";
 import { updateSelectorQuery } from "@/tui/selector-search.js";
 import { SessionSelector } from "@/tui/session-selector.js";
-import { ICONS, setThemeMode, THEME } from "@/tui/cross-platform/styles.js";
 import { visibleWidth } from "@/tui/terminal-text.js";
+import { ICONS, setThemeMode, THEME } from "@/ui/styles.js";
 
 // Keep Ink's real layout and React hooks; invoke only the captured input callback.
 vi.mock("ink", async (importOriginal) => ({
@@ -88,7 +88,11 @@ function resize(columns: number, rows: number) {
 
 function mount(node: ReactNode) {
   act(() => {
-    instance = render(node, { patchConsole: false, interactive: false, debug: true });
+    instance = render(node, {
+      patchConsole: false,
+      interactive: false,
+      debug: true,
+    });
   });
 }
 
@@ -250,7 +254,13 @@ describe("provider selector", () => {
   it("handles no results and Escape cancels without first clearing the search", () => {
     const onCancel = vi.fn();
     const onSelect = vi.fn();
-    mount(createElement(ProviderSelect, { providers: providers(), onCancel, onSelect }));
+    mount(
+      createElement(ProviderSelect, {
+        providers: providers(),
+        onCancel,
+        onSelect,
+      }),
+    );
     send("zzzzzzzzzzzzzz");
     expect(frame).toContain("No matching providers");
     expect(frame).toContain("0/0 · 15 total");
@@ -314,7 +324,11 @@ describe("provider selector", () => {
   it("distinguishes providers with the same display name by base URL", () => {
     const configured = [
       { ...providers(1)[0], name: "Shared", base_url: "https://first.invalid" },
-      { ...providers(1)[0], name: "Shared", base_url: "https://second.invalid" },
+      {
+        ...providers(1)[0],
+        name: "Shared",
+        base_url: "https://second.invalid",
+      },
     ];
     const onSelect = vi.fn();
     mount(
