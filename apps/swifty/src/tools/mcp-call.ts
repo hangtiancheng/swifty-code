@@ -57,7 +57,7 @@ import {
   buildMcpToolName,
   sanitizeSegment,
 } from "@/mcp/tool-wrapper.js";
-import { asRecord, strArg } from "@/utils/index.js";
+import { asRecord, strArg } from "@/utils/utils.js";
 
 function coerceScalar(value: unknown, want: string): unknown {
   // boolean must be excluded first: typeof true !== "number", but in other

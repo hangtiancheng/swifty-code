@@ -38,7 +38,7 @@ import {
   type ToolSchema,
 } from "./types.js";
 
-import { asRecord, intArg, strArg } from "@/utils/index.js";
+import { asRecord, intArg, strArg } from "@/utils/utils.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between the graceful kill and the forced-kill escalation.

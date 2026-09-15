@@ -36,7 +36,7 @@ import {
   setThemeMode,
   THEME,
   thinkingLevelColor,
-} from "@/tui/styles.js";
+} from "@/tui/cross-platform/styles.js";
 
 afterEach(() => {
   setThemeMode("dark");

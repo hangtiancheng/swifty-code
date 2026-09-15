@@ -26,8 +26,8 @@ import type { ChatMessage, ToolSummaryItem } from "./chat.js";
 import type { ToolBlockInfo } from "./tool-display.js";
 
 import type { AgentEvent } from "@/agent/events.js";
-import { formatToolArgs } from "@/bootstrap/utils.js";
 import { toDisplayPreview } from "@/tool-result/budget.js";
+import { formatToolArgs } from "@/utils/utils.js";
 
 export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[]>>) {
   const [streamingText, setStreamingText] = useState("");

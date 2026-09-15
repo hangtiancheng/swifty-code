@@ -23,7 +23,7 @@
 import { describe, it, expect } from "vitest";
 
 import { expandMcpServerConfigEnvironment, mcpContentToToolOutput } from "@/mcp/client.js";
-import { isRecord } from "@/utils/index.js";
+import { isRecord } from "@/utils/utils.js";
 
 // Small buffers pass through maybeResizeAndDownsampleImage untouched (sharp is
 // only consulted above the passthrough limit), so fake bytes are fine here.

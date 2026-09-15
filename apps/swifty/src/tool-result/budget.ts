@@ -25,7 +25,7 @@ import { join, resolve } from "node:path";
 
 import type { ToolResultBlock } from "@/conversation/conversation.js";
 import { createChildLogger } from "@/logger/logger.js";
-import { isObject } from "@/utils/index.js";
+import { isObject } from "@/utils/utils.js";
 
 // Aggregate cap across all tool results within a single message. The size of
 // an individual result is gated by MAX_OUTPUT_CHARS in the agent; what we

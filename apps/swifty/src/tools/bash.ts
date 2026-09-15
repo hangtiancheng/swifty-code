@@ -39,8 +39,8 @@ import {
 } from "./types.js";
 
 import { isSafeCommand } from "@/permissions/checker.js";
-import type { Sandbox, SandboxConfig } from "@/sandbox/index.js";
-import { intArg, strArg } from "@/utils/index.js";
+import type { Sandbox, SandboxConfig } from "@/sandbox/sandbox.js";
+import { intArg, strArg } from "@/utils/utils.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between SIGTERM and the SIGKILL escalation when terminating a command.

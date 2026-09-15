@@ -15,7 +15,7 @@ import { TaskList } from "@/todo/todo.js";
 import { ComputerUseTool } from "@/tools/computer-use.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { ToolContext } from "@/tools/types.js";
-import { asRecord } from "@/utils/index.js";
+import { asRecord } from "@/utils/utils.js";
 
 const context: ToolContext = { workDir: tmpdir() };
 

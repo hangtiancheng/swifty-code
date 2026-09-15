@@ -36,7 +36,7 @@ import { PermissionChecker } from "@/permissions/checker.js";
 import { loadSession, rebuildFromSession } from "@/session/session.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool, ToolResultContentBlock } from "@/tools/types.js";
-import { asString, isRecord } from "@/utils/index.js";
+import { asString, isRecord } from "@/utils/utils.js";
 
 // Wiring test for the tool-result budget in the Agent main loop: drives the
 // full main loop and verifies single-result spill, aggregate spill, readback

@@ -47,7 +47,7 @@ import { createChildLogger } from "@/logger/logger.js";
 import type { PermissionChecker } from "@/permissions/checker.js";
 import { getOrCreatePlanPath } from "@/plan-file/plan-file.js";
 import { buildTeammatePrompt } from "@/prompt/delegation.js";
-import { asErrorString } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
 import { randomVerb } from "@/utils/verbs.js";
 
 const log = createChildLogger({ module: "teams" });

@@ -22,7 +22,7 @@
 
 import { Box, Text } from "ink";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { TeammateSpinnerTree } from "./teammate-spinner-tree.js";
 import { ToolDisplay, type ToolBlockInfo } from "./tool-display.js";
 

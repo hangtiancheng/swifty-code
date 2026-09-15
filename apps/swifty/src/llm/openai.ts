@@ -51,7 +51,7 @@ import type {
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/logger.js";
 import type { ProviderToolSchema, ToolSchema } from "@/tools/types.js";
-import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/index.js";
+import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "llm" });
 

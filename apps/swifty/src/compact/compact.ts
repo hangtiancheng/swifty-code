@@ -37,7 +37,7 @@ import {
   toolResultsToRecords,
 } from "@/session/session.js";
 import type { ProviderToolSchema, ToolResultContentBlock } from "@/tools/types.js";
-import { asErrorString, contentToText, strArg } from "@/utils/index.js";
+import { asErrorString, contentToText, strArg } from "@/utils/utils.js";
 
 // Structured outcome of a compaction. When `compacted` is true, `boundary`
 // carries the summary plus the verbatim kept tail (inlined as role+text) so the

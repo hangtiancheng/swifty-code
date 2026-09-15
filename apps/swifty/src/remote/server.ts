@@ -83,7 +83,7 @@ import {
 import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
 import { runInline as runSkillInline } from "@/skills/executor.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
-import type { SkillForkHost, SkillHost } from "@/skills/skill.js";
+import type { SkillForkHost, SkillHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import { spawnSubagent } from "@/subagent/spawn.js";
@@ -112,7 +112,7 @@ import { ToolRegistry } from "@/tools/registry.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
 import { WriteFileTool } from "@/tools/write-file.js";
-import { contentToText, strArg } from "@/utils/index.js";
+import { contentToText, strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "remote" });
 

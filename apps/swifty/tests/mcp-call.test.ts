@@ -41,7 +41,7 @@ import type {
   ToolResult,
   ToolSchema,
 } from "@/tools/types.js";
-import { asRecord, strArg } from "@/utils/index.js";
+import { asRecord, strArg } from "@/utils/utils.js";
 
 const toolContext: ToolContext = { workDir: process.cwd() };
 

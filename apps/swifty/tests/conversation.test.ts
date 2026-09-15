@@ -25,7 +25,7 @@ import { describe, it, expect } from "vitest";
 import { ConversationManager } from "@/conversation/conversation.js";
 import { buildAnthropicMessages, markLastUserTailForCache } from "@/llm/anthropic.js";
 import { buildOpenAIInput } from "@/llm/openai.js";
-import { asRecord, strArg } from "@/utils/index.js";
+import { asRecord, strArg } from "@/utils/utils.js";
 
 describe("ConversationManager", () => {
   it("adds and retrieves messages", () => {

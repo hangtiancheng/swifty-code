@@ -24,10 +24,10 @@ import chalk from "chalk";
 import { supportsLanguage } from "cli-highlight";
 import { Marked } from "marked";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { visibleWidth, wrapToLines } from "./terminal-text.js";
 
-import { markedTerminal } from "@/utils/marked-terminal.js";
+import { markedTerminal } from "@/tui/marked-terminal.js";
 
 chalk.level = 3;
 

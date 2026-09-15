@@ -23,7 +23,7 @@
 import { Text } from "ink";
 import React, { useEffect, useRef, useState } from "react";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 
 import { randomVerb } from "@/utils/verbs.js";
 

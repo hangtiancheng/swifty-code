@@ -27,7 +27,7 @@ import type { TaskStatus } from "./store.js";
 import type { TaskList } from "./todo.js";
 
 import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
-import { asErrorString, strArg } from "@/utils/index.js";
+import { asErrorString, strArg } from "@/utils/utils.js";
 
 export class TaskCreateTool implements Tool {
   name = "TaskCreate";

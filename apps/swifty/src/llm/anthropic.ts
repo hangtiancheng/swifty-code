@@ -59,7 +59,7 @@ import {
   contentToText,
   isRecord,
   strArg,
-} from "@/utils/index.js";
+} from "@/utils/utils.js";
 
 /**
  * Place the cache breakpoint on the last non-deferred tool.

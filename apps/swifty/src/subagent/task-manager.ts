@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { asErrorString } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
 
 export interface AgentTask {
   id: string;

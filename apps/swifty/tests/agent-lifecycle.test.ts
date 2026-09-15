@@ -31,7 +31,7 @@ import { NetworkError, RateLimitError } from "@/llm/errors.js";
 import type { StreamEvent } from "@/llm/events.js";
 import { PermissionChecker } from "@/permissions/checker.js";
 import { ToolRegistry } from "@/tools/registry.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 const end: StreamEvent = {
   type: "stream_end",

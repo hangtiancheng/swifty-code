@@ -28,31 +28,30 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { AgentActivity, type SubagentProgress } from "./agent-activity.js";
 import { ChatView, type ChatMessage, type ToolSummaryItem } from "./chat.js";
 import { Footer } from "./footer.js";
+import { useFollowUpQueue } from "./hooks/use-follow-up-queue.js";
+import { useIdeInput } from "./hooks/use-ide-input.js";
+import { useTeammateStates } from "./hooks/use-teammate-states.js";
 import { InteractionDock } from "./interaction-dock.js";
 import { PendingQueue } from "./pending-queue.js";
 import type { PlanChoice } from "./plan-approval.js";
 import { ProviderLogin } from "./provider-login.js";
 import { ProviderSelect } from "./provider-select.js";
 import type { RewindAction } from "./rewind-dialog.js";
-import { activityStatusColor, THEME, thinkingLevelColor } from "./styles.js";
+import { activityStatusColor, THEME, thinkingLevelColor } from "./cross-platform/styles.js";
 import { TeamStatus } from "./team-status.js";
 import { Transcript } from "./transcript.js";
 import { useAgentOutput } from "./use-agent-output.js";
-import { useFollowUpQueue } from "./use-follow-up-queue.js";
-import { useIdeInput } from "./use-ide-input.js";
-import { useTeammateStates } from "./use-teammate-states.js";
 import { useTerminalControls } from "./use-terminal-controls.js";
 
 import { Agent } from "@/agent/agent.js";
 import type { InteractionSummary } from "@/bootstrap/interaction-summary.js";
 import {
+  buildComposedToolFilter,
   countMcpTools,
   createToolRegistry,
   removeMcpTools,
   wireSkillsToRegistry,
-  buildComposedToolFilter,
-  formatToolArgs,
-} from "@/bootstrap/utils.js";
+} from "@/bootstrap/tool-registry.js";
 import {
   parse as parseCommand,
   createDefaultRegistry as createCommandRegistry,
@@ -97,13 +96,13 @@ import { PermissionChecker, type PermissionMode } from "@/permissions/checker.js
 import { getOrCreatePlanPath, loadPlan, planExists, resetPlanPath } from "@/plan-file/plan-file.js";
 import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
 import { buildPlanModeExitReminder, buildPlanModeReentryReminder } from "@/prompt/plan-mode.js";
-import { createSandbox, type Sandbox } from "@/sandbox/index.js";
+import { createSandbox, type Sandbox } from "@/sandbox/sandbox.js";
 import * as sessionMod from "@/session/session.js";
 import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
 import { runFork as runSkillFork } from "@/skills/executor.js";
 import { InstallSkillTool } from "@/skills/install-tool.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
-import type { SkillHost, SkillForkHost } from "@/skills/skill.js";
+import type { SkillHost, SkillForkHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import { spawnSubagent } from "@/subagent/spawn.js";
@@ -127,7 +126,7 @@ import type { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
-import { asErrorString, asRecord, contentToText, strArg } from "@/utils/index.js";
+import { asErrorString, asRecord, contentToText, formatToolArgs, strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "tui" });
 

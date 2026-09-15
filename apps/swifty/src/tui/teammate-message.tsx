@@ -23,7 +23,7 @@
 import { Box, Text } from "ink";
 import { useCallback, useImperativeHandle, type Ref } from "react";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 
 type PropsWithRef<T, R> = T & { ref: Ref<R> };
 

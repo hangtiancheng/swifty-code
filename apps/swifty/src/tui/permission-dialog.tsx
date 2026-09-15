@@ -24,7 +24,7 @@ import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
-import { ICONS, THEME } from "./styles.js";
+import { ICONS, THEME } from "./cross-platform/styles.js";
 
 export type PermissionAction = "allow" | "deny" | "allowAlways";
 

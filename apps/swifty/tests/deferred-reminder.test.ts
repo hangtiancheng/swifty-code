@@ -37,7 +37,7 @@ import type { StreamEvent, UsageInfo } from "@/llm/events.js";
 import { PermissionChecker } from "@/permissions/checker.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool } from "@/tools/types.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 const MARKER = "The following deferred tools are available via ToolSearch.";
 const USAGE: UsageInfo = {

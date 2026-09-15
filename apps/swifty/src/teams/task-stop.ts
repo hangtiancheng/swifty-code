@@ -23,7 +23,7 @@
 import type { TeamManager } from "./team.js";
 
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
-import { strArg } from "@/utils";
+import { strArg } from "@/utils/utils.js";
 
 /**
  * Abort a running teammate.

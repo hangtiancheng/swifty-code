@@ -34,8 +34,8 @@ import {
 } from "./types.js";
 
 import { createChildLogger } from "@/logger/logger.js";
-import { asErrorString } from "@/utils/index.js";
-import { strArg } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
+import { strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "tools" });
 

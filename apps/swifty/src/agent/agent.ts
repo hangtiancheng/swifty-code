@@ -51,7 +51,7 @@ import type { FileStateCache } from "@/tools/file-state-cache.js";
 import { McpCallTool } from "@/tools/mcp-call.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 import type { ToolResult } from "@/tools/types.js";
-import { asErrorString, asRecord, strArg } from "@/utils/index.js";
+import { asErrorString, asRecord, strArg } from "@/utils/utils.js";
 
 // When the model stops on max_tokens, escalate its output ceiling once to this
 // value, then attempt a bounded number of multi-turn recoveries.

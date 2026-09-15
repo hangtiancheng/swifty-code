@@ -38,9 +38,9 @@ import { recover, recordError, recordExit } from "./recover.js";
 import { newSessionId } from "./session/session.js";
 import { parseTeammateFlags, runTeammate } from "./teammate.js";
 import { App } from "./tui/app.js";
-import { setThemeMode } from "./tui/styles.js";
+import { setThemeMode } from "./tui/cross-platform/styles.js";
 import { installSyncOutput } from "./tui/sync-output.js";
-import { asErrorString } from "./utils/index.js";
+import { asErrorString } from "./utils/utils.js";
 
 async function main() {
   recover();

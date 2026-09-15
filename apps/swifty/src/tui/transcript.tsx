@@ -23,7 +23,7 @@
 import { Box, Static, Text } from "ink";
 
 import { CommittedMessage, type ChatMessage } from "./chat.js";
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 
 import { version } from "@/version.js";
 

@@ -23,7 +23,7 @@
 import { createChildLogger } from "@/logger/logger.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 import type { ToolResult, ToolContext } from "@/tools/types.js";
-import { asErrorString } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "agent" });
 

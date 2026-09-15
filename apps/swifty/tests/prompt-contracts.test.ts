@@ -21,7 +21,7 @@ import {
 import type { EnvironmentContext } from "@/prompt/sections.js";
 import { buildSkillSection, SkillCatalog } from "@/skills/catalog.js";
 import { runFork, runInline } from "@/skills/executor.js";
-import type { Skill, SkillForkHost } from "@/skills/skill.js";
+import type { Skill, SkillForkHost } from "@/skills/skills.js";
 import {
   BASH_DESCRIPTION,
   EDIT_FILE_DESCRIPTION,

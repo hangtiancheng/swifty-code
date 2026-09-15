@@ -38,7 +38,7 @@ import { InputBox } from "@/tui/input.js";
 import type { InputDraft } from "@/tui/input.js";
 import { InteractionDock } from "@/tui/interaction-dock.js";
 import { StatusBorder } from "@/tui/status-border.js";
-import { ICONS, THEME } from "@/tui/styles.js";
+import { ICONS, THEME } from "@/tui/cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
 
 const terminal = vi.hoisted(() => {

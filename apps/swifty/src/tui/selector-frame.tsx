@@ -23,7 +23,7 @@
 import { Box, Text, useWindowSize } from "ink";
 import type { ReactNode } from "react";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 function fitHint(hint: string, width: number): string {

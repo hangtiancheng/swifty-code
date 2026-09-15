@@ -34,7 +34,7 @@ import { RecoveryState } from "@/compact/recovery.js";
 import { ConversationManager, type Message } from "@/conversation/conversation.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent } from "@/llm/events.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 // A stub LLM that emits a fixed summary and records the text it was asked to
 // summarize, so tests can assert what the summary covered.

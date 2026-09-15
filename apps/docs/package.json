@@ -12,8 +12,8 @@
   "dependencies": {
     "@swifty.js/lit-jsx": "^0.0.4",
     "lit": "^3.3.3",
-    "lucide-static": "^1.45.0",
-    "motion": "^13.2.0"
+    "lucide-static": "^1.46.0",
+    "motion": "^13.3.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

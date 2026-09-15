@@ -33,7 +33,7 @@ import { describe, it, expect } from "vitest";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 import { ReadFileTool } from "@/tools/read-file.js";
 import type { ToolContext, ToolResultContentBlock } from "@/tools/types.js";
-import { isRecord } from "@/utils/index.js";
+import { isRecord } from "@/utils/utils.js";
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);

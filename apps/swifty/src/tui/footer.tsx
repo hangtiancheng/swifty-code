@@ -25,7 +25,7 @@ import { homedir } from "node:os";
 import { Box, Text, useBoxMetrics, useStdout, type DOMElement } from "ink";
 import { useLayoutEffect, useRef } from "react";
 
-import { THEME, thinkingLevelColor } from "./styles.js";
+import { THEME, thinkingLevelColor } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
 import type { ThinkingLevel } from "@/config/config.js";

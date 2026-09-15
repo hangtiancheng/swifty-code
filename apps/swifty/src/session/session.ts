@@ -39,7 +39,7 @@ import { buildCompactionSummaryMessage } from "@/compact/prompts.js";
 import type { ToolResultBlock } from "@/conversation/conversation.js";
 import { createChildLogger } from "@/logger/logger.js";
 import { normalizeToolResultContentBlock, type ToolResultContentBlock } from "@/tools/types.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 // Persistent session lines. Ordinary messages have an empty `type`, while compaction boundary records
 // have the type COMPACT_BOUNDARY. Their `content` is the JSON-serialized CompactBoundaryPayload

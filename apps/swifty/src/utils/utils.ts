@@ -159,32 +159,22 @@ export function boolArg(args: Record<string, unknown>, key: string, fallback?: b
   return fallback ?? Boolean(v);
 }
 
-export function quickSort<T>(arr: readonly T[], compare: (a: T, b: T) => number): T[] {
-  if (arr.length <= 1) {
-    return [...arr];
+export function formatToolArgs(args: Record<string, unknown>): string {
+  if (args.command) {
+    return truncate(strArg(args, "command"), 80);
   }
-
-  const pivotIndex = Math.floor(arr.length / 2);
-  const pivot = arr[pivotIndex];
-
-  if (pivot === undefined) {
-    return [...arr];
+  if (args.file_path) {
+    return truncate(strArg(args, "file_path"), 80);
   }
-
-  const left: T[] = [];
-  const right: T[] = [];
-  const equal: T[] = [];
-
-  for (const item of arr) {
-    const result = compare(item, pivot);
-    if (result < 0) {
-      left.push(item);
-    } else if (result > 0) {
-      right.push(item);
-    } else {
-      equal.push(item);
-    }
+  if (args.pattern) {
+    return truncate(strArg(args, "pattern"), 80);
   }
+  if (args.description) {
+    return truncate(strArg(args, "description"), 80);
+  }
+  return "";
+}
 
-  return [...quickSort(left, compare), ...equal, ...quickSort(right, compare)];
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
 }

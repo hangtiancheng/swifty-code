@@ -34,7 +34,7 @@ import { layoutInputRows, locateInputCursor, moveInputVertically } from "./input
 import { collapseImage, collapsePaste, expandPastes, inputBoundary } from "./input-paste.js";
 import { getListWindowStart } from "./list-window.js";
 import { StatusBorder } from "./status-border.js";
-import { ICONS, THEME } from "./styles.js";
+import { ICONS, THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 import type { Command } from "@/commands/commands.js";

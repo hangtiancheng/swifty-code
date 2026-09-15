@@ -23,7 +23,7 @@
 import { Box, Text, useStdout } from "ink";
 
 import { renderMarkdown } from "./markdown.js";
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
 interface Props {

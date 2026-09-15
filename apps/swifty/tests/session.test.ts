@@ -37,7 +37,7 @@ import {
   toolResultsToRecords,
   COMPACT_BOUNDARY,
 } from "@/session/session.js";
-import { asString, contentToText } from "@/utils/index.js";
+import { asString, contentToText } from "@/utils/utils.js";
 
 const t0 = Math.floor(Date.now() / 1000);
 const t1 = t0 + 1;

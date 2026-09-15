@@ -40,7 +40,7 @@ import { SelectorFrame } from "@/tui/selector-frame.js";
 import { SelectorListRow } from "@/tui/selector-list.js";
 import { updateSelectorQuery } from "@/tui/selector-search.js";
 import { SessionSelector } from "@/tui/session-selector.js";
-import { ICONS, setThemeMode, THEME } from "@/tui/styles.js";
+import { ICONS, setThemeMode, THEME } from "@/tui/cross-platform/styles.js";
 import { visibleWidth } from "@/tui/terminal-text.js";
 
 // Keep Ink's real layout and React hooks; invoke only the captured input callback.

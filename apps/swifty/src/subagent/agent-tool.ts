@@ -34,7 +34,7 @@ import type { TeamManager, RunAgent } from "@/teams/team.js";
 import { SendMessageTool } from "@/teams/tools.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
-import { asErrorString, boolArg, strArg } from "@/utils/index.js";
+import { asErrorString, boolArg, strArg } from "@/utils/utils.js";
 import { buildWorktreeNotice, createAgentWorktree } from "@/worktree/worktree.js";
 
 const log = createChildLogger({ module: "subagent" });

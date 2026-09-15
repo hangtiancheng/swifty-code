@@ -43,7 +43,7 @@ import { PermissionChecker } from "@/permissions/checker.js";
 import { buildSkillSection, parseSkillFile, SkillCatalog } from "@/skills/catalog.js";
 import { runFork, runInline } from "@/skills/executor.js";
 import { InstallSkillTool } from "@/skills/install-tool.js";
-import type { Skill, SkillForkHost } from "@/skills/skill.js";
+import type { Skill, SkillForkHost } from "@/skills/skills.js";
 
 vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof os>();

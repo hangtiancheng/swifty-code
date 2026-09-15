@@ -22,7 +22,7 @@
 
 import { Text } from "ink";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 interface StatusBorderProps {

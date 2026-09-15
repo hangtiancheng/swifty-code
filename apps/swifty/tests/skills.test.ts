@@ -29,7 +29,7 @@ import { describe, it, expect } from "vitest";
 import { SkillCatalog } from "@/skills/catalog.js";
 import { parseSkillPrompt, runInline } from "@/skills/executor.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
-import type { Skill, SkillForkHost, SkillHost } from "@/skills/skill.js";
+import type { Skill, SkillForkHost, SkillHost } from "@/skills/skills.js";
 function makeHost() {
   const activated: [string, string][] = [];
   const host: SkillHost = {

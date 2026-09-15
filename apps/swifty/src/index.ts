@@ -26,73 +26,123 @@
 // esbuild plugin in tsup.config.ts and by import/no-restricted-paths in
 // eslint.config.js).
 
+// === agent ===
 export * from "./agent/agent.js";
 export * from "./agent/events.js";
 export * from "./agent/streaming-executor.js";
+
+// === bootstrap ===
+export * from "./bootstrap/interaction-summary.js";
+export * from "./bootstrap/tool-registry.js";
+
+// === code-review ===
 export * from "./code-review/handler.js";
 export * from "./code-review/manager.js";
 export * from "./code-review/session.js";
+
+// === commands ===
 export * from "./commands/commands.js";
 export * from "./commands/loader.js";
 export * from "./commands/usage-tracker.js";
+
+// === compact ===
 export * from "./compact/compact.js";
+export * from "./compact/prompts.js";
 export * from "./compact/recovery.js";
+
+// === config ===
 export * from "./config/config.js";
+export * from "./config/provider-login.js";
+
+// === conversation ===
 export * from "./conversation/at-expand.js";
 export * from "./conversation/conversation.js";
 export * from "./conversation/pairing.js";
+
+// === file-history ===
 export * from "./file-history/file-history.js";
+
+// === history ===
 export * from "./history/history.js";
+
+// === hooks ===
 export * from "./hooks/hooks.js";
+
+// === images ===
 export * from "./images/clipboard.js";
-export * from "./images/image.js";
+export * from "./images/images.js";
+
+// === llm ===
 export * from "./llm/anthropic.js";
 export * from "./llm/client.js";
 export * from "./llm/errors.js";
 export * from "./llm/events.js";
+export * from "./llm/model-discovery.js";
 export * from "./llm/model-resolver.js";
 export * from "./llm/openai.js";
+
+// === logger ===
 export * from "./logger/logger.js";
+
+// === mcp ===
 export * from "./mcp/client.js";
+export * from "./mcp/instructions.js";
 export * from "./mcp/manager.js";
 export * from "./mcp/strategy.js";
 export * from "./mcp/tool-wrapper.js";
+
+// === memory ===
 export * from "./memory/consolidation.js";
 export * from "./memory/extractor.js";
 export * from "./memory/instructions.js";
 export * from "./memory/manager.js";
 export * from "./memory/memory-age.js";
+export * from "./memory/permissions.js";
+export * from "./memory/written-paths.js";
+
+// === permissions ===
 export * from "./permissions/checker.js";
+
+// === plan-file ===
 export * from "./plan-file/plan-file.js";
 
-// Process-level headless entry points. They carry no TUI, but on failure they
-// may write crash dumps or process.exit() — prefer the composable modules
-// above (Agent, ToolRegistry, ...) in long-lived host processes.
-export * from "./print-mode.js";
-export * from "./recover.js";
-export * from "./remote/log.js";
-export * from "./remote/server.js";
-export * from "./teammate.js";
-
+// === prompt ===
 export * from "./prompt/builder.js";
 export * from "./prompt/coordinator.js";
+export * from "./prompt/delegation.js";
 export * from "./prompt/plan-mode.js";
 export * from "./prompt/sections.js";
+
+// === remote ===
+export * from "./remote/address.js";
+export * from "./remote/log.js";
+export * from "./remote/server.js";
+export * from "./remote/session-state.js";
+
+// === sandbox ===
 export * from "./sandbox/bwrap.js";
-export * from "./sandbox/index.js";
+export * from "./sandbox/sandbox.js";
 export * from "./sandbox/seatbelt.js";
+
+// === session ===
 export * from "./session/session.js";
+
+// === skills ===
 export * from "./skills/catalog.js";
 export * from "./skills/executor.js";
 export * from "./skills/install-tool.js";
 export * from "./skills/load-skill-tool.js";
-export * from "./skills/skill.js";
+export * from "./skills/skills.js";
+
+// === subagent ===
 export * from "./subagent/agent-tool.js";
 export * from "./subagent/definition.js";
 export * from "./subagent/loader.js";
 export * from "./subagent/spawn.js";
 export * from "./subagent/task-manager.js";
 export * from "./subagent/tool-filter.js";
+
+// === teams ===
 export * from "./teams/backend.js";
 export * from "./teams/coordinator.js";
 export * from "./teams/file-mailbox.js";
@@ -101,11 +151,21 @@ export * from "./teams/protocol.js";
 export * from "./teams/registry.js";
 export * from "./teams/shared-task.js";
 export * from "./teams/task-stop.js";
+export * from "./teams/task-tools.js";
 export * from "./teams/team-file.js";
 export * from "./teams/team.js";
 export * from "./teams/tools.js";
 export * from "./teams/transcript.js";
+
+// === todo ===
+export * from "./todo/store.js";
+export * from "./todo/todo.js";
+export * from "./todo/tools.js";
+
+// === tool-result ===
 export * from "./tool-result/budget.js";
+
+// === tools ===
 export * from "./tools/ask-user.js";
 export * from "./tools/bash.js";
 export * from "./tools/computer-use.js";
@@ -115,6 +175,7 @@ export * from "./tools/edit-file.js";
 export * from "./tools/enter-worktree.js";
 export * from "./tools/exit-plan-mode.js";
 export * from "./tools/exit-worktree.js";
+export * from "./tools/file-mutation-queue.js";
 export * from "./tools/file-state-cache.js";
 export * from "./tools/glob.js";
 export * from "./tools/grep.js";
@@ -123,25 +184,40 @@ export * from "./tools/mcp-call.js";
 export * from "./tools/powershell.js";
 export * from "./tools/read-file.js";
 export * from "./tools/registry.js";
+export * from "./tools/shell-output.js";
 export * from "./tools/synthetic-output.js";
 export * from "./tools/tool-search.js";
 export * from "./tools/types.js";
 export * from "./tools/write-file.js";
-export * from "./utils/index.js";
+
+// === tui () ===
+export * from "./tui/cross-platform/styles.js";
+export * from "./tui/cross-platform/use-follow-up-queue.js";
+export * from "./tui/cross-platform/use-ide-input.js";
+export * from "./tui/cross-platform/use-teammate-states.js";
+
+// === utils ===
+export * from "./utils/paths.js";
+export * from "./utils/utils.js";
 export * from "./utils/verbs.js";
-export * from "./version.js";
+
+// === vscode ===
 export * from "./vscode/ide-client.js";
 export * from "./vscode/lockfile.js";
 export * from "./vscode/ws-transport.js";
+
+// === worktree ===
 export * from "./worktree/worktree.js";
 
-// Conflict groups — `export *` would silently drop these duplicate names, so
-// they are re-exported explicitly with disambiguating aliases:
-// - `Task` is a type (todo/todo.js view-model interface, todo/store.js
-//   zod-inferred store model) defined in both modules.
-// - TaskCreateTool/TaskGetTool/TaskListTool/TaskUpdateTool exist both for the
-//   local todo list (todo/tools.js, keeps the plain names) and for team task
-//   boards (teams/task-tools.js, aliased with a Team prefix).
+// Process-level headless entry points. They carry no TUI, but on failure they
+// may write crash dumps or process.exit() — prefer the composable modules
+// above (Agent, ToolRegistry, ...) in long-lived host processes.
+export * from "./print-mode.js";
+export * from "./recover.js";
+export * from "./teammate.js";
+export * from "./version.js";
+
+// Conflict groups
 export { TaskList } from "./todo/todo.js";
 export type { Task } from "./todo/todo.js";
 export { TaskStore } from "./todo/store.js";

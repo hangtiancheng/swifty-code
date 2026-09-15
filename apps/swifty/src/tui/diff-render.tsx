@@ -22,7 +22,7 @@
 
 import { Box, Text } from "ink";
 
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 
 /**
  * Renders the line-numbered diff text produced by buildDiff() as colored lines:

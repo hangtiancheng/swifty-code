@@ -22,8 +22,8 @@ import type {
   ToolSchema,
 } from "./types.js";
 
-import { maybeResizeAndDownsampleImage } from "@/images/image.js";
-import { asErrorString } from "@/utils/index.js";
+import { maybeResizeAndDownsampleImage } from "@/images/images.js";
+import { asErrorString } from "@/utils/utils.js";
 
 const ACTIONS = [
   "key",

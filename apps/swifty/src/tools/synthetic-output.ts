@@ -22,7 +22,7 @@
 
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "./types.js";
 
-import { asErrorString } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
 
 /**
  * Lets the Agent deliver its final result as structured data. In

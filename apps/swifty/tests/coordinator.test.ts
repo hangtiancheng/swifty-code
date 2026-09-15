@@ -35,7 +35,7 @@ import {
 import { TaskStopTool } from "@/teams/task-stop.js";
 import { TeamManager } from "@/teams/team.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
-import { asString } from "@/utils/index.js";
+import { asString } from "@/utils/utils.js";
 
 // The teams directory lives at <home>/.swifty/teams, so the tests redirect the
 // entire home directory to a temp dir to avoid leaving residue in the real

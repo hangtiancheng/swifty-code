@@ -27,10 +27,10 @@ import { join } from "node:path";
 import yaml from "js-yaml";
 import { z } from "zod";
 
-import type { Skill, SkillMeta } from "./skill.js";
+import type { Skill, SkillMeta } from "./skills.js";
 
 import { createChildLogger } from "@/logger/logger.js";
-import { asRecord, strArg } from "@/utils/index.js";
+import { asRecord, strArg } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "skills" });
 

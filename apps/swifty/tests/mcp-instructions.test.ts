@@ -8,7 +8,7 @@ import {
   type McpInstructionSource,
   type ReminderHistory,
 } from "@/mcp/instructions.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 class FakeHistory implements ReminderHistory {
   reminders: string[] = [];

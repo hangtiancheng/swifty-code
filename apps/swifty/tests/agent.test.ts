@@ -32,7 +32,7 @@ import { PermissionChecker } from "@/permissions/checker.js";
 import { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool } from "@/tools/types.js";
-import { contentToText } from "@/utils/index.js";
+import { contentToText } from "@/utils/utils.js";
 
 const USAGE: UsageInfo = {
   inputTokens: 1,

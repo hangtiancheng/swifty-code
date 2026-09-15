@@ -49,7 +49,7 @@ import { SkillCatalog } from "./skills/catalog.js";
 import { buildSkillSection } from "./skills/catalog.js";
 import { InstallSkillTool } from "./skills/install-tool.js";
 import { LoadSkillTool } from "./skills/load-skill-tool.js";
-import type { SkillHost } from "./skills/skill.js";
+import type { SkillHost } from "./skills/skills.js";
 import type { FileMailMessage } from "./teams/file-mailbox.js";
 import { FileMailbox } from "./teams/file-mailbox.js";
 import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "./teams/task-tools.js";

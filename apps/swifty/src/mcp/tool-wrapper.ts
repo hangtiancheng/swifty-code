@@ -30,7 +30,7 @@ import type {
   ToolCategory,
   ToolSchema,
 } from "@/tools/types.js";
-import { asErrorString } from "@/utils/index.js";
+import { asErrorString } from "@/utils/utils.js";
 
 const log = createChildLogger({ module: "mcp" });
 

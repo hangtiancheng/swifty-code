@@ -25,7 +25,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
-import { THEME } from "./styles.js";
+import { THEME } from "./cross-platform/styles.js";
 import { truncateToWidth } from "./terminal-text.js";
 
 import {

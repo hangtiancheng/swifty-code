@@ -33,7 +33,7 @@ import { AgentActivity } from "@/tui/agent-activity.js";
 import { CommittedMessage } from "@/tui/chat.js";
 import { Footer } from "@/tui/footer.js";
 import { renderMarkdown, renderStreamingMarkdown, type MarkdownCache } from "@/tui/markdown.js";
-import { setThemeMode, THEME, thinkingLevelColor } from "@/tui/styles.js";
+import { setThemeMode, THEME, thinkingLevelColor } from "@/tui/cross-platform/styles.js";
 import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
 import { ThinkingBlock } from "@/tui/thinking-block.js";
 import { ToolBlock } from "@/tui/tool-display.js";
