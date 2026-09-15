@@ -52,7 +52,7 @@ const CWD = process.env.SWIFTY_CWD ?? process.cwd();
 const PROMPTS_DIR = process.env.SWIFTY_PROMPTS_DIR ?? path.join(process.cwd(), "tests/prompts");
 const RESULTS_FILE = process.env.SWIFTY_RESULTS_FILE ?? "/tmp/swifty-ts-e2e-results.txt";
 const STDERR_LOG = process.env.SWIFTY_STDERR_LOG ?? "/tmp/swifty-ts-stderr.log";
-// Node-based runner (replaces `bun run src/main.tsx`).
+// Node-based runner
 const RUN_CMD = process.env.SWIFTY_RUN_CMD ?? "npx tsx src/main.tsx";
 
 /** @type {Stats} */

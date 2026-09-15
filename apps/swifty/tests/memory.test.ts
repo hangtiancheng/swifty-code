@@ -64,7 +64,7 @@ describe("MemoryExtractor", () => {
       "MEMORY_NAME: build-cmd",
       "MEMORY_TYPE: project",
       "MEMORY_DESC: how to build",
-      "MEMORY_BODY: Run bun run build.",
+      "MEMORY_BODY: Run pnpm build.",
       "---",
       "MEMORY_NAME: api-docs",
       "MEMORY_TYPE: reference",
@@ -85,7 +85,7 @@ describe("MemoryExtractor", () => {
     const file = readFileSync(join(memDir, "build-cmd.md"), "utf-8");
     expect(file).toContain('name: "build-cmd"');
     expect(file).toContain('type: "project"');
-    expect(file).toContain("Run bun run build.");
+    expect(file).toContain("Run pnpm build.");
   });
 
   it("round-trips descriptions containing YAML special characters", async () => {

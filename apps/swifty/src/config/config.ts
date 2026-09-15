@@ -514,9 +514,9 @@ function mcpServerFromJsonEntry(name: string, entry: McpJsonEntry): MCPServerCon
 
 /**
  * Reads project-level MCP servers from `<workDir>/.mcp.json`. A missing or
- * malformed file normally yields [] with a log entry so a broken repo-side
- * config does not prevent startup. Reload callers can request strict handling
- * to keep the live connections unchanged when an edit is incomplete.
+ * malformed file yields [] with a log entry so a broken repo-side config does
+ * not prevent startup, and an entry that cannot be mapped is skipped so one bad
+ * server does not hide its siblings.
  */
 export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
   const path = join(workDir, PROJECT_MCP_FILENAME);
@@ -559,8 +559,7 @@ export function loadProjectMcpServers(workDir: string): MCPServerConfig[] {
  * Returns a copy of `config` with the servers from `<workDir>/.mcp.json`
  * appended. User-level (config.yaml) entries win on a name collision: the
  * project file ships with the repository and is less trusted than the user's
- * own config. Strict parsing is useful for reloads that must preserve the
- * current live state when the project file is temporarily invalid.
+ * own config.
  */
 export function withProjectMcpServers(config: AppConfig, workDir: string): AppConfig {
   const projectServers = loadProjectMcpServers(workDir);

@@ -310,6 +310,41 @@ describe("provider selector", () => {
       send("", { escape: true });
     }).not.toThrow();
   });
+
+  it("distinguishes providers with the same display name by base URL", () => {
+    const configured = [
+      { ...providers(1)[0], name: "Shared", base_url: "https://first.invalid" },
+      { ...providers(1)[0], name: "Shared", base_url: "https://second.invalid" },
+    ];
+    const onSelect = vi.fn();
+    mount(
+      createElement(ProviderSelect, {
+        providers: configured,
+        currentBaseUrl: "https://second.invalid",
+        onSelect,
+      }),
+    );
+
+    // The rows carry the same display name; base_url is what keeps them apart.
+    expect(frame).toContain("2/2");
+    send("", { return: true });
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ base_url: "https://second.invalid" }),
+    );
+
+    // …and it is searchable, so a same-named provider can still be found.
+    onSelect.mockClear();
+    send("first.invalid");
+    expect(frame).toContain("1/1");
+    send("", { return: true });
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ base_url: "https://first.invalid" }),
+    );
+
+    send("u", { ctrl: true });
+    send("second.invalid");
+    expect(frame).toContain("1/1");
+  });
 });
 
 describe("session selector", () => {

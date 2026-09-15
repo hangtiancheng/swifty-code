@@ -103,7 +103,7 @@ mcp_servers:
   - name: database
     command: npx
     args: ["-y", "@swifty-db/mcp@latest"]
-    env: # map<string, string>; ${VAR} / $VAR expands from the environment
+    env: # map<string, string>; supports ${VAR}, ${VAR:-default}, and $VAR
       API_BASE_URL: "https://swifty-db.dev"
       API_KEY: "${DATABASE_API_KEY}"
 
@@ -160,9 +160,9 @@ In addition to `mcp_servers` in `config.yaml`, Swifty reads a project-level `.mc
 }
 ```
 
-Each entry takes `command`/`args`/`env` (stdio) or `url`/`headers` with `type` of `http` or `sse`; `${VAR}` / `$VAR` in values expands from the environment. These servers are merged with the user-level `mcp_servers`; on a name collision the user-level entry wins. A malformed `.mcp.json` is ignored (logged) rather than blocking startup.
+Each entry takes `command`/`args`/`env` (stdio) or `url`/`headers` with `type` of `http` or `sse`. Environment references support `${VAR}`, `${VAR:-default}`, and `$VAR` in commands, arguments, environment values, URLs, and headers; an unset variable without a default prevents that server from connecting. These servers are merged with the user-level `mcp_servers`; on a name collision the user-level entry wins. At startup, a malformed `.mcp.json` is ignored (logged), while an invalid individual server entry is skipped without disabling valid siblings. During `/mcp reload`, invalid config aborts the reload so the current connections remain intact.
 
-After editing `.mcp.json` or `config.yaml`, use `/mcp reload` in the TUI to re-read both sources and reconnect all servers without restarting.
+After editing `.mcp.json` or `config.yaml`, use `/mcp reload` in the TUI to re-read both sources. Unchanged connections stay live, removed servers disconnect, new servers connect, and servers whose settings changed restart.
 
 ## Usage
 
@@ -220,7 +220,7 @@ Inside the TUI, these commands are available:
 | /sandbox [1/2/3]        | Configure sandbox (1=on+auto, 2=on+manual, 3=off)                                                                         |
 | /worktree               | List git worktrees                                                                                                        |
 | /mcp                    | Show MCP server status                                                                                                    |
-| /mcp reload             | Re-read MCP config (config.yaml + .mcp.json) and reconnect all servers                                                    |
+| /mcp reload             | Re-read MCP config; reconcile unchanged, removed, new, and changed servers                                                |
 | /thinking [level]       | Show or set the thinking level (off, minimal, low, medium, high, xhigh, max); setting persists to `~/.swifty/config.yaml` |
 | /quit                   | Exit the application                                                                                                      |
 

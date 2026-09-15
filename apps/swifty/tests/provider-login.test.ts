@@ -203,7 +203,7 @@ describe("provider login", () => {
         "",
       ].join("\n"),
     );
-    const saved = saveProvider(input, loadConfig(path).providers);
+    const saved = saveProvider(input, []);
     expect(saved.replaced).toBe(true);
     expect(saved.providers.map((provider) => [provider.name, provider.base_url])).toEqual([
       ["custom", input.base_url],

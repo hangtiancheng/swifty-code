@@ -118,6 +118,21 @@ describe("teammate worker tool registry", () => {
     expect(args?.memberName).toBe("ann");
   });
 
+  it("uses the provider base URL as the teammate provider identity", () => {
+    const args = parseTeammateFlags([
+      "--teammate",
+      "--team-dir",
+      join(workDir, "alpha"),
+      "--member-name",
+      "ann",
+      "--task",
+      "do work",
+      "--provider-base-url",
+      "https://provider.example.com",
+    ]);
+    expect(args?.providerBaseUrl).toBe("https://provider.example.com");
+  });
+
   // Legacy invocations without --team-name fall back to deriving the team
   // name from the mailbox directory basename.
   it("derives team name from directory when --team-name is absent", () => {

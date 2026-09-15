@@ -62,4 +62,16 @@ describe("removeMcpTools", () => {
 
     expect(registry.listTools().map((t) => t.name)).toEqual(["ReadFile"]);
   });
+
+  it("can remove only wrappers belonging to changed servers", () => {
+    const registry = new ToolRegistry();
+    registry.register(Object.assign(stubTool("mcp__keep__a", true), { mcpServerName: "keep" }));
+    registry.register(
+      Object.assign(stubTool("mcp__restart__b", true), { mcpServerName: "restart" }),
+    );
+
+    removeMcpTools(registry, new Set(["restart"]));
+
+    expect(registry.listTools().map((tool) => tool.name)).toEqual(["mcp__keep__a"]);
+  });
 });

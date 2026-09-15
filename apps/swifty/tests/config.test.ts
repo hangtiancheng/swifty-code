@@ -35,6 +35,7 @@ import {
   getSupportedThinkingLevels,
   getThinkingLevel,
   isValidThinkingLevel,
+  loadConfig,
   loadProjectMcpServers,
   ProviderConfigSchema,
   resolveAPIKey,
@@ -357,6 +358,7 @@ describe("config", () => {
             empty: {},
             noUrl: { type: "http" },
             noCommand: { type: "stdio", args: ["x"] },
+            ambiguous: { command: "stdio", url: "https://example.com/mcp" },
             ok: { command: "true" },
           },
         }),
@@ -370,6 +372,18 @@ describe("config", () => {
 
       writeMcpJson(JSON.stringify({ mcpServers: { bad: { command: 42 } } }));
       expect(loadProjectMcpServers(dir)).toEqual([]);
+    });
+
+    it("keeps valid servers when a sibling entry is invalid", () => {
+      writeMcpJson(
+        JSON.stringify({
+          mcpServers: {
+            bad: { command: 42 },
+            good: { command: "good-server" },
+          },
+        }),
+      );
+      expect(loadProjectMcpServers(dir)).toEqual([{ name: "good", command: "good-server" }]);
     });
 
     it("appends project servers and lets user config win on collisions", () => {
@@ -395,6 +409,62 @@ describe("config", () => {
     it("returns the config unchanged when there is no .mcp.json", () => {
       const base: AppConfig = { providers: [], mcp_servers: [], hooks: [] };
       expect(withProjectMcpServers(base, dir)).toBe(base);
+    });
+
+    it("rejects duplicate provider base URLs because base_url is the identity", () => {
+      const path = join(dir, "config.yaml");
+      writeFileSync(
+        path,
+        [
+          "providers:",
+          "  - name: first",
+          "    protocol: anthropic",
+          "    base_url: https://same.example.com",
+          "    model: first-model",
+          "  - name: second",
+          "    protocol: openai",
+          "    base_url: https://same.example.com",
+          "    model: second-model",
+          "",
+        ].join("\n"),
+      );
+      expect(() => loadConfig(path)).toThrow(/duplicate base_url/);
+    });
+
+    it("rejects ambiguous or unusable user-level MCP server entries", () => {
+      const path = join(dir, "config.yaml");
+      writeFileSync(
+        path,
+        [
+          "providers:",
+          "  - name: provider",
+          "    protocol: anthropic",
+          "    base_url: https://provider.example.com",
+          "    model: model",
+          "mcp_servers:",
+          "  - name: broken",
+          "    command: command",
+          "    url: https://example.com/mcp",
+          "",
+        ].join("\n"),
+      );
+      expect(() => loadConfig(path)).toThrow(/exactly one of command or url/);
+
+      writeFileSync(
+        path,
+        [
+          "providers:",
+          "  - name: provider",
+          "    protocol: anthropic",
+          "    base_url: https://provider.example.com",
+          "    model: model",
+          "mcp_servers:",
+          "  - name: broken",
+          "    command: 42",
+          "",
+        ].join("\n"),
+      );
+      expect(() => loadConfig(path)).toThrow(/Invalid MCP server configuration/);
     });
   });
 });

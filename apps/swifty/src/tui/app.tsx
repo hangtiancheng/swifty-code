@@ -86,7 +86,8 @@ import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
 import type { LLMClient } from "@/llm/client.js";
 import { createClient } from "@/llm/client.js";
 import { createChildLogger } from "@/logger/logger.js";
-import { MCPManager } from "@/mcp/manager.js";
+import { syncMcpInstructions as announceMcpInstructions } from "@/mcp/instructions.js";
+import { MCPManager, type ConnectResult } from "@/mcp/manager.js";
 import { applyMode, decideAndApply } from "@/mcp/strategy.js";
 import { MCPToolWrapper } from "@/mcp/tool-wrapper.js";
 import { MemoryExtractor } from "@/memory/extractor.js";
@@ -233,7 +234,7 @@ export function App({
   );
   // Output ceiling for the active provider (PI's model.maxTokens equivalent).
   const maxOutputRef = useRef(providers[0] ? getMaxOutputTokens(providers[0]) : undefined);
-  const convRef = useRef(new ConversationManager());
+  const conversationRef = useRef(new ConversationManager());
   const sessionIdRef = useRef(sessionMod.newSessionId());
   const interactionStatsRef = useRef({
     agentActiveMs: 0,
@@ -276,6 +277,7 @@ export function App({
   );
   const usageTrackerRef = useRef(new CommandUsageTracker(workDir));
   const mcpManagerRef = useRef<MCPManager | null>(null);
+  const mcpOperationRef = useRef<Promise<void>>(Promise.resolve());
   // Current MCP server list. Starts as the prop but /mcp reload replaces it
   // with the freshly read config, so consumers must read this ref, not the prop.
   const mcpServersRef = useRef<MCPServerConfig[]>(mcpServers);
@@ -288,6 +290,11 @@ export function App({
   // session carries the full list; afterwards only new skills are sent as a
   // delta to avoid wasting context on duplicates.
   const announcedSkillsRef = useRef<Set<string>>(new Set());
+  // MCP servers whose instructions the conversation has already been told about.
+  // Announcements are deltas — servers connect, disconnect and get reconfigured
+  // while a session runs — and the caller of syncMcpInstructions rebuilds this set
+  // from history whenever the announcement is no longer there.
+  const announcedMcpServersRef = useRef<Set<string>>(new Set());
 
   // Returns the skills not yet announced to the model and records them in
   // announcedSkillsRef.
@@ -391,104 +398,143 @@ export function App({
           ? ("working" as const)
           : ("idle" as const);
 
+  // Re-announces MCP instructions after a connect pass: servers that just came up
+  // are announced, servers that went away are retracted, and an unchanged set
+  // sends nothing at all.
+  const syncMcpInstructions = useCallback((mgr: MCPManager) => {
+    announceMcpInstructions(conversationRef.current, announcedMcpServersRef.current, mgr);
+  }, []);
+
+  const applyMcpResult = useCallback(
+    (mgr: MCPManager, provider: ProviderConfig, result: ConnectResult) => {
+      for (const { serverName, tool } of result.tools) {
+        const client = mgr.getClient(serverName);
+        if (client) {
+          registryRef.current.register(new MCPToolWrapper(client, serverName, tool));
+        }
+      }
+      if (result.errors.length > 0) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "system",
+            content: `MCP errors: ${result.errors.map((e) => `${e.serverName}: ${e.error}`).join("; ")}`,
+          },
+        ]);
+      }
+      setMcpInfo({
+        servers: mgr.connectedServers(),
+        toolCount: countMcpTools(registryRef.current),
+      });
+      if (result.tools.length > 0) {
+        if (mcpModeDecidedRef.current) {
+          // The mode is fixed for the session — re-deciding it now could flip
+          // tools[] mid-flight and break the cache prefix. Reapply the standing
+          // mode so the tools this pass added inherit its defer flag.
+          applyMode(registryRef.current, registryRef.current.mcpLoadingMode);
+        } else {
+          // Only decide the load mode after all tools are registered: it compares total schema size against the context window
+          decideAndApply(registryRef.current, provider.base_url, getContextWindow(provider));
+          mcpModeDecidedRef.current = true;
+        }
+      }
+
+      syncMcpInstructions(mgr);
+    },
+    [syncMcpInstructions],
+  );
+
+  const runMcpOperation = useCallback(<T,>(operation: () => Promise<T>): Promise<T> => {
+    const result = mcpOperationRef.current.then(operation, operation);
+    mcpOperationRef.current = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }, []);
+
   // Connects every configured MCP server that has no live connection yet and
   // registers the tools it reports. Safe to call repeatedly: connectAll skips
   // servers that are already up, so /mcp retries only the ones that failed.
   // Reads the server list from mcpServersRef so /mcp reload takes effect here.
-  const connectMcpServers = useCallback(async (mgr: MCPManager, provider: ProviderConfig) => {
-    const result = await mgr.connectAll(mcpServersRef.current);
-    for (const { serverName, tool } of result.tools) {
-      const client = mgr.getClient(serverName);
-      if (client) {
-        registryRef.current.register(new MCPToolWrapper(client, serverName, tool));
-      }
-    }
-    if (result.errors.length > 0) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "system",
-          content: `MCP errors: ${result.errors.map((e) => `${e.serverName}: ${e.error}`).join("; ")}`,
-        },
-      ]);
-    }
-    setMcpInfo({
-      servers: mgr.connectedServers(),
-      toolCount: countMcpTools(registryRef.current),
-    });
-    if (result.tools.length > 0) {
-      if (mcpModeDecidedRef.current) {
-        // The mode is fixed for the session — re-deciding it now could flip
-        // tools[] mid-flight and break the cache prefix. Reapply the standing
-        // mode so the tools this pass added inherit its defer flag.
-        applyMode(registryRef.current, registryRef.current.mcpLoadingMode);
-      } else {
-        // Only decide the load mode after all tools are registered: it compares total schema size against the context window
-        decideAndApply(registryRef.current, provider.base_url, getContextWindow(provider));
-        mcpModeDecidedRef.current = true;
-      }
-    }
-    // Inject each server's instructions into the conversation so the
-    // model knows how to use that server's tools.
-    for (const { serverName, text } of result.instructions) {
-      convRef.current.addSystemReminder(`# MCP Server: ${serverName}\n${text}`);
-    }
-    return result;
-  }, []);
+  const connectMcpServers = useCallback(
+    (mgr: MCPManager, provider: ProviderConfig) =>
+      runMcpOperation(async () => {
+        const result = await mgr.connectAll(mcpServersRef.current);
+        applyMcpResult(mgr, provider, result);
+        return result;
+      }),
+    [applyMcpResult, runMcpOperation],
+  );
 
   // /mcp reload — re-reads the MCP server list from disk (config.yaml plus the
-  // project .mcp.json), tears down every live connection and its registered
-  // tools, then connects and registers whatever the fresh config lists.
-  const reloadMcpServers = useCallback(async () => {
-    let servers: MCPServerConfig[];
-    try {
-      servers = withProjectMcpServers(loadConfig(), workDir).mcp_servers;
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: `MCP reload failed: ${asErrorString(err)}` },
-      ]);
-      return;
-    }
-    mcpServersRef.current = servers;
+  // project .mcp.json), keeps unchanged connections, disconnects removed ones,
+  // and connects new or reconfigured servers.
+  const reloadMcpServers = useCallback(
+    () =>
+      runMcpOperation(async () => {
+        let servers: MCPServerConfig[];
+        try {
+          servers = withProjectMcpServers(loadConfig(), workDir).mcp_servers;
+        } catch (err) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "system", content: `MCP reload failed: ${asErrorString(err)}` },
+          ]);
+          return;
+        }
+        mcpServersRef.current = servers;
 
-    // Drop the previously registered wrappers first: they hold references to
-    // clients that disconnectAll is about to tear down, and tools of servers
-    // removed from the config must not linger in the registry.
-    removeMcpTools(registryRef.current);
+        if (servers.length === 0) {
+          const previous = mcpManagerRef.current;
+          if (previous) {
+            await previous.reconcile([]);
+            syncMcpInstructions(previous);
+          }
+          removeMcpTools(registryRef.current);
+          mcpManagerRef.current = null;
+          setMcpInfo({ servers: [], toolCount: 0 });
+          setMessages((prev) => [
+            ...prev,
+            { role: "system", content: "MCP config reloaded: no MCP servers are configured." },
+          ]);
+          return;
+        }
 
-    if (servers.length === 0) {
-      await mcpManagerRef.current?.disconnectAll();
-      mcpManagerRef.current = null;
-      setMcpInfo({ servers: [], toolCount: 0 });
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: "MCP config reloaded: no MCP servers configured." },
-      ]);
-      return;
-    }
-
-    const mgr = mcpManagerRef.current ?? new MCPManager();
-    mcpManagerRef.current = mgr;
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "system",
-        content: `Reloading MCP server(s): ${servers.map((s) => s.name).join(", ")}`,
-      },
-    ]);
-    await mgr.disconnectAll();
-    const result = await connectMcpServers(mgr, selectedProviderRef.current);
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "system",
-        content:
-          `MCP reloaded: ${String(result.servers.length)} server(s) connected, ` +
-          `${String(countMcpTools(registryRef.current))} tool(s)`,
-      },
-    ]);
-  }, [workDir, connectMcpServers]);
+        const mgr = mcpManagerRef.current ?? new MCPManager();
+        mcpManagerRef.current = mgr;
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "system",
+            content: `Reloading MCP server(s): ${servers.map((s) => s.name).join(", ")}`,
+          },
+        ]);
+        const result = await mgr.reconcile(servers);
+        // Unchanged wrappers keep both their schemas and live clients. Removed and
+        // reconfigured servers must lose their old wrappers before new schemas are
+        // registered below. A restarted server also gets a fresh connection, so the
+        // instructions announced for the old one are stale — forget them and let
+        // applyMcpResult announce the new ones.
+        for (const name of result.restarted) {
+          announcedMcpServersRef.current.delete(name);
+        }
+        removeMcpTools(registryRef.current, new Set([...result.removed, ...result.restarted]));
+        applyMcpResult(mgr, selectedProviderRef.current, result);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "system",
+            content:
+              `MCP reloaded: ${String(mgr.connectedServers().length)} server(s) connected, ` +
+              `${String(countMcpTools(registryRef.current))} tool(s) ` +
+              `(${String(result.added.length)} added, ${String(result.removed.length)} removed, ` +
+              `${String(result.restarted.length)} restarted, ${String(result.unchanged.length)} unchanged)`,
+          },
+        ]);
+      }),
+    [workDir, applyMcpResult, runMcpOperation, syncMcpInstructions],
+  );
 
   const initClient = useCallback(
     async (provider: ProviderConfig) => {
@@ -510,7 +556,7 @@ export function App({
         const memMgr = new MemoryManager(workDir);
         memManagerRef.current = memMgr;
         const memReminder = memMgr.buildSystemReminder();
-        convRef.current.injectLongTermMemory(instructions, memReminder);
+        conversationRef.current.injectLongTermMemory(instructions, memReminder);
 
         // Load prompt history
         setPromptHistory(historyMod.load(historyDir));
@@ -597,7 +643,13 @@ export function App({
               { abortSignal },
             );
         registryRef.current.register(new TeamCreateTool(teamManagerRef.current));
-        registryRef.current.register(new SpawnTeammateTool(teamManagerRef.current, teamRunAgent));
+        registryRef.current.register(
+          new SpawnTeammateTool(
+            teamManagerRef.current,
+            teamRunAgent,
+            selectedProviderRef.current.base_url,
+          ),
+        );
         registryRef.current.register(new SendMessageTool(teamManagerRef.current));
         registryRef.current.register(new ListTeamsTool(teamManagerRef.current));
         registryRef.current.register(new TeamDeleteTool(teamManagerRef.current));
@@ -653,7 +705,7 @@ export function App({
               setSubagents((prev) => prev.filter((s) => s.id !== id));
             }
           },
-          convRef.current,
+          conversationRef.current,
           (prompt, conversation, registry, modelOverride, context) =>
             spawnSubagent(
               BUILTIN_AGENTS[0],
@@ -675,7 +727,11 @@ export function App({
         );
         agentTool.forkDisabled = forkDisabled ?? false;
         // Wire the team manager into AgentTool to enable the team_name teammate path (teammates receive shared task-board tools)
-        agentTool.setTeamManager(teamManagerRef.current, teamRunAgentFactory);
+        agentTool.setTeamManager(
+          teamManagerRef.current,
+          teamRunAgentFactory,
+          selectedProviderRef.current.base_url,
+        );
         registryRef.current.register(agentTool);
 
         // Connect MCP servers in background
@@ -742,7 +798,7 @@ export function App({
     }
 
     // /mcp — show MCP server status, first retrying any server still not
-    // connected; /mcp reload re-reads the config from disk and reconnects all.
+    // connected; /mcp reload re-reads the config from disk and reconciles it.
     if (parsed.name === "mcp") {
       usageTrackerRef.current.record("mcp");
       if (parsed.args.trim().toLowerCase() === "reload") {
@@ -873,12 +929,17 @@ export function App({
           // AgentTool captures the manager for its fork path, so swapping the
           // instance would leave it pointing at the discarded history.
           setMessages([]);
-          convRef.current.reset();
+          conversationRef.current.reset();
           announcedSkillsRef.current.clear();
-          convRef.current.injectLongTermMemory(
+          conversationRef.current.injectLongTermMemory(
             loadInstructions(workDir),
             memManagerRef.current?.buildSystemReminder() ?? "",
           );
+          // The fresh history holds no MCP announcement any more, so this re-sends
+          // the instructions of every connected server.
+          if (mcpManagerRef.current) {
+            syncMcpInstructions(mcpManagerRef.current);
+          }
           // Reset the session ID and the stores derived from it
           sessionIdRef.current = sessionMod.newSessionId();
           interactionStatsRef.current = {
@@ -926,7 +987,7 @@ export function App({
           if (hasExitedPlanModeRef.current && planExists(workDir)) {
             const reentryMsg = buildPlanModeReentryReminder(planPath, true);
             if (reentryMsg) {
-              convRef.current.addSystemReminder(reentryMsg);
+              conversationRef.current.addSystemReminder(reentryMsg);
               setMessages((prev) => [...prev, { role: "system", content: reentryMsg }]);
             }
             hasExitedPlanModeRef.current = false;
@@ -942,12 +1003,13 @@ export function App({
           hasExitedPlanModeRef.current = true;
           const planContent = loadPlan(/** workDir */);
           const exitPlanPath = getOrCreatePlanPath(workDir);
-          convRef.current.addSystemReminder(buildPlanModeExitReminder(exitPlanPath, !!planContent));
+          conversationRef.current.addSystemReminder(
+            buildPlanModeExitReminder(exitPlanPath, !!planContent),
+          );
           if (planContent?.trim()) {
             // Feed the approved plan back to the agent and execute it.
-            convRef.current.addUserMessage(
-              "The plan below has been approved. Exit plan mode and carry it out now.\n\n" +
-                "# Approved Plan\n" +
+            conversationRef.current.addUserMessage(
+              "The plan below has been approved. Exit plan mode and carry it out now.\n\n# Approved Plan\n" +
                 planContent,
             );
             resetPlanPath();
@@ -977,7 +1039,7 @@ export function App({
             abortControllerRef.current = controller;
             setIsCompacting(true);
             await forceCompact(
-              convRef.current,
+              conversationRef.current,
               clientRef.current,
               recoveryStateRef.current,
               registryRef.current.listTools().map((t) => t.name),
@@ -1054,7 +1116,7 @@ export function App({
           // session contains a compact_boundary it replays the compacted state
           // (summary + inlined keep + post-boundary appends) instead of the full
           // pre-boundary history; with no boundary it replays everything.
-          const conv = convRef.current;
+          const conv = conversationRef.current;
           conv.reset();
           conv.injectLongTermMemory(
             loadInstructions(workDir),
@@ -1321,7 +1383,7 @@ export function App({
       const promptText = cmd.handler({ workDir, args: parsed.args });
       if (clientRef.current && promptText.trim()) {
         setMessages((prev) => [...prev, { role: "user", content: promptText }]);
-        convRef.current.addUserMessage(promptText);
+        conversationRef.current.addUserMessage(promptText);
         sessionMod.saveMessage(workDir, sessionIdRef.current, {
           role: "user",
           content: promptText,
@@ -1380,7 +1442,7 @@ export function App({
             workDir,
           ),
         snapshotParentMessages: (count) => {
-          const msgs = convRef.current.getMessages();
+          const msgs = conversationRef.current.getMessages();
           return msgs
             .slice(-count)
             .map((m) => `[${m.role}] ${contentToText(m.content)}`)
@@ -1439,7 +1501,7 @@ export function App({
         ? memManagerRef.current
             .findRelevantMemories(
               contentToText(
-                convRef.current
+                conversationRef.current
                   .getMessages()
                   .filter((m) => m.role === "user")
                   .pop()?.content ?? "",
@@ -1465,7 +1527,7 @@ export function App({
       client: clientRef.current,
       registry: registryRef.current,
       checker,
-      conversation: convRef.current,
+      conversation: conversationRef.current,
       workDir,
       sessionId: sessionIdRef.current,
       hookEngine: hookEngineRef.current ?? undefined,
@@ -1633,7 +1695,7 @@ export function App({
 
     try {
       const expanded = await expandAtRefsWithImages(text, workDir);
-      convRef.current.addUserMessage(expanded);
+      conversationRef.current.addUserMessage(expanded);
       sessionMod.saveMessage(workDir, sessionIdRef.current, {
         role: "user",
         content:
@@ -1689,7 +1751,9 @@ export function App({
         hasExitedPlanModeRef.current = true;
         setPermMode("bypassPermissions");
 
-        convRef.current.addSystemReminder(buildPlanModeExitReminder(planPath, !!planContent));
+        conversationRef.current.addSystemReminder(
+          buildPlanModeExitReminder(planPath, !!planContent),
+        );
         setMessages((prev) => [
           ...prev,
           { role: "system", content: "Plan approved. Entered YOLO mode." },
@@ -1701,7 +1765,9 @@ export function App({
         // Exit plan mode and restore the pre-plan permission mode
         hasExitedPlanModeRef.current = true;
         setPermMode(prePlanMode);
-        convRef.current.addSystemReminder(buildPlanModeExitReminder(planPath, !!planContent));
+        conversationRef.current.addSystemReminder(
+          buildPlanModeExitReminder(planPath, !!planContent),
+        );
         setMessages((prev) => [
           ...prev,
           {
@@ -1731,7 +1797,7 @@ export function App({
         case "code_and_conversation": {
           const changed = fh.rewind(action.snapshotIndex);
           const snap = rewindSnapshots[action.snapshotIndex];
-          convRef.current.truncateTo(snap.messageIndex);
+          conversationRef.current.truncateTo(snap.messageIndex);
           const fileList = changed.length > 0 ? "\n" + changed.map((f) => "  " + f).join("\n") : "";
           setMessages((prev) => [
             ...prev,
@@ -1744,7 +1810,7 @@ export function App({
         }
         case "conversation_only": {
           const snap = rewindSnapshots[action.snapshotIndex];
-          convRef.current.truncateTo(snap.messageIndex);
+          conversationRef.current.truncateTo(snap.messageIndex);
           setMessages((prev) => [
             ...prev,
             {
@@ -2101,7 +2167,7 @@ export function App({
       />
       <Footer
         onHeightChange={setFooterRows}
-        contextTokens={currentContextTokens(convRef.current)}
+        contextTokens={currentContextTokens(conversationRef.current)}
         contextWindow={contextWindowRef.current}
         inputTokens={inputTokens}
         model={selectedProvider.model}

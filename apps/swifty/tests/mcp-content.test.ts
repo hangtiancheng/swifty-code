@@ -22,7 +22,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { mcpContentToToolOutput } from "@/mcp/client.js";
+import { expandMcpServerConfigEnvironment, mcpContentToToolOutput } from "@/mcp/client.js";
 import { isRecord } from "@/utils/index.js";
 
 // Small buffers pass through maybeResizeAndDownsampleImage untouched (sharp is
@@ -72,5 +72,39 @@ describe("mcpContentToToolOutput", () => {
     expect(result.contentBlocks).toBeUndefined();
     expect(result.output).toBe("[Unsupported image: image/tiff]");
     expect(result.output).not.toContain(DATA);
+  });
+});
+
+describe("expandMcpServerConfigEnvironment", () => {
+  it("expands command, args, env, URL and headers without mutating the environment", () => {
+    const environment = { BIN: "/opt/mcp", TOKEN: "secret" };
+    const original = { ...environment };
+    expect(
+      expandMcpServerConfigEnvironment(
+        {
+          name: "server",
+          command: "${BIN}/server",
+          args: ["--token", "$TOKEN", "${MODE:-safe}"],
+          env: { AUTH: "Bearer ${TOKEN}" },
+          url: "https://${HOST:-example.com}/mcp",
+          headers: { Authorization: "Bearer ${TOKEN}" },
+        },
+        environment,
+      ),
+    ).toEqual({
+      name: "server",
+      command: "/opt/mcp/server",
+      args: ["--token", "secret", "safe"],
+      env: { AUTH: "Bearer secret" },
+      url: "https://example.com/mcp",
+      headers: { Authorization: "Bearer secret" },
+    });
+    expect(environment).toEqual(original);
+  });
+
+  it("rejects an unset variable without a default", () => {
+    expect(() =>
+      expandMcpServerConfigEnvironment({ name: "server", command: "${MISSING}" }, {}),
+    ).toThrow(/MISSING/);
   });
 });
