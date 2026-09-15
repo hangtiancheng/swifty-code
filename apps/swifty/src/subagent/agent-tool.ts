@@ -29,7 +29,12 @@ import { SUBAGENT_DISALLOWED_TOOLS, TEAMMATE_DISALLOWED_TOOLS } from "./tool-fil
 import type { ConversationManager } from "@/conversation/conversation.js";
 import { createChildLogger } from "@/logger/logger.js";
 import { PermissionChecker } from "@/permissions/checker.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/teams/task-tools.js";
+import {
+  TeamTaskCreateTool,
+  TeamTaskGetTool,
+  TeamTaskListTool,
+  TeamTaskUpdateTool,
+} from "@/teams/task-tools.js";
 import type { TeamManager, RunAgent } from "@/teams/team.js";
 import { SendMessageTool } from "@/teams/tools.js";
 import { ToolRegistry } from "@/tools/registry.js";
@@ -376,10 +381,10 @@ ${prompt}`;
       teammateRegistry.register(tool);
     }
     teammateRegistry.register(new SendMessageTool(this.teamManager, memberName));
-    teammateRegistry.register(new TaskCreateTool(this.teamManager, teamName, memberName));
-    teammateRegistry.register(new TaskGetTool(this.teamManager, teamName));
-    teammateRegistry.register(new TaskListTool(this.teamManager, teamName));
-    teammateRegistry.register(new TaskUpdateTool(this.teamManager, teamName));
+    teammateRegistry.register(new TeamTaskCreateTool(this.teamManager, teamName, memberName));
+    teammateRegistry.register(new TeamTaskGetTool(this.teamManager, teamName));
+    teammateRegistry.register(new TeamTaskListTool(this.teamManager, teamName));
+    teammateRegistry.register(new TeamTaskUpdateTool(this.teamManager, teamName));
     // The plan-mode teammate requires the checker to be created here: after team-level approval
     // passes, the mode must be switched back to default in place. If the checker were created
     // only inside spawnSubAgent, no one would have a handle to modify it.

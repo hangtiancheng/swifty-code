@@ -23,7 +23,7 @@
 import { safeParseAsync } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import z from "zod";
 
-import type { TaskStatus } from "./store.js";
+import type { StoredTaskStatus } from "./store.js";
 import type { TaskList } from "./todo.js";
 
 import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
@@ -213,7 +213,7 @@ export class TaskUpdateTool implements Tool {
     }
 
     type Updates = Omit<TaskUpdateArgs, "taskId" | "status"> & {
-      status?: TaskStatus;
+      status?: StoredTaskStatus;
     };
 
     const updates: Updates = {};

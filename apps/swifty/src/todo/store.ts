@@ -29,15 +29,15 @@ import { createChildLogger } from "@/logger/logger.js";
 
 const log = createChildLogger({ module: "todo" });
 
-const TaskStatusSchema = z.enum(["pending", "in_progress", "completed"]);
+const StoredTaskStatusSchema = z.enum(["pending", "in_progress", "completed"]);
 
-export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+export type StoredTaskStatus = z.infer<typeof StoredTaskStatusSchema>;
 
-const TaskSchema = z.object({
+const StoredTaskSchema = z.object({
   id: z.string(),
   subject: z.string(),
   description: z.string(),
-  status: TaskStatusSchema,
+  status: StoredTaskStatusSchema,
   owner: z.string().optional(),
   activeForm: z.string().optional(),
   blocks: z.array(z.string()),
@@ -45,7 +45,7 @@ const TaskSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
 });
 
-export type Task = z.infer<typeof TaskSchema>;
+export type StoredTask = z.infer<typeof StoredTaskSchema>;
 
 export class TaskStore {
   private filePath: string;
@@ -55,14 +55,14 @@ export class TaskStore {
     this.filePath = join(workDir, ".swifty", "tasks", `${listId}.json`);
   }
 
-  load(): Task[] {
+  load(): StoredTask[] {
     if (!existsSync(this.filePath)) {
       return [];
     }
     try {
       const data = readFileSync(this.filePath, "utf-8");
       const raw: unknown = JSON.parse(data);
-      const parsed = parse(z.array(TaskSchema), raw);
+      const parsed = parse(z.array(StoredTaskSchema), raw);
       return parsed;
     } catch (err) {
       log.error({ err }, "todo operation failed");
@@ -70,7 +70,7 @@ export class TaskStore {
     }
   }
 
-  save(tasks: Task[]): void {
+  save(tasks: StoredTask[]): void {
     mkdirSync(dirname(this.filePath), { recursive: true });
     writeFileSync(this.filePath, JSON.stringify(tasks, null, 2), "utf-8");
   }

@@ -30,7 +30,7 @@ import { strArg, strList } from "@/utils/utils.js";
 
 const VALID_STATUSES = new Set(["pending", "in_progress", "completed", "blocked"]);
 
-export class TaskCreateTool implements Tool {
+export class TeamTaskCreateTool implements Tool {
   name = "TaskCreate";
   description =
     "Create a shared task in the team's task board. Supports dependency tracking with blocks/blocked_by fields.";
@@ -100,7 +100,7 @@ export class TaskCreateTool implements Tool {
   }
 }
 
-export class TaskGetTool implements Tool {
+export class TeamTaskGetTool implements Tool {
   name = "TaskGet";
   description = "Get details of a shared task by ID, including dependency information.";
   category = "read" as const;
@@ -163,7 +163,7 @@ export class TaskGetTool implements Tool {
   }
 }
 
-export class TaskListTool implements Tool {
+export class TeamTaskListTool implements Tool {
   name = "TaskList";
   description =
     "List all shared tasks in the team's task board. Optionally filter by status (pending/in_progress/completed/blocked) or assignee.";
@@ -228,7 +228,7 @@ export class TaskListTool implements Tool {
   }
 }
 
-export class TaskUpdateTool implements Tool {
+export class TeamTaskUpdateTool implements Tool {
   name = "TaskUpdate";
   description =
     "Update a shared task's status, assignee, description, or dependencies. Use add_blocks/add_blocked_by to add dependency relations.";

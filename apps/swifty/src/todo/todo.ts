@@ -20,13 +20,13 @@
  * SOFTWARE.
  */
 
-import type { TaskStatus, TaskStore } from "./store.js";
+import type { StoredTaskStatus, TaskStore } from "./store.js";
 
 export interface Task {
   id: string;
   subject: string;
   description: string;
-  status: TaskStatus;
+  status: StoredTaskStatus;
   owner?: string;
   activeForm?: string;
   blocks: string[];

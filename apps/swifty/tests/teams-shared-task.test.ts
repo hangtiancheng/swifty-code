@@ -28,7 +28,12 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { NameRegistry, getNameRegistry } from "@/teams/registry.js";
 import { SharedTaskStore } from "@/teams/shared-task.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/teams/task-tools.js";
+import {
+  TeamTaskCreateTool,
+  TeamTaskGetTool,
+  TeamTaskListTool,
+  TeamTaskUpdateTool,
+} from "@/teams/task-tools.js";
 import { TeamManager } from "@/teams/team.js";
 
 // The teams directory lives at <home>/.swifty/teams, so the tests redirect the
@@ -150,10 +155,10 @@ describe("team task tools", () => {
   });
 
   test("create → list → update → get flow shares one board", async () => {
-    const create = new TaskCreateTool(mgr, "my-team", "lead");
-    const list = new TaskListTool(mgr, "my-team");
-    const update = new TaskUpdateTool(mgr, "my-team");
-    const get = new TaskGetTool(mgr, "my-team");
+    const create = new TeamTaskCreateTool(mgr, "my-team", "lead");
+    const list = new TeamTaskListTool(mgr, "my-team");
+    const update = new TeamTaskUpdateTool(mgr, "my-team");
+    const get = new TeamTaskGetTool(mgr, "my-team");
     const ctx = { workDir: process.cwd() };
 
     const created = await create.execute(ctx, {
@@ -182,8 +187,8 @@ describe("team task tools", () => {
 
   test("update rejects invalid status", async () => {
     const ctx = { workDir: process.cwd() };
-    await new TaskCreateTool(mgr, "my-team").execute(ctx, { title: "t" });
-    const r = await new TaskUpdateTool(mgr, "my-team").execute(ctx, {
+    await new TeamTaskCreateTool(mgr, "my-team").execute(ctx, { title: "t" });
+    const r = await new TeamTaskUpdateTool(mgr, "my-team").execute(ctx, {
       task_id: "1",
       status: "done",
     });

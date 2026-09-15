@@ -39,9 +39,8 @@ import { newSessionId } from "./session/session.js";
 import { parseTeammateFlags, runTeammate } from "./teammate.js";
 import { App } from "./tui/app.js";
 import { installSyncOutput } from "./tui/sync-output.js";
+import { setThemeMode } from "./ui/styles.js";
 import { asErrorString } from "./utils/utils.js";
-
-import { setThemeMode } from "@/ui/styles.js";
 
 async function main() {
   recover();

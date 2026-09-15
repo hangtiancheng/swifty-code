@@ -52,7 +52,12 @@ import { LoadSkillTool } from "./skills/load-skill-tool.js";
 import type { SkillHost } from "./skills/skills.js";
 import type { FileMailMessage } from "./teams/file-mailbox.js";
 import { FileMailbox } from "./teams/file-mailbox.js";
-import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "./teams/task-tools.js";
+import {
+  TeamTaskCreateTool,
+  TeamTaskGetTool,
+  TeamTaskListTool,
+  TeamTaskUpdateTool,
+} from "./teams/task-tools.js";
 import { TeamManager } from "./teams/team.js";
 import { SendMessageTool } from "./teams/tools.js";
 import { BashTool } from "./tools/bash.js";
@@ -184,10 +189,10 @@ export async function buildTeammateRegistry(opts: {
 
   const teamManager = new TeamManager(opts.workDir);
   registry.register(new SendMessageTool(teamManager, opts.memberName));
-  registry.register(new TaskCreateTool(teamManager, opts.teamName, opts.memberName));
-  registry.register(new TaskGetTool(teamManager, opts.teamName));
-  registry.register(new TaskListTool(teamManager, opts.teamName));
-  registry.register(new TaskUpdateTool(teamManager, opts.teamName));
+  registry.register(new TeamTaskCreateTool(teamManager, opts.teamName, opts.memberName));
+  registry.register(new TeamTaskGetTool(teamManager, opts.teamName));
+  registry.register(new TeamTaskListTool(teamManager, opts.teamName));
+  registry.register(new TeamTaskUpdateTool(teamManager, opts.teamName));
 
   const mcpServers = opts.mcpServers ?? [];
   if (mcpServers.length > 0) {
