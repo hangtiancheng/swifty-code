@@ -49,6 +49,43 @@ export function recordError(context: string, error: unknown): void {
   record(`crash [${context}] ${stack}`);
 }
 
+// A terminal that goes away (window closed, VS Code main process dying, ssh
+// dropped, pty torn down) makes every later stdio write fail with EIO — or
+// EPIPE once the reader is gone. That is the session's terminal disappearing,
+// not a swifty fault, so it must not be logged as a crash.
+const TERMINAL_GONE_CODES = new Set(["EIO", "EPIPE", "ERR_STREAM_DESTROYED"]);
+
+/** True when `err` is a write failure caused by the terminal or its reader vanishing. */
+export function isTerminalGone(err: unknown): boolean {
+  if (err === null || (typeof err !== "object" && typeof err !== "function")) {
+    return false;
+  }
+  const code: unknown = Reflect.get(err, "code");
+  return typeof code === "string" && TERMINAL_GONE_CODES.has(code);
+}
+
+let terminalGoneRecorded = false;
+
+/**
+ * End the process when the terminal is gone: records the condition once and
+ * exits 0, so crash.log shows a `start` + `exit` pair with no `crash` line.
+ * Returns false for unrelated errors, which the caller reports as crashes.
+ */
+function exitOnTerminalGone(context: string, error: unknown): boolean {
+  if (!isTerminalGone(error)) {
+    return false;
+  }
+  if (!terminalGoneRecorded) {
+    terminalGoneRecorded = true;
+    const detail = error instanceof Error ? error.message : String(error);
+    record(`terminal closed [${context}] ${detail}`);
+  }
+  // No terminal is left to render into or read from, so there is nothing to
+  // unwind: shut down before the next frame fails the same way.
+  process.exit(0);
+  return true;
+}
+
 let exitRecorded = false;
 
 /**
@@ -74,11 +111,33 @@ export function recordExit(code: number | string): void {
  * to the top of the event loop (which would otherwise only print to the terminal
  * and be lost once it closes). Together they determine the exit mode:
  * crash + exit → crashed; start + exit only → clean shutdown; start only → killed externally.
+ *
+ * A terminal that disappears under a live session (window closed, VS Code main
+ * process dying, ssh dropped) fails every later write with EIO/EPIPE. Those are
+ * recorded as a single `terminal closed` line and exit 0, so they read as a
+ * clean shutdown rather than a crash; see `isTerminalGone`.
  */
 export function recover(): void {
   record(`start pid=${String(process.pid)}`);
 
+  // Stdout writes are asynchronous: once the terminal is gone the failure
+  // arrives as a stream 'error' event. Handling it here keeps a normal window
+  // close from surfacing as an uncaughtException, and keeps the last frame
+  // from racing the teardown below.
+  const onStdioError = (err: unknown): void => {
+    if (!exitOnTerminalGone("stdio", err)) {
+      throw err;
+    }
+  };
+  process.stdout.on("error", onStdioError);
+  process.stderr.on("error", onStdioError);
+
   process.on("uncaughtException", (err) => {
+    // Losing the terminal mid-write is an expected end of session (the user
+    // closed the window), so report it as a clean exit instead of a crash.
+    if (exitOnTerminalGone("uncaught exception", err)) {
+      return;
+    }
     recordError("uncaught exception", err);
     // Once a handler is registered the runtime no longer prints on its own; restore terminal output
     logger.fatal({ err }, "uncaught exception");
@@ -87,6 +146,9 @@ export function recover(): void {
 
   // Catch async errors that escape the main loop.
   process.on("unhandledRejection", (reason) => {
+    if (exitOnTerminalGone("unhandled rejection", reason)) {
+      return;
+    }
     recordError("unhandled rejection", reason);
     logger.fatal({ err: reason }, "unhandled rejection");
     process.exit(1);

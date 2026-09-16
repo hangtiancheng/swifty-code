@@ -7,10 +7,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import sharp from "sharp";
 import { safeParse, z } from "zod";
 
-import MACOS_SWIFT from "./snippets/macos.swift?raw";
-import WIN32_SCRIPT_PS1 from "./snippets/win32-script.ps1?raw";
-import WINDOWS_CS from "./snippets/windows.cs?raw";
-import WINDOWS_PS1 from "./snippets/windows.ps1?raw";
+import {
+  MACOS_SNIPPET,
+  WINDOWS_PWSH_SNIPPET,
+  WINDOWS_PWSH_INCLUDES_CSHARP_SNIPPET,
+} from "./snippets.js";
 import type {
   ProviderNativeToolSchema,
   Tool,
@@ -473,8 +474,6 @@ function openaiActionToFlat(item: OpenAIAction): ComputerUseInput {
   }
 }
 
-const WINDOWS_POWERSHELL = WINDOWS_PS1.replace("${WINDOWS.CS}", () => WINDOWS_CS);
-
 function commandError(command: string, result: CommandResult): Error {
   return new Error(
     `${command} failed: ${result.stderr || result.stdout.toString("utf8").trim() || `exit ${String(result.code)}`}`,
@@ -913,7 +912,7 @@ export class ComputerUseTool implements Tool {
     const sourcePath = join(directory, "main.swift");
     const executablePath = join(directory, "computer-helper");
     try {
-      await writeFile(sourcePath, MACOS_SWIFT, "utf8");
+      await writeFile(sourcePath, MACOS_SNIPPET, "utf8");
       const result = await this.run(
         "/usr/bin/xcrun",
         ["swiftc", "-O", sourcePath, "-o", executablePath],
@@ -932,7 +931,7 @@ export class ComputerUseTool implements Tool {
   private async executeWindows(action: NativeInput, signal?: AbortSignal): Promise<string> {
     const result = await this.run(
       "powershell.exe",
-      ["-NoProfile", "-NonInteractive", "-Sta", "-Command", WINDOWS_POWERSHELL],
+      ["-NoProfile", "-NonInteractive", "-Sta", "-Command", WINDOWS_PWSH_INCLUDES_CSHARP_SNIPPET],
       {
         env: {
           ...process.env,
@@ -1182,7 +1181,7 @@ export class ComputerUseTool implements Tool {
         case "win32": {
           const capture = await this.run(
             "powershell.exe",
-            ["-NoProfile", "-NonInteractive", "-Sta", "-Command", WIN32_SCRIPT_PS1],
+            ["-NoProfile", "-NonInteractive", "-Sta", "-Command", WINDOWS_PWSH_SNIPPET],
             {
               env: { ...process.env, SWIFTY_SCREENSHOT_PATH: screenshotPath },
               signal,

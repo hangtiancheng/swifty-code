@@ -20,13 +20,15 @@
  * SOFTWARE.
  */
 
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import { record, recordError, recordExit } from "@/recover.js";
+import { isTerminalGone, record, recordError, recordExit } from "@/recover.js";
 
 // The crash log is always written under cwd; tests chdir into a temp directory and restore afterward
 const originalCwd = process.cwd();
@@ -86,5 +88,90 @@ describe("crash log", () => {
 
     process.chdir(originalCwd);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+// A closed terminal (window shut, VS Code main process dying, ssh dropped) makes
+// later writes fail with EIO/EPIPE. Treating those as crashes is what produced
+// the `write EIO` entries in .swifty/crash.log, so the classification is tested
+// against the error shapes Node actually throws.
+describe("isTerminalGone", () => {
+  it("recognizes the errors a vanished terminal produces", () => {
+    // Shape seen in crash.log: Error: write EIO, with a numeric errno.
+    const eio = Object.assign(new Error("write EIO"), { code: "EIO", syscall: "write", errno: -5 });
+    expect(isTerminalGone(eio)).toBe(true);
+
+    // A pipe reader closing produces EPIPE rather than EIO.
+    expect(isTerminalGone(Object.assign(new Error("write EPIPE"), { code: "EPIPE" }))).toBe(true);
+  });
+
+  it("does not classify unrelated failures as a vanished terminal", () => {
+    expect(isTerminalGone(new Error("boom"))).toBe(false);
+    expect(isTerminalGone(Object.assign(new Error("nope"), { code: "ENOENT" }))).toBe(false);
+    // Non-object rejections must not be mistaken for a closed terminal.
+    expect(isTerminalGone(undefined)).toBe(false);
+    expect(isTerminalGone(null)).toBe(false);
+    expect(isTerminalGone("write EIO")).toBe(false);
+  });
+});
+
+// recover() installs process-level handlers and calls process.exit(), so it is
+// exercised in a child process: the real exit code and the real crash.log are
+// observed, and the handlers cannot leak into the test runner.
+const testsDir = dirname(fileURLToPath(import.meta.url));
+const terminalScript = join(testsDir, "recover-terminal-script.ts");
+const tsxBin = join(testsDir, "..", "node_modules", ".bin", "tsx");
+
+function runTerminalScript(mode: string, cwd: string) {
+  return spawnSync(tsxBin, [terminalScript, mode], { cwd, encoding: "utf8", timeout: 60_000 });
+}
+
+describe.skipIf(!existsSync(tsxBin))("recover() when the terminal disappears", () => {
+  it("exits 0 and records a clean shutdown for an uncaught EIO write", () => {
+    const dir = mkdtempSync(join(tmpdir(), "swifty-crash-"));
+    try {
+      const result = runTerminalScript("uncaught", dir);
+
+      expect(result.status).toBe(0);
+
+      const log = readFileSync(join(dir, ".swifty", "crash.log"), "utf8");
+      expect(log).toContain("terminal closed [uncaught exception] write EIO");
+      // The whole point: losing the terminal must not read as a crash.
+      expect(log).not.toContain("crash [");
+      expect(log).toContain("code=0");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("exits 0 when stdout itself reports the vanished terminal", () => {
+    const dir = mkdtempSync(join(tmpdir(), "swifty-crash-"));
+    try {
+      const result = runTerminalScript("stdio", dir);
+
+      expect(result.status).toBe(0);
+
+      const log = readFileSync(join(dir, ".swifty", "crash.log"), "utf8");
+      expect(log).toContain("terminal closed [stdio] write EIO");
+      expect(log).not.toContain("crash [");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Guard against the fix silently disabling crash reporting altogether.
+  it("still reports a genuine bug as a crash", () => {
+    const dir = mkdtempSync(join(tmpdir(), "swifty-crash-"));
+    try {
+      const result = runTerminalScript("other", dir);
+
+      expect(result.status).toBe(1);
+
+      const log = readFileSync(join(dir, ".swifty", "crash.log"), "utf8");
+      expect(log).toContain("crash [uncaught exception] Error: real bug");
+      expect(log).not.toContain("terminal closed");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

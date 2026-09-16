@@ -186,6 +186,7 @@ export * from "./tools/powershell.js";
 export * from "./tools/read-file.js";
 export * from "./tools/registry.js";
 export * from "./tools/shell-output.js";
+export * from "./tools/snippets.js";
 export * from "./tools/synthetic-output.js";
 export * from "./tools/tool-search.js";
 export * from "./tools/types.js";
