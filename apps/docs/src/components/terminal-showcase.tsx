@@ -315,6 +315,10 @@ export class TerminalShowcaseElement extends LitElement {
     const rows = this.querySelectorAll<HTMLElement>("[data-step-row]");
     const row = rows[rows.length - 1];
     if (row) {
+      // Pre-hide inline, not with a class: batch-rendered rows (the initial
+      // finished session, and everything under reduced motion) are never
+      // animated in and must stay visible.
+      row.style.opacity = "0";
       animateIn(row, { opacity: [0, 1], y: [6, 0] }, { duration: 0.4 });
     }
   }
@@ -363,7 +367,7 @@ export class TerminalShowcaseElement extends LitElement {
     return (
       <div
         data-step-row
-        className="flex items-center gap-2.5 pl-5 font-mono text-[12.5px] opacity-0 sm:text-[13px]"
+        className="flex items-center gap-2.5 pl-5 font-mono text-[12.5px] sm:text-[13px]"
       >
         <span
           className={cn(
@@ -470,7 +474,7 @@ export class TerminalShowcaseElement extends LitElement {
                   return (
                     <p
                       data-step-row
-                      className="flex gap-2 pl-5 text-[12px] text-zinc-400 italic opacity-0 dark:text-zinc-500"
+                      className="flex gap-2 pl-5 text-[12px] text-zinc-400 italic dark:text-zinc-500"
                     >
                       <span className="text-amber-400 not-italic">✻</span>
                       {step.text}
@@ -483,7 +487,7 @@ export class TerminalShowcaseElement extends LitElement {
                 return (
                   <p
                     data-step-row
-                    className="flex gap-2 pl-5 text-zinc-700 opacity-0 dark:text-zinc-300"
+                    className="flex gap-2 pl-5 text-zinc-700 dark:text-zinc-300"
                   >
                     <span className="text-brand-500 dark:text-brand-400">
                       ●
