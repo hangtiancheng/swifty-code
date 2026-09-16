@@ -353,6 +353,11 @@ export class Team {
           );
           clearActiveTools(uiState.progress);
           uiState.lastMessage = result.length > 200 ? result.slice(0, 200) + "..." : result;
+          if (abortController.signal.aborted || !member.active) {
+            uiState.status = "stopped";
+            await this.leadMailbox.send(name, `[idle] ${name} (reason: stopped)`);
+            break;
+          }
           // Plan-mode teammate: a completed turn means it called ExitPlanMode and the plan
           // has been written to disk. Submit the plan to the Lead for approval; only after
           // approval is the read-only restriction lifted and execution begins.
@@ -392,7 +397,9 @@ export class Team {
           nextPrompt = pollResult.prompt;
         }
 
-        uiState.status = "completed";
+        if (uiState.status !== "stopped") {
+          uiState.status = "completed";
+        }
       } catch (err) {
         if (abortController.signal.aborted || !member.active) {
           uiState.status = "stopped";
@@ -508,6 +515,9 @@ export class Team {
     if (!member) {
       throw new Error(`Member '${to}' not found in team '${this.name}'`);
     }
+    if (member.active && member.uiState) {
+      member.uiState.status = "running";
+    }
     await member.mailbox.send(from, content);
   }
 
@@ -520,9 +530,7 @@ export class Team {
   }
 
   async stopAll(): Promise<void> {
-    for (const member of this.members.values()) {
-      await this.stopOne(member);
-    }
+    await Promise.allSettled([...this.members.values()].map((member) => this.stopOne(member)));
   }
 
   /**
@@ -533,7 +541,7 @@ export class Team {
    */
   private async stopOne(member: Member): Promise<void> {
     member.active = false;
-    if (member.uiState?.status === "running") {
+    if (member.uiState?.status === "running" || member.uiState?.status === "idle") {
       member.uiState.status = "stopped";
     }
     if (member.external) {
@@ -638,6 +646,10 @@ export class TeamManager {
     return [...this.teams.values()];
   }
 
+  async stopAll(): Promise<void> {
+    await Promise.allSettled(this.list().map((team) => team.stopAll()));
+  }
+
   async delete(name: string): Promise<void> {
     const team = this.teams.get(name);
     if (team) {
@@ -673,6 +685,11 @@ export class TeamManager {
       const lines: string[] = [];
       lines.push(`<task-notification team="${team.name}">`);
       for (const msg of msgs) {
+        const member = team.getMember(msg.from);
+        if (member?.active && member.uiState && msg.text.startsWith("[idle]")) {
+          member.uiState.status = "idle";
+          clearActiveTools(member.uiState.progress);
+        }
         lines.push(`from=${msg.from}: ${msg.text}`);
       }
       lines.push("</task-notification>");

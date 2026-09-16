@@ -30,12 +30,15 @@ import { isDiffTool } from "@/tools/is-diff-tool.js";
 import { THEME } from "@/ui/styles.js";
 import { formatToolArgs } from "@/utils/utils.js";
 
+export type ToolCardStatus = "running" | "completed" | "failed" | "stopped";
+
 export interface ToolBlockInfo {
   toolId: string;
   toolName: string;
   args: Record<string, unknown>;
   output?: string;
   progress?: string;
+  status?: ToolCardStatus;
   isError?: boolean;
   elapsed?: number;
   loading?: boolean;
@@ -46,6 +49,7 @@ interface ToolCardProps {
   argsSummary: string;
   output?: string;
   progress?: string;
+  status?: ToolCardStatus;
   isError?: boolean;
   elapsed?: number;
   loading?: boolean;
@@ -57,6 +61,7 @@ export function ToolCard({
   argsSummary,
   output,
   progress,
+  status,
   isError,
   elapsed,
   loading,
@@ -66,20 +71,22 @@ export function ToolCard({
   const width = Math.max(1, stdout.columns || 80);
   const padding = width > 2 ? 1 : 0;
   const contentWidth = width - padding * 2;
-  const backgroundColor = loading
-    ? THEME.toolPendingBg
-    : isError
-      ? THEME.toolErrorBg
-      : THEME.toolSuccessBg;
+  const resolvedStatus = status ?? (loading ? "running" : isError ? "failed" : undefined);
+  const backgroundColor =
+    resolvedStatus === "running"
+      ? THEME.toolPendingBg
+      : resolvedStatus === "failed" || resolvedStatus === "stopped"
+        ? THEME.toolErrorBg
+        : THEME.toolSuccessBg;
   const shell = /^(bash|powershell)$/iu.test(toolName);
   const title = (
     shell
       ? `${toolName.toLowerCase() === "bash" ? "$" : ">"} ${argsSummary}`
       : `${toolName}${argsSummary ? ` ${argsSummary}` : ""}`
   ).replace(/[\r\n\t]+/g, " ");
-  const status = loading ? "running" : isError ? "failed" : "";
+  const statusLabel = resolvedStatus ?? "";
   const timing = elapsed !== undefined && elapsed > 0 ? `${elapsed.toFixed(1)}s` : "";
-  const metadata = [status, timing].filter(Boolean).join(" · ");
+  const metadata = [statusLabel, timing].filter(Boolean).join(" · ");
   const inlineMetadata = metadata && contentWidth >= visibleWidth(metadata) + 4;
   const titleWidth = inlineMetadata ? contentWidth - visibleWidth(metadata) - 2 : contentWidth;
   const preview = output
@@ -95,7 +102,9 @@ export function ToolCard({
           .join("\n")
       : preview;
   const metadataDetail = (
-    <Text color={isError && !loading ? THEME.error : THEME.dim}>
+    <Text
+      color={resolvedStatus === "failed" || resolvedStatus === "stopped" ? THEME.error : THEME.dim}
+    >
       {wrapToLines(metadata, contentWidth).join("\n")}
     </Text>
   );

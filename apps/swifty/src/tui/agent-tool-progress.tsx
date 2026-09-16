@@ -1,64 +1,130 @@
 import { Box } from "ink";
 
-import { ToolBlock, type ToolBlockInfo } from "./tool-display.js";
+import { ToolBlock, type ToolBlockInfo, type ToolCardStatus } from "./tool-display.js";
 
+import type { AgentTask } from "@/subagent/task-manager.js";
 import { formatTokens, type TeammateUIState } from "@/teams/progress.js";
 import { strArg } from "@/utils/utils.js";
 
 export interface SubagentProgress {
   toolCallId: string;
+  taskId?: string;
   role: string;
   turnCount: number;
   activeTools: { toolId: string; toolName: string }[];
   status: "running" | "completed" | "failed" | "stopped";
+  background: boolean;
+  output?: string;
 }
 
 interface Props {
   tools: ToolBlockInfo[];
   subagents: SubagentProgress[];
+  backgroundTasks: AgentTask[];
   teammates: TeammateUIState[];
   expanded: boolean;
 }
 
 function subagentProgress(subagent: SubagentProgress): string {
-  const currentTool = subagent.activeTools.at(-1)?.toolName ?? subagent.status;
-  return `${subagent.role} subagent | ${String(subagent.turnCount)} turns | ${currentTool}`;
+  const parts = [`${subagent.role} subagent`, `${String(subagent.turnCount)} turns`];
+  const currentTool = subagent.activeTools.at(-1)?.toolName;
+  if (currentTool) {
+    parts.push(currentTool);
+  }
+  return parts.join(" | ");
 }
 
 function teammateProgress(teammate: TeammateUIState): string {
-  const currentTool = teammate.progress.activeTools.at(-1)?.toolName ?? teammate.status;
-  return `@${teammate.name} | ${currentTool} | ${String(teammate.progress.turnCount)} turns | ${formatTokens(teammate.progress.tokenCount)} tokens`;
+  const parts = [`@${teammate.name}`];
+  const currentTool = teammate.progress.activeTools.at(-1)?.toolName;
+  if (currentTool) {
+    parts.push(currentTool);
+  }
+  parts.push(
+    `${String(teammate.progress.turnCount)} turns`,
+    `${formatTokens(teammate.progress.tokenCount)} tokens`,
+  );
+  return parts.join(" | ");
 }
 
-function progressForTool(
+function teammateStatus(status: TeammateUIState["status"]): ToolCardStatus {
+  return status === "idle" ? "completed" : status;
+}
+
+function backgroundTaskStatus(status: AgentTask["status"]): ToolCardStatus {
+  return status === "cancelled" ? "stopped" : status;
+}
+
+function decorateTool(
   tool: ToolBlockInfo,
   subagents: Map<string, SubagentProgress>,
+  backgroundTasks: Map<string, AgentTask>,
   teammates: Map<string, TeammateUIState>,
-): string | undefined {
+): ToolBlockInfo {
   if (tool.toolName !== "Agent") {
-    return undefined;
+    return tool;
   }
 
   const teammate = teammates.get(tool.toolId);
   if (teammate) {
-    return teammateProgress(teammate);
+    const status = teammateStatus(teammate.status);
+    return {
+      ...tool,
+      progress: teammateProgress(teammate),
+      status,
+      loading: status === "running",
+      isError: status === "failed" || status === "stopped",
+    };
   }
 
   const subagent = subagents.get(tool.toolId);
   if (subagent) {
-    return subagentProgress(subagent);
+    return {
+      ...tool,
+      output: subagent.output ?? tool.output,
+      progress: subagentProgress(subagent),
+      status: subagent.status,
+      loading: subagent.status === "running",
+      isError: subagent.status === "failed" || subagent.status === "stopped",
+    };
   }
 
-  if (strArg(tool.args, "team_name")) {
-    return "waiting | 0 turns | 0 tokens";
+  const backgroundTask = backgroundTasks.get(tool.toolId);
+  if (backgroundTask) {
+    const status = backgroundTaskStatus(backgroundTask.status);
+    return {
+      ...tool,
+      output: backgroundTask.output || tool.output,
+      progress: `${backgroundTask.name} subagent`,
+      status,
+      loading: status === "running",
+      isError: status === "failed" || status === "stopped",
+    };
   }
 
+  const teamName = strArg(tool.args, "team_name");
+  const background = tool.args.run_in_background === true;
   const role = strArg(tool.args, "subagent_type") || "general-purpose";
-  return `${role} subagent | 0 turns | waiting`;
+  return {
+    ...tool,
+    progress: teamName ? "0 turns | 0 tokens" : `${role} subagent | 0 turns`,
+    ...(teamName || background ? { status: "running", loading: true } : {}),
+  };
 }
 
-export function AgentToolProgress({ tools, subagents, teammates, expanded }: Props) {
+export function AgentToolProgress({
+  tools,
+  subagents,
+  backgroundTasks,
+  teammates,
+  expanded,
+}: Props) {
   const subagentsByTool = new Map(subagents.map((subagent) => [subagent.toolCallId, subagent]));
+  const backgroundTasksByTool = new Map(
+    backgroundTasks.flatMap((task) =>
+      task.originToolCallId ? [[task.originToolCallId, task]] : [],
+    ),
+  );
   const teammatesByTool = new Map(
     teammates.flatMap((teammate) =>
       teammate.originToolCallId ? [[teammate.originToolCallId, teammate]] : [],
@@ -70,7 +136,7 @@ export function AgentToolProgress({ tools, subagents, teammates, expanded }: Pro
       {tools.map((tool) => (
         <ToolBlock
           key={tool.toolId}
-          tool={{ ...tool, progress: progressForTool(tool, subagentsByTool, teammatesByTool) }}
+          tool={decorateTool(tool, subagentsByTool, backgroundTasksByTool, teammatesByTool)}
           expanded={expanded}
         />
       ))}

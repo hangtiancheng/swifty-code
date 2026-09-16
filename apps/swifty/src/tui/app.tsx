@@ -102,6 +102,11 @@ import type { SkillHost, SkillForkHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import { spawnSubagent, type SubagentProgressEvent } from "@/subagent/spawn.js";
+import {
+  TaskManager,
+  formatAgentTaskNotification,
+  type AgentTask,
+} from "@/subagent/task-manager.js";
 import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
 import { TaskStopTool } from "@/teams/task-stop.js";
 import type { RunAgent } from "@/teams/team.js";
@@ -183,7 +188,7 @@ export function App({
     streamingThinking,
     streamingTextRef,
     activeTools,
-    teammateTools,
+    persistentAgentTools,
     inputTokens,
     outputTokens,
   } = output;
@@ -327,6 +332,7 @@ export function App({
     activateSkill: (name, body) => activeSkillsRef.current.set(name, body),
   });
   const teamManagerRef = useRef(new TeamManager(workDir));
+  const backgroundTaskManagerRef = useRef(new TaskManager());
   const fileHistoryRef = useRef<FileHistory | null>(null);
   const fileStateCacheRef = useRef(new FileStateCache());
   const sandboxRef = useRef<Promise<Sandbox | null>>(createSandbox());
@@ -362,10 +368,26 @@ export function App({
   const teammateStates = useTeammateStates(teamManagerRef.current);
   const [teamsDialogOpen, setTeamsDialogOpen] = useState(false);
   const [subagents, setSubagents] = useState<SubagentProgress[]>([]);
+  const [backgroundTasks, setBackgroundTasks] = useState<AgentTask[]>([]);
   const subagentIdRef = useRef(0);
   const { insertInputTextRef, clearInputRef } = useIdeInput(workDir);
 
+  useEffect(() => backgroundTaskManagerRef.current.subscribe(setBackgroundTasks), []);
+
+  const interruptAll = useCallback(() => {
+    abortControllerRef.current?.abort();
+    permissionResolveRef.current?.("deny");
+    permissionResolveRef.current = null;
+    setPermissionRequest(null);
+    askResolveRef.current?.({});
+    askResolveRef.current = null;
+    setAskRequest(null);
+    void backgroundTaskManagerRef.current.stopAll();
+    void teamManagerRef.current.stopAll();
+  }, []);
+
   const requestExit = useCallback(() => {
+    interruptAll();
     const activeToolTime = activeToolBatchStartedAtRef.current
       ? Date.now() - activeToolBatchStartedAtRef.current
       : 0;
@@ -375,12 +397,17 @@ export function App({
       toolTimeMs: interactionStatsRef.current.toolTimeMs + activeToolTime,
     });
     exit();
-  }, [exit, onExitSummary]);
+  }, [exit, interruptAll, onExitSummary]);
 
+  const hasRunningChildren =
+    subagents.some((subagent) => subagent.status === "running") ||
+    backgroundTasks.some((task) => task.status === "running") ||
+    teammateStates.some((teammate) => teammate.status === "running" || teammate.status === "idle");
   const { termWidth, toolsExpanded, ctrlCHint } = useTerminalControls({
     isStreaming,
-    abortControllerRef,
+    hasRunningWork: isStreaming || isCompacting || hasRunningChildren,
     clearInputRef,
+    onInterrupt: interruptAll,
     onExit: requestExit,
     teamsDialogOpen,
     onToggleTeams: () => {
@@ -653,7 +680,9 @@ export function App({
         registryRef.current.register(new SendMessageTool(teamManagerRef.current));
         registryRef.current.register(new ListTeamsTool(teamManagerRef.current));
         registryRef.current.register(new TeamDeleteTool(teamManagerRef.current));
-        registryRef.current.register(new TaskStopTool(teamManagerRef.current));
+        registryRef.current.register(
+          new TaskStopTool(teamManagerRef.current, backgroundTaskManagerRef.current),
+        );
         registryRef.current.register(new SyntheticOutputTool());
 
         // Load user-defined slash commands from .swifty/commands/*.md.
@@ -691,10 +720,12 @@ export function App({
               ...prev.filter((subagent) => subagent.toolCallId !== toolCallId),
               {
                 toolCallId,
+                ...(context?.backgroundTaskId ? { taskId: context.backgroundTaskId } : {}),
                 role: def.name,
                 turnCount: 0,
                 activeTools: [],
                 status: "running",
+                background,
               },
             ]);
             const onEvent = (event: SubagentProgressEvent) => {
@@ -749,6 +780,7 @@ export function App({
                         ...subagent,
                         activeTools: [],
                         status: context?.abortSignal?.aborted ? "stopped" : "completed",
+                        output: result,
                       }
                     : subagent,
                 ),
@@ -758,7 +790,12 @@ export function App({
               setSubagents((prev) =>
                 prev.map((subagent) =>
                   subagent.toolCallId === toolCallId
-                    ? { ...subagent, activeTools: [], status: "failed" }
+                    ? {
+                        ...subagent,
+                        activeTools: [],
+                        status: "failed",
+                        output: `Agent error: ${asErrorString(error)}`,
+                      }
                     : subagent,
                 ),
               );
@@ -784,6 +821,7 @@ export function App({
                 onPermissionRequest: context?.onPermissionRequest,
               },
             ),
+          backgroundTaskManagerRef.current,
         );
         agentTool.forkDisabled = forkDisabled ?? false;
         // Wire the team manager into AgentTool to enable the team_name teammate path (teammates receive shared task-board tools)
@@ -985,6 +1023,12 @@ export function App({
           break;
         }
         case "clear": {
+          await Promise.all([
+            backgroundTaskManagerRef.current.stopAll(),
+            teamManagerRef.current.stopAll(),
+          ]);
+          backgroundTaskManagerRef.current.clear();
+          setSubagents([]);
           // Clear messages and start a fresh conversation. Reset in place —
           // AgentTool captures the manager for its fork path, so swapping the
           // instance would leave it pointing at the discarded history.
@@ -1078,7 +1122,7 @@ export function App({
               { role: "system", content: "✓ Plan approved — executing." },
             ]);
             setIsStreaming(true);
-            setSubagents([]);
+            setSubagents((current) => current.filter((subagent) => subagent.background));
             output.prepareTurn();
             await runAgentLoopWithStats("default")
               .then(() => {
@@ -1451,7 +1495,7 @@ export function App({
           timestamp: Math.floor(Date.now() / 1000),
         });
         setIsStreaming(true);
-        setSubagents([]);
+        setSubagents((current) => current.filter((subagent) => subagent.background));
         output.prepareTurn();
         await runAgentLoopWithStats()
           .then(() => {
@@ -1619,8 +1663,11 @@ export function App({
         toolFilterRef.current,
       ),
       coordinatorActiveFn: () => coordinatorActive(enableCoordinatorMode ?? false),
-      // Surface teammate results (from team lead mailboxes) as reminders.
-      notificationFn: () => teamManagerRef.current.drainLeads(),
+      // Surface teammate and background Agent results as reminders.
+      notificationFn: () => [
+        ...teamManagerRef.current.drainLeads(),
+        ...backgroundTaskManagerRef.current.drainNotifications().map(formatAgentTaskNotification),
+      ],
       onLoopComplete: (conv) => {
         const client = clientRef.current;
         if (!client || memExtractingRef.current) {
@@ -1752,7 +1799,7 @@ export function App({
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsStreaming(true);
-    setSubagents([]);
+    setSubagents((current) => current.filter((subagent) => subagent.background));
     output.prepareTurn();
     setError(null);
 
@@ -2043,8 +2090,9 @@ export function App({
 
         <AgentActivity
           tools={activeTools}
-          teammateTools={teammateTools}
+          persistentAgentTools={persistentAgentTools}
           subagents={subagents}
+          backgroundTasks={backgroundTasks}
           teammates={teammateStates}
           isAsking={askRequest !== null}
           expanded={toolsExpanded}
@@ -2221,8 +2269,8 @@ export function App({
           insertTextRef: insertInputTextRef,
           clearRef: clearInputRef,
           onEscape: () => {
-            if (isStreaming || isCompacting) {
-              abortControllerRef.current?.abort();
+            if (isStreaming || isCompacting || hasRunningChildren) {
+              interruptAll();
             }
           },
         }}

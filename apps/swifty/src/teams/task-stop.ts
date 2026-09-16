@@ -22,27 +22,21 @@
 
 import type { TeamManager } from "./team.js";
 
+import type { TaskManager } from "@/subagent/task-manager.js";
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
 import { strArg } from "@/utils/utils.js";
 
-/**
- * Abort a running teammate.
- * Use this to cut losses early when the Coordinator dispatched in the wrong direction,
- * rather than waiting for the teammate to finish misguided work.
- *
- * Wired to TeamManager instead of the background task table: in coordinator mode the Lead
- * dispatches teammates whose cancel handles are held by the Team — they don't appear in
- * the background task table.
- */
+/** Abort a running teammate or one-shot background Agent task. */
 export class TaskStopTool implements Tool {
   name = "TaskStop";
   description =
-    "Stop a running teammate. Pass the teammate name as it appears in the from= field of a team-notification. " +
-    "Use this when you sent a teammate in the wrong direction — for example when the user " +
-    "changes requirements after you launched it.";
+    "Stop a running teammate or background Agent task. Pass exactly one of teammate or task_id.";
   category: ToolCategory = "command";
 
-  constructor(private teamManager: TeamManager) {}
+  constructor(
+    private teamManager: TeamManager,
+    private taskManager?: TaskManager,
+  ) {}
 
   schema(): ToolSchema {
     return {
@@ -56,16 +50,35 @@ export class TaskStopTool implements Tool {
             description:
               "Name of the teammate to stop, exactly as it appears in the from= field of a team-notification",
           },
+          task_id: {
+            type: "string",
+            description: "ID of a background Agent task",
+          },
         },
-        required: ["teammate"],
       },
     };
   }
 
   async execute(_ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
     const name = strArg(args, "teammate", "");
-    if (!name) {
-      return { output: "Error: teammate is required", isError: true };
+    const taskId = strArg(args, "task_id", "");
+    if ((!name && !taskId) || (name && taskId)) {
+      return { output: "Error: pass exactly one of teammate or task_id", isError: true };
+    }
+
+    if (taskId) {
+      const task = this.taskManager?.get(taskId);
+      if (!task) {
+        return { output: `Error: background task '${taskId}' not found`, isError: true };
+      }
+      if (task.status !== "running") {
+        return {
+          output: `Background task '${taskId}' is ${task.status}, nothing to stop`,
+          isError: false,
+        };
+      }
+      await this.taskManager?.stopAndWait(taskId);
+      return { output: `Background task '${taskId}' stopped.`, isError: false };
     }
 
     // Teammate names may collide across teams; only stop within the team that actually has this member to avoid killing a namesake

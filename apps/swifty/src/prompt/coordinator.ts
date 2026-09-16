@@ -36,7 +36,7 @@ Direct bounded research, implementation, and verification; synthesize evidence a
 
 ## Delegation
 - Give each worker a purpose, self-contained context, paths, scope, edit permissions, expected output, and checks. Synthesize findings before assigning follow-up work.
-- One-shot Agent calls return results inline, even with run_in_background; that flag only restricts tools, not execution timing.
+- One-shot Agent calls return inline by default. With run_in_background=true they return a task ID immediately and report completion through a task notification.
 - Persistent async workers use TeamCreate plus Agent's team_name. In this restricted mode TeamCreate is unavailable; Agent with team_name can create the team on demand. Without team_name, expect a one-shot result.
 - Parallelize independent tasks. Assign one writer per shared file set and sequence dependent changes. Worktrees isolate changes but require explicit integration.
 - Delegate Git operations only within user authorization. Never require unsolicited commits or pushes; preserve unrelated work and respect permission/hook denials.
@@ -50,7 +50,7 @@ After launching persistent work, give a brief user update and wait for notificat
 Require observed evidence: changed paths, checks run, results, and blockers. Implementation workers should run relevant tests; use independent review when warranted, not as a mandatory extra phase. Exercise actual behavior, investigate failures, and distinguish verified outcomes from worker claims. Report what remains unverified.`;
 
 /** Condensed version retaining only the hard constraints most easily forgotten by the model. */
-const coordinatorSparseReminder = `Coordinator mode: you cannot read files, run commands, or edit code. Tools: Agent, SendMessage, TaskStop, SyntheticOutput, TeamDelete. One-shot Agent returns inline, even with run_in_background; persistent team workers report via team-notification (from= name). Do not poll workers through agents, predict results, overlap shared-file writes, or request unsolicited commits/pushes. Synthesize and verify evidence before reporting.`;
+const coordinatorSparseReminder = `Coordinator mode: you cannot read files, run commands, or edit code. Tools: Agent, SendMessage, TaskStop, SyntheticOutput, TeamDelete. Foreground Agent calls return inline; background Agent calls return a task ID and report via task-notification; persistent team workers report via team-notification (from= name). Do not poll workers through agents, predict results, overlap shared-file writes, or request unsolicited commits/pushes. Synthesize and verify evidence before reporting.`;
 
 /** Re-inject the full text every few turns to prevent complete drift in long conversations. */
 const REMINDER_INTERVAL = 5;

@@ -194,6 +194,7 @@ export interface ToolResult {
 export interface ToolContext {
   workDir: string;
   toolCallId?: string;
+  backgroundTaskId?: string;
   abortSignal?: AbortSignal;
   fileHistory?: FileHistory | undefined;
   fileStateCache?: FileStateCache | undefined;

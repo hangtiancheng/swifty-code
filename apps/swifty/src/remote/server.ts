@@ -87,6 +87,7 @@ import type { SkillForkHost, SkillHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import { spawnSubagent } from "@/subagent/spawn.js";
+import { TaskManager, formatAgentTaskNotification } from "@/subagent/task-manager.js";
 import { filterToolsForAgent } from "@/subagent/tool-filter.js";
 import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
 import { TaskStopTool } from "@/teams/task-stop.js";
@@ -204,6 +205,7 @@ export interface RemoteAgentHandle {
   hookEngine: HookEngine | null;
   recoveryState: RecoveryState;
   teamManager: TeamManager;
+  backgroundTaskManager: TaskManager;
   enableCoordinatorMode: boolean;
   forkDisabled: boolean;
   memoryManager: MemoryManager;
@@ -237,6 +239,7 @@ class AgentHandleImpl implements RemoteAgentHandle {
   hookEngine: HookEngine | null;
   recoveryState: RecoveryState;
   teamManager: TeamManager;
+  backgroundTaskManager: TaskManager;
   enableCoordinatorMode: boolean;
   forkDisabled: boolean;
   memoryManager: MemoryManager;
@@ -269,6 +272,7 @@ class AgentHandleImpl implements RemoteAgentHandle {
     this.hookEngine = agentHandleImpl.hookEngine;
     this.recoveryState = agentHandleImpl.recoveryState;
     this.teamManager = agentHandleImpl.teamManager;
+    this.backgroundTaskManager = agentHandleImpl.backgroundTaskManager;
     this.enableCoordinatorMode = agentHandleImpl.enableCoordinatorMode;
     this.forkDisabled = agentHandleImpl.forkDisabled;
     this.memoryManager = agentHandleImpl.memoryManager;
@@ -328,7 +332,10 @@ class AgentHandleImpl implements RemoteAgentHandle {
             : "";
           return section && !this.conv.hasReminderContaining(section) ? section : "";
         },
-        notificationFn: () => this.teamManager.drainLeads(),
+        notificationFn: () => [
+          ...this.teamManager.drainLeads(),
+          ...this.backgroundTaskManager.drainNotifications().map(formatAgentTaskNotification),
+        ],
         onPermissionRequest: callbacks.onPermissionRequest,
         onLoopComplete: (conv) => {
           // Best-effort memory extraction (fire-and-forget)
@@ -363,6 +370,8 @@ class AgentHandleImpl implements RemoteAgentHandle {
 
   abort(): void {
     this.abortController?.abort();
+    void this.backgroundTaskManager.stopAll();
+    void this.teamManager.stopAll();
   }
 }
 
@@ -517,10 +526,11 @@ export async function createRemoteAgent(
       );
   // 14. Register Team tools
   const teamManager = new TeamManager(workDir);
+  const backgroundTaskManager = new TaskManager();
   registry.register(new TeamCreateTool(teamManager));
   registry.register(new SendMessageTool(teamManager));
   registry.register(new TeamDeleteTool(teamManager));
-  registry.register(new TaskStopTool(teamManager));
+  registry.register(new TaskStopTool(teamManager, backgroundTaskManager));
   registry.register(new SyntheticOutputTool());
 
   // 15. Register AgentTool (with both spawn and fork paths)
@@ -595,6 +605,7 @@ export async function createRemoteAgent(
       }
       return output || "[No output]";
     },
+    backgroundTaskManager,
   );
   // Wire the team manager into AgentTool so the team_name teammate path takes effect (teammates receive shared team task-board tools)
   agentTool.forkDisabled = forkDisabled ?? false;
@@ -658,6 +669,7 @@ export async function createRemoteAgent(
     hookEngine,
     recoveryState: new RecoveryState(),
     teamManager,
+    backgroundTaskManager,
     forkDisabled,
     enableCoordinatorMode,
     memoryManager,

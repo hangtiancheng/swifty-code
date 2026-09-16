@@ -79,7 +79,7 @@ export function usingToolsSection(): Section {
 - ReadFile offsets are 0-based; displayed lines are 1-based. Read before editing or overwriting existing files; stale file-state errors require a fresh read and revised edit. Exclude display line numbers from edits.
 - Narrow searches; follow truncation/readback instructions rather than treating partial output as exhaustive. Parallelize independent reads or disjoint tasks, not dependent operations or writes to shared files.
 - Use available task tools for complex work, not trivial requests. Delegate bounded work with Agent only when useful, supplying scope, paths, edit permissions, and expected evidence. Forks inherit a snapshot; other subagents need self-contained context.
-- One-shot Agent results return inline, even with run_in_background (a tool restriction, not async execution). Persistent async teammates require TeamCreate and Agent team_name, with SendMessage for follow-ups. Worktrees isolate changes but do not merge them.
+- One-shot Agent results return inline by default. With run_in_background=true, Agent returns a task ID immediately and reports completion through a task notification. Persistent teammates require TeamCreate and Agent team_name, with SendMessage for follow-ups. Worktrees isolate changes but do not merge them.
 - Load relevant skills before using their procedures; respect execution mode and resolve resources relative to the skill directory.
 - Discover deferred tools with ToolSearch (query "select:<exact-tool-name>"). Follow returned instructions: dispatch-mode MCP tools use McpCall with the target arguments; other modes expose callable tools directly.`,
   };

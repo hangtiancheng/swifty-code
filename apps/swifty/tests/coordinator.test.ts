@@ -27,6 +27,7 @@ import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import { coordinatorReminder } from "@/prompt/coordinator.js";
+import { TaskManager } from "@/subagent/task-manager.js";
 import {
   isCoordinatorTool,
   coordinatorToolFilter,
@@ -141,6 +142,31 @@ describe("TaskStop", () => {
     expect(res.isError).toBe(false);
     expect(cancelled).toBe(true);
     expect(member.active).toBe(false);
+  });
+
+  it("stops a background Agent by task ID", async () => {
+    const mgr = new TeamManager(workDir());
+    const tasks = new TaskManager();
+    let resolveTask!: (output: string) => void;
+    let cancelled = false;
+    const task = tasks.create(
+      "review",
+      () =>
+        new Promise<string>((resolve) => {
+          resolveTask = resolve;
+        }),
+      () => {
+        cancelled = true;
+        resolveTask("stopped");
+      },
+    );
+    await Promise.resolve();
+
+    const res = await new TaskStopTool(mgr, tasks).execute(ctx, { task_id: task.id });
+
+    expect(res.isError).toBe(false);
+    expect(cancelled).toBe(true);
+    expect(task.status).toBe("cancelled");
   });
 
   it("errors on an unknown teammate", async () => {

@@ -12,6 +12,7 @@ import { OpenAIClient } from "@/llm/openai.js";
 import { buildSubagentInstructions, buildTeammatePrompt } from "@/prompt/delegation.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { spawnSubagent } from "@/subagent/spawn.js";
+import { TaskManager } from "@/subagent/task-manager.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool } from "@/tools/types.js";
 
@@ -127,6 +128,73 @@ describe("delegated prompt contracts", () => {
       "description",
       "Agent role. Defaults to general-purpose.",
     );
+  });
+
+  it("returns immediately for background Agents and reports completion once", async () => {
+    let finish!: (output: string) => void;
+    const pending = new Promise<string>((resolve) => {
+      finish = resolve;
+    });
+    const manager = new TaskManager();
+    const spawn = vi.fn(() => pending);
+    const directory = workDir();
+    const tool = new AgentTool(directory, new ToolRegistry(), spawn, undefined, undefined, manager);
+
+    const result = await tool.execute(
+      { workDir: directory, toolCallId: "outer-agent" },
+      {
+        description: "inspect",
+        prompt: "inspect files",
+        subagent_type: "explore",
+        run_in_background: true,
+      },
+    );
+
+    expect(result.output).toContain("task_id: agent-1");
+    expect(manager.get("agent-1")?.status).toBe("running");
+    await Promise.resolve();
+    expect(spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "explore" }),
+      "inspect files",
+      true,
+      "",
+      undefined,
+      expect.objectContaining({
+        toolCallId: "outer-agent",
+        backgroundTaskId: "agent-1",
+      }),
+    );
+
+    finish("background result");
+    await manager.waitAll();
+    expect(manager.get("agent-1")?.status).toBe("completed");
+    expect(manager.drainNotifications()).toHaveLength(1);
+    expect(manager.drainNotifications()).toEqual([]);
+  });
+
+  it("keeps cancelled background tasks cancelled after their runner settles", async () => {
+    let finish!: (output: string) => void;
+    let cancelled = false;
+    const manager = new TaskManager();
+    const task = manager.create(
+      "inspect",
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+      () => {
+        cancelled = true;
+      },
+    );
+    await Promise.resolve();
+
+    expect(manager.stop(task.id)).toBe(true);
+    finish("late result");
+    await task.done;
+
+    expect(cancelled).toBe(true);
+    expect(task.status).toBe("cancelled");
+    expect(task.output).toBe("Stopped by user");
   });
 });
 

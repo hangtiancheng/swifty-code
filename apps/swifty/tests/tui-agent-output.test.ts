@@ -188,7 +188,7 @@ describe("agent output hook", () => {
       toolId: "team-agent",
       args: { description: "reviewer", team_name: "squad" },
     });
-    expect(state().output.teammateTools).toEqual([
+    expect(state().output.persistentAgentTools).toEqual([
       expect.objectContaining({ toolId: "team-agent", loading: true }),
     ]);
 
@@ -205,7 +205,7 @@ describe("agent output hook", () => {
     );
 
     expect(state().output.activeTools).toEqual([]);
-    expect(state().output.teammateTools).toEqual([
+    expect(state().output.persistentAgentTools).toEqual([
       expect.objectContaining({
         toolId: "team-agent",
         output: "Teammate spawned",
@@ -217,7 +217,77 @@ describe("agent output hook", () => {
     act(() => {
       state().output.resetUsage();
     });
-    expect(state().output.teammateTools).toEqual([]);
+    expect(state().output.persistentAgentTools).toEqual([]);
+  });
+
+  it("keeps background Agent cards across parent turns", () => {
+    const send = startLoop();
+    send(
+      {
+        type: "tool_use",
+        toolName: "Agent",
+        toolId: "background-agent",
+        args: {
+          description: "background review",
+          subagent_type: "explore",
+          run_in_background: true,
+        },
+      },
+      {
+        type: "tool_result",
+        toolName: "Agent",
+        toolId: "background-agent",
+        output: "Background agent started",
+        isError: false,
+        elapsed: 0.1,
+      },
+      { type: "turn_complete" },
+    );
+
+    expect(state().output.persistentAgentTools).toEqual([
+      expect.objectContaining({ toolId: "background-agent", loading: false }),
+    ]);
+    expect(state().messages.flatMap((message) => message.toolSummary ?? [])).toEqual([]);
+  });
+
+  it("removes every persistent card for a deleted team", () => {
+    const send = startLoop();
+    for (const [toolId, teamName] of [
+      ["a-1", "alpha"],
+      ["a-2", "alpha"],
+      ["b-1", "beta"],
+    ]) {
+      send(
+        {
+          type: "tool_use",
+          toolName: "Agent",
+          toolId,
+          args: { description: toolId, team_name: teamName },
+        },
+        {
+          type: "tool_result",
+          toolName: "Agent",
+          toolId,
+          output: "Teammate spawned",
+          isError: false,
+          elapsed: 0.1,
+        },
+      );
+    }
+
+    send(
+      { type: "tool_use", toolName: "TeamDelete", toolId: "delete", args: { name: "alpha" } },
+      {
+        type: "tool_result",
+        toolName: "TeamDelete",
+        toolId: "delete",
+        output: "Team deleted",
+        isError: false,
+        elapsed: 0.1,
+      },
+    );
+
+    expect(state().output.persistentAgentTools.map((tool) => tool.toolId)).toEqual(["b-1"]);
   });
 
   it("keeps retry, compaction, and token accounting without dropping pending text", () => {

@@ -170,9 +170,10 @@ describe("plan and coordinator contracts", () => {
     expect(coordinatorReminder(6)).toBe(full);
     expect(coordinatorReminder(11)).toBe(full);
     for (const text of [
-      "return results inline",
-      "run_in_background",
-      "only restricts tools",
+      "return inline by default",
+      "run_in_background=true",
+      "task ID immediately",
+      "task notification",
       "TeamCreate",
       "team_name",
       "create the team on demand",
@@ -192,7 +193,8 @@ describe("plan and coordinator contracts", () => {
     for (const turn of [2, 3, 4, 5]) {
       const sparse = coordinatorReminder(turn);
       expect(sparse.length).toBeLessThan(full.length);
-      expect(sparse).toContain("returns inline");
+      expect(sparse).toContain("return inline");
+      expect(sparse).toContain("task-notification");
       expect(sparse).toContain("from=");
       expect(sparse).toContain("unsolicited commits/pushes");
     }

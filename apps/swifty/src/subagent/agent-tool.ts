@@ -24,6 +24,7 @@ import { randomBytes } from "node:crypto";
 
 import type { AgentDefinition } from "./definition.js";
 import { loadAgentDefinitions } from "./loader.js";
+import { TaskManager } from "./task-manager.js";
 import { SUBAGENT_DISALLOWED_TOOLS, TEAMMATE_DISALLOWED_TOOLS } from "./tool-filter.js";
 
 import type { ConversationManager } from "@/conversation/conversation.js";
@@ -69,6 +70,7 @@ export class AgentTool implements Tool {
   private definitions: AgentDefinition[];
   private registry: ToolRegistry;
   private conversation?: ConversationManager;
+  private taskManager: TaskManager;
 
   // Identifies the derived context of the current AgentTool instance;
   // re-forking is prohibited when non-empty and equal to FORK_QUERY_SOURCE
@@ -132,6 +134,7 @@ export class AgentTool implements Tool {
       modelOverride?: string,
       context?: ToolContext,
     ) => Promise<string>,
+    taskManager = new TaskManager(),
   ) {
     this.definitions = loadAgentDefinitions(workDir);
     this.workDir = workDir;
@@ -139,6 +142,7 @@ export class AgentTool implements Tool {
     this.spawnHandler = spawnHandler;
     this.conversation = conversation;
     this.forkHandler = forkHandler;
+    this.taskManager = taskManager;
   }
 
   /**
@@ -189,7 +193,7 @@ export class AgentTool implements Tool {
           run_in_background: {
             type: "boolean",
             description:
-              "Apply background-agent tool restrictions. One-shot calls currently wait and return their result inline; use team_name for persistent asynchronous teammates.",
+              "Run this one-shot subagent asynchronously. Returns a task ID immediately and delivers the final result through a task notification.",
             default: false,
           },
           isolation: {
@@ -234,7 +238,7 @@ export class AgentTool implements Tool {
 Available roles (pass a role as subagent_type, not as a tool name):
 ${roles.join("\n")}
 
-One-shot calls return results inline, including run_in_background calls (that flag restricts tools). Use team_name for persistent asynchronous teammates and SendMessage for their follow-up assignments. Do not predict results before receiving them.
+Foreground calls return results inline. With run_in_background=true, the call returns a task ID immediately and the final result arrives through a task notification. Use team_name for persistent teammates and SendMessage for their follow-up assignments. Do not predict results before receiving them.
 
 Launch independent tasks together; avoid concurrent writes to the same files. Review returned evidence and integrate it before reporting completion. Worktree isolation separates edits but does not merge them.`;
   }
@@ -276,6 +280,19 @@ Launch independent tasks together; avoid concurrent writes to the same files. Re
 
     // Fork path: Inherits parent conversation context when subagent_type is not specified
     if (!subagentType) {
+      if (background && this.conversation && this.forkHandler) {
+        const snapshot = this.conversation.fork();
+        return this.startBackground(description, ctx, (backgroundContext) =>
+          this.runFork(
+            prompt,
+            description,
+            modelOverride,
+            backgroundContext,
+            isolation === "worktree",
+            snapshot,
+          ),
+        );
+      }
       return this.runFork(prompt, description, modelOverride, ctx, isolation === "worktree");
     }
 
@@ -307,25 +324,61 @@ ${prompt}`;
       }
     }
 
-    try {
-      const output = await this.spawnHandler(
-        definition,
-        effectivePrompt,
-        background || !!definition.background,
-        modelOverride,
-        workDirOverride,
-        ctx,
-      );
-      return {
-        output: workDirOverride ? `${output}\n\nWorktree retained at: ${workDirOverride}` : output,
-        isError: false,
-      };
-    } catch (err) {
-      return {
-        output: `Agent error: ${asErrorString(err)}${workDirOverride ? `\nWorktree retained at: ${workDirOverride}` : ""}`,
-        isError: true,
-      };
-    }
+    const run = async (runContext: ToolContext): Promise<ToolResult> => {
+      try {
+        const output = await this.spawnHandler(
+          definition,
+          effectivePrompt,
+          background || !!definition.background,
+          modelOverride,
+          workDirOverride,
+          runContext,
+        );
+        return {
+          output: workDirOverride
+            ? `${output}\n\nWorktree retained at: ${workDirOverride}`
+            : output,
+          isError: false,
+        };
+      } catch (err) {
+        return {
+          output: `Agent error: ${asErrorString(err)}${workDirOverride ? `\nWorktree retained at: ${workDirOverride}` : ""}`,
+          isError: true,
+        };
+      }
+    };
+
+    return background ? this.startBackground(description, ctx, run) : run(ctx);
+  }
+
+  private startBackground(
+    description: string,
+    ctx: ToolContext,
+    runner: (context: ToolContext) => Promise<ToolResult>,
+  ): ToolResult {
+    const controller = new AbortController();
+    const task = this.taskManager.create(
+      description,
+      async (backgroundTask) => {
+        const result = await runner({
+          ...ctx,
+          backgroundTaskId: backgroundTask.id,
+          abortSignal: controller.signal,
+        });
+        if (result.isError) {
+          throw new Error(result.output);
+        }
+        return result.output;
+      },
+      () => {
+        controller.abort();
+      },
+      { originToolCallId: ctx.toolCallId },
+    );
+    return {
+      output: `Background agent '${description}' started (task_id: ${task.id}). Its result will arrive as a task notification.`,
+      isError: false,
+    };
   }
 
   /**
@@ -427,8 +480,7 @@ ${prompt}`;
     }
 
     return {
-      output: `Teammate '${memberName}' spawned in team '${teamName}' (mode: ${team.mode})${planModeRequired ? ", starting in plan mode" : ""}.
-        The teammate is now working on the assigned task.`,
+      output: `Teammate '${memberName}' spawned in team '${teamName}' (mode: ${team.mode})${planModeRequired ? ", starting in plan mode" : ""}`,
       isError: false,
     };
   }
@@ -444,6 +496,7 @@ ${prompt}`;
     modelOverride: string,
     ctx: ToolContext,
     isolate: boolean,
+    conversationSnapshot?: ConversationManager,
   ): Promise<ToolResult> {
     if (!this.conversation || !this.forkHandler) {
       return {
@@ -487,7 +540,7 @@ ${prompt}`;
       }
       const { cloneRegistryForFork } = await import("./tool-filter.js");
       const forkedRegistry = cloneRegistryForFork(this.registry);
-      const snapshot = this.conversation.fork();
+      const snapshot = conversationSnapshot ?? this.conversation.fork();
       const output = await this.forkHandler(
         `${FORK_BOILERPLATE}\n\nYour task:\n${prompt}`,
         snapshot,

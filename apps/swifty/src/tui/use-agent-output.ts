@@ -34,7 +34,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
   const [streamingThinking, setStreamingThinking] = useState("");
   const [retryStatus, setRetryStatus] = useState<string | undefined>();
   const [activeTools, setActiveTools] = useState<ToolBlockInfo[]>([]);
-  const [teammateTools, setTeammateTools] = useState<ToolBlockInfo[]>([]);
+  const [persistentAgentTools, setPersistentAgentTools] = useState<ToolBlockInfo[]>([]);
   const [inputTokens, setInputTokens] = useState(0);
   const [outputTokens, setOutputTokens] = useState(0);
   const streamingTextRef = useRef("");
@@ -69,7 +69,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
   const resetUsage = () => {
     setInputTokens(0);
     setOutputTokens(0);
-    setTeammateTools([]);
+    setPersistentAgentTools([]);
   };
 
   const createEventHandler = () => {
@@ -80,7 +80,8 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
     let turnThinkingDuration = 0;
     const turnToolCalls = new Map<string, ToolSummaryItem | undefined>();
     const pendingToolArgs = new Map<string, string>();
-    const teammateToolIds = new Set<string>();
+    const persistentAgentToolIds = new Set<string>();
+    const pendingTeamDeletes = new Map<string, string>();
 
     const resetTurn = () => {
       turnThinkingText = "";
@@ -89,7 +90,8 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
       turnToolCalls.clear();
       setStreamingThinking("");
       pendingToolArgs.clear();
-      teammateToolIds.clear();
+      persistentAgentToolIds.clear();
+      pendingTeamDeletes.clear();
     };
 
     return (event: AgentEvent) => {
@@ -131,15 +133,26 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
           };
           setActiveTools((tools) => [...tools, tool]);
           const teamName = event.args.team_name;
-          if (event.toolName === "Agent" && typeof teamName === "string" && teamName) {
-            teammateToolIds.add(event.toolId);
-            setTeammateTools((tools) => [
+          const background = event.args.run_in_background === true;
+          if (
+            event.toolName === "Agent" &&
+            ((typeof teamName === "string" && teamName) || background)
+          ) {
+            persistentAgentToolIds.add(event.toolId);
+            setPersistentAgentTools((tools) => [
               ...tools.filter((item) => item.toolId !== event.toolId),
               {
                 ...tool,
-                args: { description: event.args.description, team_name: teamName },
+                args: {
+                  description: event.args.description,
+                  ...(typeof teamName === "string" ? { team_name: teamName } : {}),
+                  ...(background ? { run_in_background: true } : {}),
+                },
               },
             ]);
+          }
+          if (event.toolName === "TeamDelete" && typeof event.args.name === "string") {
+            pendingTeamDeletes.set(event.toolId, event.args.name);
           }
           break;
         }
@@ -157,12 +170,21 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
               : tool;
           setActiveTools((tools) => tools.map(completeTool));
 
-          if (teammateToolIds.has(event.toolId) && !event.isError) {
-            setTeammateTools((tools) => tools.map(completeTool));
+          const deletedTeam = pendingTeamDeletes.get(event.toolId);
+          if (deletedTeam && !event.isError) {
+            setPersistentAgentTools((tools) =>
+              tools.filter((tool) => tool.args.team_name !== deletedTeam),
+            );
+          }
+
+          if (persistentAgentToolIds.has(event.toolId) && !event.isError) {
+            setPersistentAgentTools((tools) => tools.map(completeTool));
             turnToolCalls.delete(event.toolId);
           } else {
-            if (teammateToolIds.has(event.toolId)) {
-              setTeammateTools((tools) => tools.filter((tool) => tool.toolId !== event.toolId));
+            if (persistentAgentToolIds.has(event.toolId)) {
+              setPersistentAgentTools((tools) =>
+                tools.filter((tool) => tool.toolId !== event.toolId),
+              );
             }
             turnToolCalls.set(event.toolId, {
               toolName: event.toolName,
@@ -240,7 +262,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
     retryStatus,
     streamingTextRef,
     activeTools,
-    teammateTools,
+    persistentAgentTools,
     inputTokens,
     outputTokens,
     resetUsage,

@@ -198,10 +198,11 @@ describe("print mode delegation", () => {
     expect(call?.[9]?.mode).toBe("bypassPermissions");
     expect(call?.[10]).toMatchObject({
       background: true,
-      abortSignal: signal,
       onPermissionRequest,
       permissionMode: "bypassPermissions",
     });
+    expect(call?.[10]?.abortSignal).not.toBe(signal);
+    expect(call?.[10]?.abortSignal).toBeInstanceOf(AbortSignal);
   });
 
   it("passes member cwd and plan checker, and stops teammates before disconnecting MCP", async () => {

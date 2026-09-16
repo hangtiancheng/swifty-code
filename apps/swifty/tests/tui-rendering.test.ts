@@ -235,6 +235,7 @@ describe("pi Markdown presentation", () => {
 
 describe("shared live and committed tool cards", () => {
   it("keeps every Agent call visible while subagent progress changes", () => {
+    terminal.columns = 80;
     const output = stripVTControlCharacters(
       renderToString(
         createElement(AgentActivity, {
@@ -252,16 +253,27 @@ describe("shared live and committed tool cards", () => {
               loading: true,
             },
           ],
-          teammateTools: [],
+          persistentAgentTools: [],
           subagents: [
+            {
+              toolCallId: "a",
+              role: "explorer",
+              turnCount: 6,
+              activeTools: [],
+              status: "completed",
+              background: false,
+              output: "docs-package",
+            },
             {
               toolCallId: "b",
               role: "explorer",
               turnCount: 3,
               activeTools: [{ toolId: "read", toolName: "ReadFile" }],
               status: "running",
+              background: false,
             },
           ],
+          backgroundTasks: [],
           teammates: [],
           isAsking: false,
           expanded: false,
@@ -269,53 +281,66 @@ describe("shared live and committed tool cards", () => {
         { columns: 40 },
       ),
     );
-    expect(output).toContain("first-task");
-    expect(output).toContain("second-task");
+    expect(output).toContain("Agent first-task  completed");
+    expect(output).toContain("explorer subagent | 6 turns");
+    expect(output).not.toContain("6 turns | completed");
+    expect(output).toContain("Agent second-task  running");
     expect(output).toContain("explorer subagent | 3 turns | ReadFile");
     expect(output).not.toContain("• explorer subagent");
-    expect(output.split("\n").every((line) => visibleWidth(line) <= 40)).toBe(true);
+    expect(output.split("\n").every((line) => visibleWidth(line) <= 80)).toBe(true);
   });
 
-  it("shows teammate tool, turns, and tokens inside its Agent card", () => {
+  it.each([
+    ["running", "running", THEME.toolPendingBg],
+    ["idle", "completed", THEME.toolSuccessBg],
+  ] as const)("maps teammate %s to a %s Agent card", (memberStatus, cardStatus, background) => {
     terminal.columns = 80;
-    const output = stripVTControlCharacters(
-      renderToString(
-        createElement(AgentActivity, {
-          tools: [],
-          teammateTools: [
-            {
-              toolId: "team-agent",
-              toolName: "Agent",
-              args: { description: "reviewer", team_name: "squad" },
-              output: "Teammate spawned",
-              loading: false,
+    chalk.level = 3;
+    const rendered = renderToString(
+      createElement(AgentActivity, {
+        tools: [],
+        persistentAgentTools: [
+          {
+            toolId: "team-agent",
+            toolName: "Agent",
+            args: { description: "reviewer", team_name: "squad" },
+            output: "Teammate spawned",
+            loading: false,
+          },
+        ],
+        subagents: [],
+        backgroundTasks: [],
+        teammates: [
+          {
+            name: "reviewer",
+            teamName: "squad",
+            status: memberStatus,
+            originToolCallId: "team-agent",
+            progress: {
+              toolUseCount: 4,
+              turnCount: 2,
+              tokenCount: 1300,
+              activeTools: memberStatus === "running" ? [{ toolId: "grep", toolName: "Grep" }] : [],
+              recentActivities: [],
             },
-          ],
-          subagents: [],
-          teammates: [
-            {
-              name: "reviewer",
-              teamName: "squad",
-              status: "running",
-              originToolCallId: "team-agent",
-              progress: {
-                toolUseCount: 4,
-                turnCount: 2,
-                tokenCount: 1300,
-                activeTools: [{ toolId: "grep", toolName: "Grep" }],
-                recentActivities: [],
-              },
-              startTime: 0,
-              spinnerVerb: "working",
-            },
-          ],
-          isAsking: false,
-          expanded: false,
-        }),
-        { columns: 50 },
-      ),
+            startTime: 0,
+            spinnerVerb: "working",
+          },
+        ],
+        isAsking: false,
+        expanded: false,
+      }),
+      { columns: 80 },
     );
-    expect(output).toContain("@reviewer | Grep | 2 turns | 1.3k tokens");
+    const output = stripVTControlCharacters(rendered);
+    expect(rendered).toContain(colors.bgHex(background)(" ").split(" ")[0]);
+    expect(output).toContain(`Agent reviewer  ${cardStatus}`);
+    expect(output).toContain(
+      memberStatus === "running"
+        ? "@reviewer | Grep | 2 turns | 1.3k tokens"
+        : "@reviewer | 2 turns | 1.3k tokens",
+    );
+    expect(output).not.toContain(`2 turns | ${memberStatus}`);
     expect(output).not.toContain("team lead");
     expect(output).not.toContain("├─");
   });

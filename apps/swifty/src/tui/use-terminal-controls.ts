@@ -25,8 +25,9 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 interface Options {
   isStreaming: boolean;
-  abortControllerRef: RefObject<AbortController | null>;
+  hasRunningWork: boolean;
   clearInputRef: RefObject<(() => void) | null>;
+  onInterrupt: () => void;
   onExit: () => void;
   teamsDialogOpen: boolean;
   onToggleTeams: () => void;
@@ -34,8 +35,9 @@ interface Options {
 
 export function useTerminalControls({
   isStreaming,
-  abortControllerRef,
+  hasRunningWork,
   clearInputRef,
+  onInterrupt,
   onExit,
   teamsDialogOpen,
   onToggleTeams,
@@ -86,8 +88,8 @@ export function useTerminalControls({
 
   useInput((input, key) => {
     if (key.ctrl && input === "c") {
-      if (isStreaming && abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      if (hasRunningWork) {
+        onInterrupt();
         ctrlCCountRef.current = 0;
         return;
       }

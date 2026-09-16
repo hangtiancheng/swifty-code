@@ -150,7 +150,7 @@ describe("teams orchestration", () => {
           { once: true },
         );
       });
-      throw new Error("Operation aborted");
+      return "[Interrupted]";
     });
 
     const signal = await started;
@@ -161,6 +161,35 @@ describe("teams orchestration", () => {
     expect(team.getMember("scout")?.active).toBe(false);
     expect(team.getMember("scout")?.uiState?.status).toBe("stopped");
     expect(mgr.drainLeads().some((message) => message.includes("reason: stopped"))).toBe(true);
+  });
+
+  it("cancels every teammate before waiting for shutdown", async () => {
+    const team = new TeamManager(workDir()).create("squad");
+    const cancelled: string[] = [];
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const first = team.addMember("first");
+    first.active = true;
+    first.cancel = () => {
+      cancelled.push("first");
+    };
+    first.done = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    const second = team.addMember("second");
+    second.active = true;
+    second.cancel = () => {
+      cancelled.push("second");
+    };
+    second.done = new Promise<void>((resolve) => {
+      finishSecond = resolve;
+    });
+
+    const stopping = team.stopAll();
+    expect(cancelled).toEqual(["first", "second"]);
+    finishFirst();
+    finishSecond();
+    await stopping;
   });
 
   it("coordination tools create, spawn, message, and list", async () => {

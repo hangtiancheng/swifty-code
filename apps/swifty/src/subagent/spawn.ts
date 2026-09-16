@@ -165,9 +165,7 @@ export async function spawnSubagent(
         }
         return output || "[No output]";
       case "error":
-        return output
-          ? `${output}\n\n[Error: ${event.error.message}]`
-          : `Error: ${event.error.message}`;
+        throw event.error;
     }
   }
 

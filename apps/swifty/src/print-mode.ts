@@ -37,6 +37,7 @@ import { buildSystemPrompt, detectEnvironment } from "./prompt/builder.js";
 import { AgentTool } from "./subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "./subagent/definition.js";
 import { spawnSubagent } from "./subagent/spawn.js";
+import { TaskManager, formatAgentTaskNotification } from "./subagent/task-manager.js";
 import { coordinatorToolFilter, coordinatorActive } from "./teams/coordinator.js";
 import { TaskStopTool } from "./teams/task-stop.js";
 import { TeamManager } from "./teams/team.js";
@@ -138,10 +139,11 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
   // Team tools are also available in -p mode, allowing the Lead to assemble a team and delegate
   // tasks within a single non-interactive execution
   const teamManager = new TeamManager(workDir);
+  const backgroundTaskManager = new TaskManager();
   registry.register(new TeamCreateTool(teamManager));
   registry.register(new SendMessageTool(teamManager));
   registry.register(new TeamDeleteTool(teamManager));
-  registry.register(new TaskStopTool(teamManager));
+  registry.register(new TaskStopTool(teamManager, backgroundTaskManager));
   registry.register(new SyntheticOutputTool());
   registry.register(new McpCallTool(registry));
 
@@ -188,6 +190,7 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
           onPermissionRequest: context?.onPermissionRequest,
         },
       ),
+    backgroundTaskManager,
   );
   agentTool.forkDisabled = !forkEnabled(cfg);
   agentTool.setTeamManager(
@@ -243,8 +246,11 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
       contextWindow: getContextWindow(provider),
       maxOutput: getMaxOutputTokens(provider),
       instructions: loadInstructions(workDir),
-      // Teammate completion reports land in the Lead's inbox; drained each turn as a system-reminder delivered to the Lead
-      notificationFn: () => teamManager.drainLeads(),
+      // Completion reports are drained each turn as system reminders delivered to the Lead.
+      notificationFn: () => [
+        ...teamManager.drainLeads(),
+        ...backgroundTaskManager.drainNotifications().map(formatAgentTaskNotification),
+      ],
       toolFilter: coordinatorToolFilter(cfg.enable_coordinator_mode ?? false),
       coordinatorActiveFn: () => coordinatorActive(cfg.enable_coordinator_mode ?? false),
     });
@@ -304,11 +310,21 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
       }
     }
 
+    await backgroundTaskManager.waitAll();
+    const backgroundNotifications = backgroundTaskManager.drainNotifications();
     const durationMs = Date.now() - startTime;
 
     // text mode: ensure trailing newline
     if (args.outputFormat === "text" && resultText && !resultText.endsWith("\n")) {
       process.stdout.write("\n");
+    }
+    for (const task of backgroundNotifications) {
+      const notification = formatAgentTaskNotification(task);
+      if (args.outputFormat === "stream-json") {
+        console.log(JSON.stringify({ type: "task_notification", notification }));
+      } else {
+        process.stdout.write(`${notification}\n`);
+      }
     }
 
     // stream-json mode: emit final summary
@@ -324,9 +340,9 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
       console.log(JSON.stringify(resultLine));
     }
   } finally {
-    // Teammates otherwise keep polling after the single-shot Lead has finished.
-    // Stop them before closing the MCP connections they share with the Lead.
-    await Promise.allSettled(teamManager.list().map((team) => team.stopAll()));
+    // Child agents otherwise outlive the single-shot Lead and shared MCP connections.
+    await backgroundTaskManager.stopAll();
+    await teamManager.stopAll();
     if (mcpManager) {
       try {
         await mcpManager.disconnectAll();
