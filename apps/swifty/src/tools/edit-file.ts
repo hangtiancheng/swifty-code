@@ -158,9 +158,13 @@ export class EditFileTool implements Tool {
         };
       }
 
+      // Function form inserts new_string verbatim: a string replacement
+      // argument would interpret the JS special replacement patterns
+      // (dollar-dollar, dollar-ampersand, dollar-backtick, dollar-quote) in it.
+      const literal = (): string => newString;
       const newContent = replaceAll
-        ? content.replaceAll(oldString, newString)
-        : content.replace(oldString, newString);
+        ? content.replaceAll(oldString, literal)
+        : content.replace(oldString, literal);
 
       try {
         await writeFile(filePath, newContent, "utf-8");

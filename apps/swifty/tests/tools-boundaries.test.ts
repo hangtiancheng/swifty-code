@@ -101,6 +101,36 @@ describe("file tool boundaries", () => {
     expect(readFileSync(path, "utf-8")).toBe("before");
   });
 
+  it("inserts new_string verbatim without expanding JS replacement patterns", async () => {
+    const context = makeContext();
+    const path = join(context.workDir, "dollar.txt");
+    writeFileSync(path, "prefix MATCH suffix");
+    await new ReadFileTool().execute(context, { file_path: path });
+
+    // With a string replacement argument, JS would collapse the double-dollar
+    // to one, expand dollar-ampersand to the match, and dollar-backtick /
+    // dollar-quote to the text before / after the match.
+    const edit = await new EditFileTool().execute(context, {
+      file_path: path,
+      old_string: "MATCH",
+      new_string: "$$! $& $` $'",
+    });
+    expect(edit.isError).toBe(false);
+    expect(readFileSync(path, "utf-8")).toBe("prefix $$! $& $` $' suffix");
+
+    const allPath = join(context.workDir, "dollar-all.txt");
+    writeFileSync(allPath, "a a");
+    await new ReadFileTool().execute(context, { file_path: allPath });
+    const editAll = await new EditFileTool().execute(context, {
+      file_path: allPath,
+      old_string: "a",
+      new_string: "$&$",
+      replace_all: true,
+    });
+    expect(editAll.isError).toBe(false);
+    expect(readFileSync(allPath, "utf-8")).toBe("$&$ $&$");
+  });
+
   it("serializes concurrent edits to the same file", async () => {
     const context = makeContext();
     const path = join(context.workDir, "concurrent.txt");

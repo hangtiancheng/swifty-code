@@ -1,6 +1,6 @@
 {
   "name": "@swifty.js/swifty",
-  "version": "0.0.32",
+  "version": "0.0.33",
   "description": "Swifty is a terminal-based AI coding agent. It provides an interactive TUI (terminal user interface) for conversing with large language models, executing code, manipulating files, and orchestrating multi-agent workflows, all from the command line.",
   "keywords": [
     "agent",
