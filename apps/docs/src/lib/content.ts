@@ -25,7 +25,9 @@ import { icons } from "./icons";
 export const REPO_URL = "https://github.com/hangtiancheng/swifty-code";
 export const NPM_URL = "https://www.npmjs.com/package/@swifty.js/swifty";
 export const DOCS_URL = `${REPO_URL}/blob/main/apps/swifty/README.md`;
-export const VERSION = "v0.0.29";
+export const SITE_URL = "https://hangtiancheng.github.io/swifty-code/";
+// Injected from apps/swifty/package.json at build time (see vite.config.ts).
+export const VERSION = `v${__SWIFTY_VERSION__}`;
 
 export const INSTALL_METHODS = [
   {
@@ -83,7 +85,7 @@ export interface Stat {
 
 export const stats: Stat[] = [
   { value: "3", label: "LLM protocols" },
-  { value: "27", label: "Built-in tools" },
+  { value: "28", label: "Built-in tools" },
   { value: "4", label: "Permission modes" },
   { value: "1M", label: "Context window" },
 ];
@@ -202,6 +204,7 @@ export const tools: ToolItem[] = [
   { name: "EditFile", icon: icons.fileCode, group: "Files" },
   { name: "Bash", icon: icons.terminal, group: "Shell" },
   { name: "PowerShell", icon: icons.terminal, group: "Shell" },
+  { name: "ComputerUse", icon: icons.mousePointerClick, group: "Shell" },
   { name: "Glob", icon: icons.folderTree, group: "Search" },
   { name: "Grep", icon: icons.search, group: "Search" },
   { name: "ToolSearch", icon: icons.search, group: "Search" },
@@ -275,6 +278,7 @@ export const slashCommands = [
   "/compact",
   "/clear",
   "/resume",
+  "/session",
   "/rewind",
   "/memory",
   "/skills",
@@ -404,6 +408,11 @@ export const faqs: Faq[] = [
     question: "What are teammate agents?",
     answer:
       "A lead agent can spawn named teammates that work in parallel, exchanging messages through file mailboxes and isolating risky work in git worktrees. Backends: in-process, tmux or iTerm2.",
+  },
+  {
+    question: "Forks, subagents, teammates — what's the difference?",
+    answer:
+      "A fork (Agent without subagent_type) inherits your entire conversation and keeps nearly the full toolset — it's you, with full context. A defined subagent (explore, plan, general-purpose, or your own Markdown definition) starts fresh with a restricted toolbelt; pass run_in_background=true and it returns a task id immediately, delivering its result as a notification. Teammates are persistent named agents that outlive a single call and coordinate through mailboxes and a shared task board.",
   },
 ];
 

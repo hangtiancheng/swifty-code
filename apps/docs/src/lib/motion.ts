@@ -28,12 +28,25 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
 export const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Whether the visitor asked the OS to reduce motion. JS-driven animations must
+ * consult this (the CSS media query only covers CSS animations): helpers below
+ * collapse to duration 0, and looping/typing animations skip entirely.
+ */
+export function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function animateIn(
   el: HTMLElement,
   keyframes: DOMKeyframesDefinition,
   options?: AnimationOptions,
 ) {
-  return animate(el, keyframes, options);
+  return animate(
+    el,
+    keyframes,
+    prefersReducedMotion() ? { duration: 0 } : options,
+  );
 }
 
 export async function animateOut(
@@ -41,7 +54,11 @@ export async function animateOut(
   keyframes: DOMKeyframesDefinition,
   options?: AnimationOptions,
 ) {
-  await animate(el, keyframes, options).finished;
+  await animate(
+    el,
+    keyframes,
+    prefersReducedMotion() ? { duration: 0 } : options,
+  ).finished;
 }
 
 export function onceInView(
@@ -89,9 +106,14 @@ const revealed = new WeakSet<Element>();
  */
 export function setupReveals(root: ParentNode) {
   const elements = root.querySelectorAll<HTMLElement>("[data-reveal]");
+  const reduced = prefersReducedMotion();
   for (const el of Array.from(elements)) {
     if (revealed.has(el)) continue;
     revealed.add(el);
+    if (reduced) {
+      el.style.opacity = "1";
+      continue;
+    }
     const x = Number(el.dataset.revealX ?? 0);
     const y = Number(el.dataset.revealY ?? 12);
     const delay = Number(el.dataset.revealDelay ?? 0);

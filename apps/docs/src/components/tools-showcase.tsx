@@ -41,7 +41,12 @@ const GROUPS: Array<ToolItem["group"]> = [
 function Marquee({ items, reverse }: { items: string[]; reverse?: boolean }) {
   const doubled = [...items, ...items];
   return (
-    <div className="flex overflow-hidden mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+    // Decorative: every name also appears in the grouped cards below, so skip
+    // the duplicated (and animated) strip for assistive tech.
+    <div
+      aria-hidden="true"
+      className="flex overflow-hidden mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
+    >
       <div
         className={cn(
           "flex w-max shrink-0 items-center gap-3 pr-3",

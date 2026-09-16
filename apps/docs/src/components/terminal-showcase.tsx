@@ -23,6 +23,7 @@
 import { LitElement, customElement, state } from "@swifty.js/lit-jsx";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { cn } from "@/lib/cn";
+import { VERSION } from "@/lib/content";
 import { icon } from "@/lib/icon";
 import { icons } from "@/lib/icons";
 import {
@@ -30,6 +31,7 @@ import {
   animateOut,
   EASE,
   flipTo,
+  prefersReducedMotion,
   setupReveals,
   sleep,
 } from "@/lib/motion";
@@ -198,6 +200,9 @@ export class TerminalShowcaseElement extends LitElement {
 
   private generation = 0;
   private swapping = false;
+  private looping = false;
+  private started = false;
+  private visibility?: IntersectionObserver;
 
   override createRenderRoot() {
     return this;
@@ -206,11 +211,22 @@ export class TerminalShowcaseElement extends LitElement {
   override firstUpdated() {
     this.positionPill();
     setupReveals(this);
-    // First paint already shows a finished session — hold it, then animate.
-    const generation = this.generation;
-    void sleep(3800).then(() => {
-      if (generation === this.generation) this.selectScene(1);
-    });
+    // The scene loop types and auto-advances forever; only run it while the
+    // section is actually on screen. First paint already shows a finished
+    // session, so entering the view (re)starts the loop.
+    this.visibility = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          const first = !this.started;
+          this.started = true;
+          this.startLoop(first);
+        } else {
+          this.stopLoop();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    this.visibility.observe(this);
   }
 
   override updated() {
@@ -222,6 +238,27 @@ export class TerminalShowcaseElement extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.generation++;
+    this.looping = false;
+    this.visibility?.disconnect();
+  }
+
+  private startLoop(first: boolean) {
+    if (this.looping || prefersReducedMotion()) return;
+    this.looping = true;
+    const generation = this.generation;
+    // On first sight hold the finished session briefly, then animate; on
+    // re-entry replay the current scene right away.
+    const hold = first ? 3800 : 400;
+    const next = first ? 1 : this.sceneIndex;
+    void sleep(hold).then(() => {
+      if (generation === this.generation && this.looping)
+        this.selectScene(next);
+    });
+  }
+
+  private stopLoop() {
+    this.looping = false;
+    this.generation++;
   }
 
   private selectScene(index: number) {
@@ -232,6 +269,13 @@ export class TerminalShowcaseElement extends LitElement {
 
   private async runScene(generation: number) {
     const scene = SCENES[this.sceneIndex];
+    if (prefersReducedMotion()) {
+      // No typing, no step-by-step reveal, no autoplay: show the finished
+      // session immediately. Scene dots still switch scenes instantly.
+      this.typing = null;
+      this.visible = scene.steps.map((step) => ({ ...step }));
+      return;
+    }
     this.visible = [];
     this.typing = "";
     await sleep(320);
@@ -401,7 +445,7 @@ export class TerminalShowcaseElement extends LitElement {
               <span className="bg-brand-500/10 inline-flex h-4 items-center rounded px-1.5 text-zinc-500 dark:bg-white/6 dark:text-zinc-400">
                 swifty
               </span>
-              <span>v0.0.29</span>
+              <span>{VERSION}</span>
               <span>·</span>
               <span>model {scene.model}</span>
               <span>·</span>
@@ -649,9 +693,11 @@ export class TerminalShowcaseElement extends LitElement {
                   return (
                     <button
                       data-tab={item.id}
+                      id={`showcase-tab-${item.id}`}
                       type="button"
                       role="tab"
                       aria-selected={selected}
+                      aria-controls="showcase-panel"
                       onClick={() => void this.selectTab(item.id)}
                       className={cn(
                         "relative inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors sm:px-4",
@@ -670,7 +716,12 @@ export class TerminalShowcaseElement extends LitElement {
             </div>
           </div>
 
-          <div data-tab-panel>
+          <div
+            data-tab-panel
+            id="showcase-panel"
+            role="tabpanel"
+            aria-labelledby={`showcase-tab-${this.tab}`}
+          >
             {this.tab === "terminal" ? this.renderTerminalPanel() : null}
             {this.tab === "browser" ? this.renderBrowserPanel() : null}
             {this.tab === "print" ? this.renderPrintPanel() : null}

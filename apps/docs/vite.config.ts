@@ -21,6 +21,7 @@
  */
 
 import tailwindcss from "@tailwindcss/vite";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
@@ -29,9 +30,21 @@ import { defineConfig } from "vite";
 // domain or a root-level user/org page).
 const DEFAULT_BASE = "/swifty-code/";
 
+// The site advertises the CLI's version; read it from the sibling package at
+// config time so it can never go stale.
+const swiftyPackage = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("../swifty/package.json", import.meta.url)),
+    "utf-8",
+  ),
+) as { version: string };
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: process.env.DOCS_BASE ?? (command === "build" ? DEFAULT_BASE : "/"),
+  define: {
+    __SWIFTY_VERSION__: JSON.stringify(swiftyPackage.version),
+  },
   plugins: [tailwindcss()],
 
   resolve: {

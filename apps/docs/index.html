@@ -26,12 +26,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#849a72" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#849a72"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#0a0d09"
+    />
     <title>Swifty — The AI coding agent that lives in your terminal</title>
     <meta
       name="description"
       content="Swifty is a terminal-based AI coding agent. Chat with any LLM, edit files, run commands, and orchestrate multi-agent workflows — all from one CLI."
     />
+    <link rel="canonical" href="https://hangtiancheng.github.io/swifty-code/" />
     <meta
       property="og:title"
       content="Swifty — The AI coding agent that lives in your terminal"
@@ -41,6 +51,49 @@
       content="Multi-provider LLMs, a rich streaming TUI, sandboxed tools, long-term memory and multi-agent teams — in a single CLI."
     />
     <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://hangtiancheng.github.io/swifty-code/"
+    />
+    <meta property="og:site_name" content="Swifty" />
+    <meta property="og:locale" content="en_US" />
+    <meta
+      property="og:image"
+      content="https://hangtiancheng.github.io/swifty-code/og.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Swifty — The AI coding agent that lives in your terminal"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Swifty — The AI coding agent that lives in your terminal"
+    />
+    <meta
+      name="twitter:description"
+      content="Multi-provider LLMs, a rich streaming TUI, sandboxed tools, long-term memory and multi-agent teams — in a single CLI."
+    />
+    <meta
+      name="twitter:image"
+      content="https://hangtiancheng.github.io/swifty-code/og.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Swifty",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": ["macOS", "Linux", "Windows"],
+        "url": "https://github.com/hangtiancheng/swifty-code",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Swifty is a terminal-based AI coding agent. Chat with any LLM, edit files, run commands, and orchestrate multi-agent workflows — all from one CLI."
+      }
+    </script>
     <script>
       (() => {
         try {

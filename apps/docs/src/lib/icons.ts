@@ -44,6 +44,7 @@ import menu from "lucide-static/icons/menu.svg?raw";
 import minus from "lucide-static/icons/minus.svg?raw";
 import monitor from "lucide-static/icons/monitor.svg?raw";
 import moon from "lucide-static/icons/moon.svg?raw";
+import mousePointerClick from "lucide-static/icons/mouse-pointer-click.svg?raw";
 import network from "lucide-static/icons/network.svg?raw";
 import pencilRuler from "lucide-static/icons/pencil-ruler.svg?raw";
 import plug from "lucide-static/icons/plug.svg?raw";
@@ -91,6 +92,7 @@ export const icons = {
   minus,
   monitor,
   moon,
+  mousePointerClick,
   network,
   pencilRuler,
   plug,

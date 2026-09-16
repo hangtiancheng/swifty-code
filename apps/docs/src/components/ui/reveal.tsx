@@ -22,7 +22,7 @@
 
 import { LitElement, customElement, html, property } from "@swifty.js/lit-jsx";
 import { animate } from "motion";
-import { EASE, onceInView } from "@/lib/motion";
+import { EASE, onceInView, prefersReducedMotion } from "@/lib/motion";
 
 @customElement("docs-reveal")
 export class RevealElement extends LitElement {
@@ -33,11 +33,14 @@ export class RevealElement extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    // Reduced motion: stay visible from the start — nothing will animate us in.
+    if (prefersReducedMotion()) return;
     this.style.opacity = "0";
     this.style.transform = `translateY(${this.distance}px)`;
   }
 
   override firstUpdated() {
+    if (prefersReducedMotion()) return;
     this.stopReveal = onceInView(
       this,
       () => {

@@ -22,7 +22,7 @@
 
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { cn } from "@/lib/cn";
-import { INSTALL_METHODS, footerColumns } from "@/lib/content";
+import { INSTALL_METHODS, VERSION, footerColumns } from "@/lib/content";
 import { icon } from "@/lib/icon";
 import { icons } from "@/lib/icons";
 import { container, focusRing, ghostButton, heading, line } from "@/lib/styles";
@@ -143,7 +143,7 @@ export function Footer({
           </p>
           <p className="inline-flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Built for the terminal · v0.0.29
+            Built for the terminal · {VERSION}
           </p>
         </div>
       </div>

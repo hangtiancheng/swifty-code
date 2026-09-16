@@ -48,7 +48,8 @@ docs-faq {
     "Geist Mono", "Menlo", "Cascadia Code", "PingFang SC", "Microsoft YaHei",
     monospace;
   --font-mono:
-    "Geist Mono", "Menlo", "Cascadia Code", "PingFang SC", "Microsoft YaHei";
+    "Geist Mono", "Menlo", "Cascadia Code", "PingFang SC", "Microsoft YaHei",
+    monospace;
 
   --color-brand-50: #f4f7f1;
   --color-brand-100: #e9efe3;
@@ -156,5 +157,19 @@ docs-faq {
     to {
       stroke-dashoffset: -24;
     }
+  }
+}
+
+/* JS-driven animations consult prefers-reduced-motion themselves (see
+   src/lib/motion.ts); this collapses the CSS-driven ones: marquees, drifting
+   glows, blinking carets and spinners. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

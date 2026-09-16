@@ -161,8 +161,10 @@ export class FaqElement extends LitElement {
                   >
                     <button
                       type="button"
+                      id={`faq-q-${index}`}
                       onClick={() => void this.toggle(index)}
                       aria-expanded={isOpen}
+                      aria-controls={`faq-a-${index}`}
                       className={cn(
                         "flex w-full items-center justify-between gap-4 px-5 py-4 text-left",
                         focusRing,
@@ -191,6 +193,9 @@ export class FaqElement extends LitElement {
                     {isOpen ? (
                       <div
                         data-answer={String(index)}
+                        id={`faq-a-${index}`}
+                        role="region"
+                        aria-labelledby={`faq-q-${index}`}
                         className="overflow-hidden opacity-0"
                       >
                         <p

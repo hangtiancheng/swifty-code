@@ -33,7 +33,7 @@ import {
 } from "@/lib/content";
 import { icon } from "@/lib/icon";
 import { icons } from "@/lib/icons";
-import { EASE } from "@/lib/motion";
+import { EASE, prefersReducedMotion } from "@/lib/motion";
 import {
   container,
   focusRing,
@@ -59,6 +59,10 @@ export class HeroElement extends LitElement {
     const items = Array.from(
       this.querySelectorAll<HTMLElement>("[data-stagger]"),
     );
+    if (prefersReducedMotion()) {
+      for (const el of items) el.style.opacity = "1";
+      return;
+    }
     animate(
       items,
       { opacity: [0, 1], y: [24, 0] },

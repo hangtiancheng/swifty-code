@@ -91,7 +91,7 @@ export class AgentsElement extends LitElement {
               One lead, <span className="text-brand-500">a whole team</span>
             </>
           }
-          description="Spawn subagents for parallel work, coordinate them over file mailboxes and keep every risky task inside its own git worktree."
+          description="Fork your own context, fire off background subagents, or coordinate a full team over file mailboxes — with risky work isolated in its own git worktree."
         />
 
         <div
@@ -161,6 +161,56 @@ export class AgentsElement extends LitElement {
                   </code>
                   . Pick the tools, model and permission mode each one gets.
                 </p>
+              </div>
+
+              <div
+                className={cn("rounded-2xl border p-5 dark:bg-white/2", line)}
+              >
+                <div className="flex items-center gap-3">
+                  {unsafeHTML(icon(icons.network, "text-brand-500 h-5 w-5"))}
+                  <h3 className={cn("text-sm font-semibold", heading)}>
+                    Three ways to delegate
+                  </h3>
+                </div>
+                <ul className="mt-3 space-y-2.5">
+                  {[
+                    {
+                      icon: icons.gitBranch,
+                      name: "fork",
+                      detail:
+                        "omit subagent_type — inherits your full conversation",
+                    },
+                    {
+                      icon: icons.inbox,
+                      name: "background",
+                      detail:
+                        "run_in_background=true — results arrive as a task notification",
+                    },
+                    {
+                      icon: icons.users,
+                      name: "team",
+                      detail:
+                        "persistent teammates with mailboxes and a shared task board",
+                    },
+                  ].map((mode) => (
+                    <li className="flex items-start gap-2.5">
+                      <span className="mt-0.5 shrink-0">
+                        {unsafeHTML(
+                          icon(
+                            mode.icon,
+                            "text-brand-500 dark:text-brand-400 h-3.5 w-3.5",
+                          ),
+                        )}
+                      </span>
+                      <span className={cn("text-sm leading-relaxed", muted)}>
+                        <code className="font-mono text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          {mode.name}
+                        </code>{" "}
+                        — {mode.detail}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </docs-reveal>
