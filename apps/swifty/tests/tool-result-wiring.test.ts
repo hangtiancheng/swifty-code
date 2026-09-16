@@ -124,6 +124,42 @@ const spillDirOf = (workDir: string) =>
   join(workDir, ".swifty", "sessions", "wiring", "tool-results");
 
 describe("tool result budget wiring", () => {
+  it("passes each concurrent tool its own call ID", async () => {
+    const workDir = mkdtempSync(join(tmpdir(), "swifty-wire-"));
+    const seen = new Map<string, string | undefined>();
+    const contextTool = (name: string): Tool => ({
+      name,
+      description: "captures context",
+      category: "read",
+      schema: () => ({
+        name,
+        description: "captures context",
+        input_schema: { type: "object", properties: {} },
+      }),
+      execute: (context) => {
+        seen.set(name, context.toolCallId);
+        return Promise.resolve({ output: "done", isError: false });
+      },
+    });
+    const client = new MockClient([
+      [
+        { type: "tool_call_complete", toolId: "call-a", toolName: "ToolA", arguments: {} },
+        { type: "tool_call_complete", toolId: "call-b", toolName: "ToolB", arguments: {} },
+        end("tool_use"),
+      ],
+      [end()],
+    ]);
+
+    await runAgent(client, workDir, [contextTool("ToolA"), contextTool("ToolB")]);
+
+    expect(seen).toEqual(
+      new Map([
+        ["ToolA", "call-a"],
+        ["ToolB", "call-b"],
+      ]),
+    );
+  });
+
   it("spills a single oversized result at ingest", async () => {
     const workDir = mkdtempSync(join(tmpdir(), "swifty-wire-"));
     const client = new MockClient([

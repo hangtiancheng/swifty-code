@@ -36,13 +36,18 @@ import { buildSubagentInstructions } from "@/prompt/delegation.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 
-export type AgentEventSink = (event: {
-  type: string;
-  toolName?: string;
-  args?: Record<string, unknown>;
-  usage?: { inputTokens: number; outputTokens: number };
-  text?: string;
-}) => void;
+export type SubagentProgressEvent =
+  | {
+      type: "tool_use";
+      toolId: string;
+      toolName: string;
+      args: Record<string, unknown>;
+    }
+  | { type: "tool_result"; toolId: string }
+  | { type: "usage"; usage: { inputTokens: number; outputTokens: number } }
+  | { type: "turn_complete" };
+
+export type AgentEventSink = (event: SubagentProgressEvent) => void;
 
 export interface SubagentRunOptions {
   abortSignal?: AbortSignal;
@@ -130,8 +135,15 @@ export async function spawnSubagent(
         onProgress?.({ lastTool: event.toolName });
         onEvent?.({
           type: "tool_use",
+          toolId: event.toolId,
           toolName: event.toolName,
           args: event.args,
+        });
+        break;
+      case "tool_result":
+        onEvent?.({
+          type: "tool_result",
+          toolId: event.toolId,
         });
         break;
       case "usage":
@@ -145,6 +157,7 @@ export async function spawnSubagent(
         break;
       case "turn_complete":
         onProgress?.({ turn: ++turn });
+        onEvent?.({ type: "turn_complete" });
         break;
       case "loop_complete":
         if (event.stopReason === "interrupted") {

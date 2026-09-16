@@ -32,9 +32,17 @@ export const ToolActivitySchema = z.object({
 });
 export type ToolActivity = z.infer<typeof ToolActivitySchema>;
 
+export const ActiveToolSchema = z.object({
+  toolId: z.string(),
+  toolName: z.string(),
+});
+export type ActiveTool = z.infer<typeof ActiveToolSchema>;
+
 export const AgentProgressSchema = z.object({
   toolUseCount: z.number(),
+  turnCount: z.number(),
   tokenCount: z.number(),
+  activeTools: z.array(ActiveToolSchema),
   lastActivity: ToolActivitySchema.optional(),
   recentActivities: z.array(ToolActivitySchema), // circular buffer, max 5
 });
@@ -46,6 +54,7 @@ export const TeammateUIStateSchema = z.object({
   teamName: z.string(),
   status: z.enum(["running", "idle", "completed", "failed", "stopped"]),
   progress: AgentProgressSchema,
+  originToolCallId: z.string().optional(),
   startTime: z.number(),
   spinnerVerb: z.string(),
   lastMessage: z.string().optional(),
@@ -56,7 +65,9 @@ export type TeammateUIState = z.infer<typeof TeammateUIStateSchema>;
 export function createProgress(): AgentProgress {
   return {
     toolUseCount: 0,
+    turnCount: 0,
     tokenCount: 0,
+    activeTools: [],
     lastActivity: undefined,
     recentActivities: [],
   };
@@ -69,11 +80,10 @@ export function recordToolUse(
   input: Record<string, unknown>,
 ): void {
   p.toolUseCount++;
-  const desc = describeToolActivity(toolName, input);
   const activity: ToolActivity = {
     toolName,
     input,
-    activityDescription: desc,
+    activityDescription: describeToolActivity(toolName, input),
   };
   p.lastActivity = activity;
   p.recentActivities.push(activity);
@@ -82,9 +92,32 @@ export function recordToolUse(
   }
 }
 
+export function recordToolStart(
+  p: AgentProgress,
+  toolId: string,
+  toolName: string,
+  input: Record<string, unknown>,
+): void {
+  recordToolUse(p, toolName, input);
+  p.activeTools = [...p.activeTools.filter((tool) => tool.toolId !== toolId), { toolId, toolName }];
+}
+
+export function recordToolResult(p: AgentProgress, toolId: string): void {
+  p.activeTools = p.activeTools.filter((tool) => tool.toolId !== toolId);
+}
+
+export function recordTurnComplete(p: AgentProgress): void {
+  p.turnCount++;
+  p.activeTools = [];
+}
+
+export function clearActiveTools(p: AgentProgress): void {
+  p.activeTools = [];
+}
+
 // Call this on each usage event
 export function recordTokens(p: AgentProgress, inputTokens: number, outputTokens: number): void {
-  p.tokenCount = inputTokens + outputTokens;
+  p.tokenCount += inputTokens + outputTokens;
 }
 
 // Generate human-readable description for a tool use

@@ -270,6 +270,7 @@ Launch independent tasks together; avoid concurrent writes to the same files. Re
         prompt,
         args.plan_mode_required === true,
         isolation === "worktree",
+        ctx.toolCallId,
       );
     }
 
@@ -337,6 +338,7 @@ ${prompt}`;
     prompt: string,
     planModeRequired: boolean,
     worktreeIsolation: boolean,
+    originToolCallId?: string,
   ): Promise<ToolResult> {
     if (!this.teamManager) {
       return {
@@ -411,7 +413,14 @@ ${prompt}`;
     const runAgent = this.teamRunAgentFactory?.(teammateRegistry, checker, memberWorkDir);
 
     if (runAgent) {
-      team.spawnTeammate(memberName, teammatePrompt, runAgent, checker, this.teamProviderBaseUrl);
+      team.spawnTeammate(
+        memberName,
+        teammatePrompt,
+        runAgent,
+        checker,
+        this.teamProviderBaseUrl,
+        originToolCallId,
+      );
       if (worktreeIsolation) {
         team.setMemberMeta(memberName, { worktreePath: memberWorkDir });
       }

@@ -180,6 +180,46 @@ describe("agent output hook", () => {
     });
   });
 
+  it("keeps successful teammate Agent cards dynamic instead of committing them", () => {
+    const send = startLoop();
+    send({
+      type: "tool_use",
+      toolName: "Agent",
+      toolId: "team-agent",
+      args: { description: "reviewer", team_name: "squad" },
+    });
+    expect(state().output.teammateTools).toEqual([
+      expect.objectContaining({ toolId: "team-agent", loading: true }),
+    ]);
+
+    send(
+      {
+        type: "tool_result",
+        toolName: "Agent",
+        toolId: "team-agent",
+        output: "Teammate spawned",
+        isError: false,
+        elapsed: 0.2,
+      },
+      { type: "turn_complete" },
+    );
+
+    expect(state().output.activeTools).toEqual([]);
+    expect(state().output.teammateTools).toEqual([
+      expect.objectContaining({
+        toolId: "team-agent",
+        output: "Teammate spawned",
+        loading: false,
+      }),
+    ]);
+    expect(state().messages.flatMap((message) => message.toolSummary ?? [])).toEqual([]);
+
+    act(() => {
+      state().output.resetUsage();
+    });
+    expect(state().output.teammateTools).toEqual([]);
+  });
+
   it("keeps retry, compaction, and token accounting without dropping pending text", () => {
     const send = startLoop();
     send(

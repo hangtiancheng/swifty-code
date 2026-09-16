@@ -34,6 +34,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
   const [streamingThinking, setStreamingThinking] = useState("");
   const [retryStatus, setRetryStatus] = useState<string | undefined>();
   const [activeTools, setActiveTools] = useState<ToolBlockInfo[]>([]);
+  const [teammateTools, setTeammateTools] = useState<ToolBlockInfo[]>([]);
   const [inputTokens, setInputTokens] = useState(0);
   const [outputTokens, setOutputTokens] = useState(0);
   const streamingTextRef = useRef("");
@@ -68,6 +69,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
   const resetUsage = () => {
     setInputTokens(0);
     setOutputTokens(0);
+    setTeammateTools([]);
   };
 
   const createEventHandler = () => {
@@ -78,6 +80,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
     let turnThinkingDuration = 0;
     const turnToolCalls = new Map<string, ToolSummaryItem | undefined>();
     const pendingToolArgs = new Map<string, string>();
+    const teammateToolIds = new Set<string>();
 
     const resetTurn = () => {
       turnThinkingText = "";
@@ -86,6 +89,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
       turnToolCalls.clear();
       setStreamingThinking("");
       pendingToolArgs.clear();
+      teammateToolIds.clear();
     };
 
     return (event: AgentEvent) => {
@@ -119,39 +123,55 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
         case "tool_use": {
           pendingToolArgs.set(`${event.toolName}:${event.toolId}`, formatToolArgs(event.args));
           turnToolCalls.set(event.toolId, undefined);
-          setActiveTools((tools) => [
-            ...tools,
-            {
-              toolId: event.toolId,
-              toolName: event.toolName,
-              args: event.args,
-              loading: true,
-            },
-          ]);
+          const tool: ToolBlockInfo = {
+            toolId: event.toolId,
+            toolName: event.toolName,
+            args: event.args,
+            loading: true,
+          };
+          setActiveTools((tools) => [...tools, tool]);
+          const teamName = event.args.team_name;
+          if (event.toolName === "Agent" && typeof teamName === "string" && teamName) {
+            teammateToolIds.add(event.toolId);
+            setTeammateTools((tools) => [
+              ...tools.filter((item) => item.toolId !== event.toolId),
+              {
+                ...tool,
+                args: { description: event.args.description, team_name: teamName },
+              },
+            ]);
+          }
           break;
         }
         case "tool_result": {
           const output = toDisplayPreview(event.output);
-          setActiveTools((tools) =>
-            tools.map((tool) =>
-              tool.toolId === event.toolId
-                ? {
-                    ...tool,
-                    output,
-                    isError: event.isError,
-                    elapsed: event.elapsed,
-                    loading: false,
-                  }
-                : tool,
-            ),
-          );
-          turnToolCalls.set(event.toolId, {
-            toolName: event.toolName,
-            argsSummary: pendingToolArgs.get(`${event.toolName}:${event.toolId}`) ?? "",
-            output,
-            isError: event.isError,
-            elapsed: event.elapsed,
-          });
+          const completeTool = (tool: ToolBlockInfo): ToolBlockInfo =>
+            tool.toolId === event.toolId
+              ? {
+                  ...tool,
+                  output,
+                  isError: event.isError,
+                  elapsed: event.elapsed,
+                  loading: false,
+                }
+              : tool;
+          setActiveTools((tools) => tools.map(completeTool));
+
+          if (teammateToolIds.has(event.toolId) && !event.isError) {
+            setTeammateTools((tools) => tools.map(completeTool));
+            turnToolCalls.delete(event.toolId);
+          } else {
+            if (teammateToolIds.has(event.toolId)) {
+              setTeammateTools((tools) => tools.filter((tool) => tool.toolId !== event.toolId));
+            }
+            turnToolCalls.set(event.toolId, {
+              toolName: event.toolName,
+              argsSummary: pendingToolArgs.get(`${event.toolName}:${event.toolId}`) ?? "",
+              output,
+              isError: event.isError,
+              elapsed: event.elapsed,
+            });
+          }
           break;
         }
         case "usage": {
@@ -220,6 +240,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
     retryStatus,
     streamingTextRef,
     activeTools,
+    teammateTools,
     inputTokens,
     outputTokens,
     resetUsage,

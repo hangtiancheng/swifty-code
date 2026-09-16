@@ -101,7 +101,7 @@ import { LoadSkillTool } from "@/skills/load-skill-tool.js";
 import type { SkillHost, SkillForkHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
-import { spawnSubagent } from "@/subagent/spawn.js";
+import { spawnSubagent, type SubagentProgressEvent } from "@/subagent/spawn.js";
 import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
 import { TaskStopTool } from "@/teams/task-stop.js";
 import type { RunAgent } from "@/teams/team.js";
@@ -183,6 +183,7 @@ export function App({
     streamingThinking,
     streamingTextRef,
     activeTools,
+    teammateTools,
     inputTokens,
     outputTokens,
   } = output;
@@ -674,21 +675,62 @@ export function App({
           workDir,
           registryRef.current,
           async (def, prompt, background, modelOverride?, workDirOverride?, context?) => {
-            const id = ++subagentIdRef.current;
-            setSubagents((prev) => [...prev, { id, label: def.name, turn: 0 }]);
-            const onProgress = (p: { turn?: number; lastTool?: string }) => {
-              setSubagents((prev) => prev.map((s) => (s.id === id ? { ...s, ...p } : s)));
+            const toolCallId = context?.toolCallId ?? `subagent-${String(++subagentIdRef.current)}`;
+            const runningTools = new Map<string, string>();
+            const syncRunningTools = () => {
+              const tools = [...runningTools].map(([toolId, toolName]) => ({ toolId, toolName }));
+              setSubagents((prev) =>
+                prev.map((subagent) =>
+                  subagent.toolCallId === toolCallId
+                    ? { ...subagent, activeTools: tools }
+                    : subagent,
+                ),
+              );
+            };
+            setSubagents((prev) => [
+              ...prev.filter((subagent) => subagent.toolCallId !== toolCallId),
+              {
+                toolCallId,
+                role: def.name,
+                turnCount: 0,
+                activeTools: [],
+                status: "running",
+              },
+            ]);
+            const onEvent = (event: SubagentProgressEvent) => {
+              switch (event.type) {
+                case "tool_use":
+                  runningTools.set(event.toolId, event.toolName);
+                  syncRunningTools();
+                  break;
+                case "tool_result":
+                  runningTools.delete(event.toolId);
+                  syncRunningTools();
+                  break;
+                case "turn_complete":
+                  runningTools.clear();
+                  setSubagents((prev) =>
+                    prev.map((subagent) =>
+                      subagent.toolCallId === toolCallId
+                        ? { ...subagent, turnCount: subagent.turnCount + 1, activeTools: [] }
+                        : subagent,
+                    ),
+                  );
+                  break;
+                case "usage":
+                  break;
+              }
             };
             try {
-              return await spawnSubagent(
+              const result = await spawnSubagent(
                 def,
                 prompt,
                 clientRef.current ?? client,
                 registryRef.current,
                 selectedProviderRef.current,
                 workDirOverride ?? workDir,
-                onProgress,
                 undefined,
+                onEvent,
                 modelOverride,
                 workDirOverride
                   ? context?.permissionChecker?.forWorkDir(workDirOverride)
@@ -700,8 +742,27 @@ export function App({
                   permissionMode: context?.permissionChecker?.mode,
                 },
               );
-            } finally {
-              setSubagents((prev) => prev.filter((s) => s.id !== id));
+              setSubagents((prev) =>
+                prev.map((subagent) =>
+                  subagent.toolCallId === toolCallId
+                    ? {
+                        ...subagent,
+                        activeTools: [],
+                        status: context?.abortSignal?.aborted ? "stopped" : "completed",
+                      }
+                    : subagent,
+                ),
+              );
+              return result;
+            } catch (error) {
+              setSubagents((prev) =>
+                prev.map((subagent) =>
+                  subagent.toolCallId === toolCallId
+                    ? { ...subagent, activeTools: [], status: "failed" }
+                    : subagent,
+                ),
+              );
+              throw error;
             }
           },
           conversationRef.current,
@@ -1017,6 +1078,7 @@ export function App({
               { role: "system", content: "✓ Plan approved — executing." },
             ]);
             setIsStreaming(true);
+            setSubagents([]);
             output.prepareTurn();
             await runAgentLoopWithStats("default")
               .then(() => {
@@ -1389,6 +1451,7 @@ export function App({
           timestamp: Math.floor(Date.now() / 1000),
         });
         setIsStreaming(true);
+        setSubagents([]);
         output.prepareTurn();
         await runAgentLoopWithStats()
           .then(() => {
@@ -1689,6 +1752,7 @@ export function App({
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsStreaming(true);
+    setSubagents([]);
     output.prepareTurn();
     setError(null);
 
@@ -1979,12 +2043,11 @@ export function App({
 
         <AgentActivity
           tools={activeTools}
+          teammateTools={teammateTools}
           subagents={subagents}
           teammates={teammateStates}
-          isStreaming={isStreaming}
           isAsking={askRequest !== null}
           expanded={toolsExpanded}
-          leaderTokens={inputTokens + outputTokens}
         />
 
         {error && (

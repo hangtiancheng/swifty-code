@@ -252,20 +252,72 @@ describe("shared live and committed tool cards", () => {
               loading: true,
             },
           ],
-          subagents: [{ id: 2, label: "explorer", turn: 3 }],
+          teammateTools: [],
+          subagents: [
+            {
+              toolCallId: "b",
+              role: "explorer",
+              turnCount: 3,
+              activeTools: [{ toolId: "read", toolName: "ReadFile" }],
+              status: "running",
+            },
+          ],
           teammates: [],
-          isStreaming: true,
           isAsking: false,
           expanded: false,
-          leaderTokens: 0,
         }),
         { columns: 40 },
       ),
     );
     expect(output).toContain("first-task");
     expect(output).toContain("second-task");
-    expect(output).toContain("explorer subagent · turn 3");
+    expect(output).toContain("explorer subagent | 3 turns | ReadFile");
+    expect(output).not.toContain("• explorer subagent");
     expect(output.split("\n").every((line) => visibleWidth(line) <= 40)).toBe(true);
+  });
+
+  it("shows teammate tool, turns, and tokens inside its Agent card", () => {
+    terminal.columns = 80;
+    const output = stripVTControlCharacters(
+      renderToString(
+        createElement(AgentActivity, {
+          tools: [],
+          teammateTools: [
+            {
+              toolId: "team-agent",
+              toolName: "Agent",
+              args: { description: "reviewer", team_name: "squad" },
+              output: "Teammate spawned",
+              loading: false,
+            },
+          ],
+          subagents: [],
+          teammates: [
+            {
+              name: "reviewer",
+              teamName: "squad",
+              status: "running",
+              originToolCallId: "team-agent",
+              progress: {
+                toolUseCount: 4,
+                turnCount: 2,
+                tokenCount: 1300,
+                activeTools: [{ toolId: "grep", toolName: "Grep" }],
+                recentActivities: [],
+              },
+              startTime: 0,
+              spinnerVerb: "working",
+            },
+          ],
+          isAsking: false,
+          expanded: false,
+        }),
+        { columns: 50 },
+      ),
+    );
+    expect(output).toContain("@reviewer | Grep | 2 turns | 1.3k tokens");
+    expect(output).not.toContain("team lead");
+    expect(output).not.toContain("├─");
   });
   it.each(["dark", "light"] as const)(
     "keeps live and saved tool layout identical in %s mode",

@@ -84,7 +84,7 @@ export class StreamingExecutor {
       }
 
       try {
-        const result = await tool.execute(this.ctx, call.arguments);
+        const result = await tool.execute({ ...this.ctx, toolCallId: call.toolId }, call.arguments);
         return {
           toolId: call.toolId,
           toolName: call.toolName,

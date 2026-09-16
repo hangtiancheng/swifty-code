@@ -26,6 +26,13 @@ import { join } from "node:path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
+import {
+  createProgress,
+  recordTokens,
+  recordToolResult,
+  recordToolStart,
+  recordTurnComplete,
+} from "@/teams/progress.js";
 import { TeamManager } from "@/teams/team.js";
 import {
   TeamCreateTool,
@@ -62,12 +69,40 @@ afterEach(() => {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const workDir = () => mkdtempSync(join(tmpdir(), "swifty-team-"));
 
+describe("teammate progress", () => {
+  it("tracks active tools, turns, and cumulative tokens", () => {
+    const progress = createProgress();
+
+    recordToolStart(progress, "read", "ReadFile", { file_path: "a.ts" });
+    recordToolStart(progress, "bash", "Bash", { command: "pwd" });
+    recordTokens(progress, 100, 20);
+    recordTokens(progress, 200, 30);
+
+    expect(progress.activeTools.at(-1)?.toolName).toBe("Bash");
+    expect(progress.tokenCount).toBe(350);
+
+    recordToolResult(progress, "bash");
+    expect(progress.activeTools.at(-1)?.toolName).toBe("ReadFile");
+
+    recordTurnComplete(progress);
+    expect(progress.turnCount).toBe(1);
+    expect(progress.activeTools).toEqual([]);
+  });
+});
+
 describe("teams orchestration", () => {
   it("spawnTeammate runs the task and posts its result to the lead mailbox", async () => {
     const mgr = new TeamManager(workDir());
     const team = mgr.create("squad");
-    // eslint-disable-next-line @typescript-eslint/require-await
-    team.spawnTeammate("scout", "find X", async (task) => `did: ${task}`);
+    team.spawnTeammate(
+      "scout",
+      "find X",
+      (task) => Promise.resolve(`did: ${task}`),
+      undefined,
+      undefined,
+      "agent-tool-call",
+    );
+    expect(team.getMember("scout")?.uiState?.originToolCallId).toBe("agent-tool-call");
 
     await wait(200);
     const drained = mgr.drainLeads();

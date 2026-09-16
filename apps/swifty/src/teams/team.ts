@@ -27,7 +27,14 @@ import { detectBackend, spawnTeammate as spawnTeammateProcess } from "./backend.
 import type { SpawnConfig } from "./backend.js";
 import { FileMailbox, type FileMailMessage } from "./file-mailbox.js";
 import type { TeammateUIState } from "./progress.js";
-import { createProgress, recordToolUse, recordTokens } from "./progress.js";
+import {
+  clearActiveTools,
+  createProgress,
+  recordTokens,
+  recordToolResult,
+  recordToolStart,
+  recordTurnComplete,
+} from "./progress.js";
 import {
   MSG_PLAN_APPROVAL_RESPONSE,
   MSG_SHUTDOWN_REQUEST,
@@ -47,6 +54,7 @@ import { createChildLogger } from "@/logger/logger.js";
 import type { PermissionChecker } from "@/permissions/checker.js";
 import { getOrCreatePlanPath } from "@/plan-file/plan-file.js";
 import { buildTeammatePrompt } from "@/prompt/delegation.js";
+import type { SubagentProgressEvent } from "@/subagent/spawn.js";
 import { asErrorString } from "@/utils/utils.js";
 import { randomVerb } from "@/utils/verbs.js";
 
@@ -55,13 +63,7 @@ export type TeamMode = "in-process" | "tmux" | "iterm";
 
 // Callback that receives agent events during execution. The team layer uses
 // this to update TeammateUIState without depending on the agent/LLM layer.
-export type AgentEventCallback = (event: {
-  type: string;
-  toolName?: string;
-  args?: Record<string, unknown>;
-  usage?: { inputTokens: number; outputTokens: number };
-  text?: string;
-}) => void;
+export type AgentEventCallback = (event: SubagentProgressEvent) => void;
 
 export interface Member {
   name: string;
@@ -207,16 +209,17 @@ export class Team {
     runAgent: RunAgent,
     checker?: PermissionChecker,
     providerBaseUrl?: string,
+    originToolCallId?: string,
   ): void {
     if (this.mode === "in-process") {
-      this.spawnInProcess(name, task, runAgent, checker);
+      this.spawnInProcess(name, task, runAgent, checker, originToolCallId);
       return;
     }
     try {
-      this.spawnExternal(name, task, providerBaseUrl);
+      this.spawnExternal(name, task, providerBaseUrl, originToolCallId);
     } catch {
       // Fall back to in-process mode when the external backend fails to launch (missing dependency / unsupported platform)
-      this.spawnInProcess(name, task, runAgent, checker);
+      this.spawnInProcess(name, task, runAgent, checker, originToolCallId);
     }
   }
 
@@ -226,7 +229,12 @@ export class Team {
    * by `--team-dir`; task assignments from the lead and idle/result notifications from the
    * worker all land in this directory, keeping both sides in sync.
    */
-  private spawnExternal(name: string, task: string, providerBaseUrl?: string): void {
+  private spawnExternal(
+    name: string,
+    task: string,
+    providerBaseUrl?: string,
+    originToolCallId?: string,
+  ): void {
     const member = this.addMember(name);
     member.active = true;
 
@@ -239,6 +247,7 @@ export class Team {
       teamName: this.name,
       status: "running",
       progress: createProgress(),
+      ...(originToolCallId ? { originToolCallId } : {}),
       startTime: Date.now(),
       spinnerVerb: randomVerb(),
     };
@@ -286,6 +295,7 @@ export class Team {
     task: string,
     runAgent: RunAgent,
     checker?: PermissionChecker,
+    originToolCallId?: string,
   ): void {
     const member = this.addMember(name);
     member.active = true;
@@ -304,6 +314,7 @@ export class Team {
       teamName: this.name,
       status: "running",
       progress: createProgress(),
+      ...(originToolCallId ? { originToolCallId } : {}),
       startTime: Date.now(),
       spinnerVerb: randomVerb(),
     };
@@ -313,19 +324,16 @@ export class Team {
     const onEvent: AgentEventCallback = (event) => {
       switch (event.type) {
         case "tool_use":
-          if (event.toolName && event.args) {
-            recordToolUse(uiState.progress, event.toolName, event.args);
-          }
+          recordToolStart(uiState.progress, event.toolId, event.toolName, event.args);
+          break;
+        case "tool_result":
+          recordToolResult(uiState.progress, event.toolId);
           break;
         case "usage":
-          if (event.usage) {
-            recordTokens(uiState.progress, event.usage.inputTokens, event.usage.outputTokens);
-          }
+          recordTokens(uiState.progress, event.usage.inputTokens, event.usage.outputTokens);
           break;
-        case "stream_text":
-          if (event.text) {
-            uiState.lastMessage = event.text;
-          }
+        case "turn_complete":
+          recordTurnComplete(uiState.progress);
           break;
       }
     };
@@ -343,6 +351,7 @@ export class Team {
             onEvent,
             abortController.signal,
           );
+          clearActiveTools(uiState.progress);
           uiState.lastMessage = result.length > 200 ? result.slice(0, 200) + "..." : result;
           // Plan-mode teammate: a completed turn means it called ExitPlanMode and the plan
           // has been written to disk. Submit the plan to the Lead for approval; only after
@@ -397,6 +406,7 @@ export class Team {
         }
       } finally {
         member.active = false;
+        clearActiveTools(uiState.progress);
         if (uiState.status === "running") {
           uiState.status = "idle";
         }

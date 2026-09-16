@@ -35,6 +35,7 @@ export interface ToolBlockInfo {
   toolName: string;
   args: Record<string, unknown>;
   output?: string;
+  progress?: string;
   isError?: boolean;
   elapsed?: number;
   loading?: boolean;
@@ -44,6 +45,7 @@ interface ToolCardProps {
   toolName: string;
   argsSummary: string;
   output?: string;
+  progress?: string;
   isError?: boolean;
   elapsed?: number;
   loading?: boolean;
@@ -54,6 +56,7 @@ export function ToolCard({
   toolName,
   argsSummary,
   output,
+  progress,
   isError,
   elapsed,
   loading,
@@ -91,7 +94,7 @@ export function ToolCard({
           .map((line) => truncateToWidth(line, contentWidth))
           .join("\n")
       : preview;
-  const detail = (
+  const metadataDetail = (
     <Text color={isError && !loading ? THEME.error : THEME.dim}>
       {wrapToLines(metadata, contentWidth).join("\n")}
     </Text>
@@ -111,9 +114,12 @@ export function ToolCard({
           {truncateToWidth(title, titleWidth)}
         </Text>
         {inlineMetadata ? "  " : ""}
-        {inlineMetadata ? detail : null}
+        {inlineMetadata ? metadataDetail : null}
       </Text>
-      {metadata && !inlineMetadata ? detail : null}
+      {metadata && !inlineMetadata ? metadataDetail : null}
+      {progress ? (
+        <Text color={THEME.toolOutput}>{wrapToLines(progress, contentWidth).join("\n")}</Text>
+      ) : null}
       {shown ? (
         isDiffTool(toolName) ? (
           <DiffLines text={shown} />
