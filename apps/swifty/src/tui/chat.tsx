@@ -38,10 +38,9 @@ export interface ToolSummaryItem {
   isError: boolean;
   elapsed: number;
   /**
-   * Explicit card status for committed Agent calls. Foreground subagents are
+   * Explicit card status for committed Agent calls. Subagent runs are
    * committed to history as plain summaries, so without this an interrupted
-   * run would render as a green success card; background cards stay live and
-   * already show "stopped" in red.
+   * run would render as a green success card.
    */
   status?: ToolCardStatus;
   /** Progress line (e.g. "explore subagent | 3 turns"), matching live Agent cards. */

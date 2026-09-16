@@ -220,7 +220,7 @@ describe("agent output hook", () => {
     expect(state().output.persistentAgentTools).toEqual([]);
   });
 
-  it("keeps background Agent cards across parent turns", () => {
+  it("commits background Agent cards to history like plain tool calls", () => {
     const send = startLoop();
     send(
       {
@@ -244,10 +244,17 @@ describe("agent output hook", () => {
       { type: "turn_complete" },
     );
 
-    expect(state().output.persistentAgentTools).toEqual([
-      expect.objectContaining({ toolId: "background-agent", loading: false }),
+    // One-shot background calls must not stay pinned to the bottom: their
+    // card scrolls away with the transcript like any other tool card, and
+    // the result reaches the user as a task notification.
+    expect(state().output.persistentAgentTools).toEqual([]);
+    expect(state().messages.flatMap((message) => message.toolSummary ?? [])).toEqual([
+      expect.objectContaining({
+        toolName: "Agent",
+        output: "Background agent started",
+        isError: false,
+      }),
     ]);
-    expect(state().messages.flatMap((message) => message.toolSummary ?? [])).toEqual([]);
   });
 
   it("commits foreground Agent cards with the resolved subagent status", () => {

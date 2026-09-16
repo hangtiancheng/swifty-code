@@ -31,8 +31,9 @@ import { formatToolArgs } from "@/utils/utils.js";
 
 /**
  * Final decoration for an Agent tool card, resolved by the app when the tool
- * result arrives. Carries the subagent's terminal state so committed
- * foreground cards render like the persistent background cards.
+ * result arrives. Carries the subagent's terminal state so committed cards
+ * keep the run's real outcome (e.g. an interrupted run renders as "stopped"
+ * instead of a green success card).
  */
 export interface AgentCardDecoration {
   status?: ToolCardStatus;
@@ -144,12 +145,11 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
             loading: true,
           };
           setActiveTools((tools) => [...tools, tool]);
+          // Only teammate spawns stay pinned across turns. One-shot background
+          // agents (run_in_background) commit to history like any other tool
+          // call — their result reaches the user as a task notification.
           const teamName = event.args.team_name;
-          const background = event.args.run_in_background === true;
-          if (
-            event.toolName === "Agent" &&
-            ((typeof teamName === "string" && teamName) || background)
-          ) {
+          if (event.toolName === "Agent" && typeof teamName === "string" && teamName) {
             persistentAgentToolIds.add(event.toolId);
             setPersistentAgentTools((tools) => [
               ...tools.filter((item) => item.toolId !== event.toolId),
@@ -157,8 +157,7 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
                 ...tool,
                 args: {
                   description: event.args.description,
-                  ...(typeof teamName === "string" ? { team_name: teamName } : {}),
-                  ...(background ? { run_in_background: true } : {}),
+                  team_name: teamName,
                 },
               },
             ]);

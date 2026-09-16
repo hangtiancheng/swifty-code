@@ -261,7 +261,6 @@ describe("shared live and committed tool cards", () => {
               turnCount: 6,
               activeTools: [],
               status: "completed",
-              background: false,
               output: "docs-package",
             },
             {
@@ -270,7 +269,6 @@ describe("shared live and committed tool cards", () => {
               turnCount: 3,
               activeTools: [{ toolId: "read", toolName: "ReadFile" }],
               status: "running",
-              background: false,
             },
           ],
           backgroundTasks: [],

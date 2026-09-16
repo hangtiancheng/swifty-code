@@ -13,7 +13,6 @@ export interface SubagentProgress {
   turnCount: number;
   activeTools: { toolId: string; toolName: string }[];
   status: "running" | "completed" | "failed" | "stopped";
-  background: boolean;
   output?: string;
 }
 

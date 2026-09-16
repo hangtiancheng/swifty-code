@@ -376,9 +376,9 @@ export function App({
   const subagentIdRef = useRef(0);
   // Terminal card decoration (status + progress line) for Agent calls, keyed by
   // tool call id. Consulted when the tool result is committed to transcript
-  // history so foreground subagent cards render with the same status semantics
-  // as the persistent background cards — interrupted runs show red "stopped"
-  // instead of a green success card whose only hint is an "[Interrupted]" tail.
+  // history so an interrupted run shows red "stopped" instead of a green
+  // success card whose only hint is an "[Interrupted]" tail. Background calls
+  // resolve before their subagent finalizes, so they commit undecorated.
   const subagentCardsRef = useRef(new Map<string, AgentCardDecoration>());
   const { insertInputTextRef, clearInputRef } = useIdeInput(workDir);
 
@@ -712,20 +712,19 @@ export function App({
         // Track a subagent run for the TUI. Maintains the live progress card
         // (SubagentProgress) and records the terminal decoration (status +
         // progress line) consumed when the Agent call is committed to the
-        // transcript, so foreground subagents render with the same status
-        // semantics as the persistent background cards. Shared by the
-        // definition spawn path and the fork path.
+        // transcript, so an interrupted run renders as red "stopped" instead
+        // of a green success card. Shared by the definition spawn path and
+        // the fork path.
         const trackSubagent = async (
           tracking: {
             toolCallId: string;
             role: string;
-            background: boolean;
             taskId?: string;
             abortSignal?: AbortSignal;
           },
           run: (onEvent: AgentEventSink) => Promise<string>,
         ): Promise<string> => {
-          const { toolCallId, role, background, taskId, abortSignal } = tracking;
+          const { toolCallId, role, taskId, abortSignal } = tracking;
           const runningTools = new Map<string, string>();
           let turns = 0;
           const syncRunningTools = () => {
@@ -745,7 +744,6 @@ export function App({
               turnCount: 0,
               activeTools: [],
               status: "running",
-              background,
             },
           ]);
           const finalize = (status: SubagentProgress["status"], output: string) => {
@@ -811,7 +809,6 @@ export function App({
               {
                 toolCallId,
                 role: def.name,
-                background,
                 taskId: context?.backgroundTaskId,
                 abortSignal: context?.abortSignal,
               },
@@ -845,9 +842,6 @@ export function App({
               {
                 toolCallId,
                 role: BUILTIN_AGENTS[0].name,
-                // Forks can run in the background too (run_in_background without
-                // subagent_type); their cards must survive the turn-boundary prune.
-                background: !!context?.backgroundTaskId,
                 taskId: context?.backgroundTaskId,
                 abortSignal: context?.abortSignal,
               },
@@ -1173,7 +1167,7 @@ export function App({
               { role: "system", content: "✓ Plan approved — executing." },
             ]);
             setIsStreaming(true);
-            setSubagents((current) => current.filter((subagent) => subagent.background));
+            setSubagents([]);
             output.prepareTurn();
             await runAgentLoopWithStats("default")
               .then(() => {
@@ -1557,7 +1551,7 @@ export function App({
           timestamp: Math.floor(Date.now() / 1000),
         });
         setIsStreaming(true);
-        setSubagents((current) => current.filter((subagent) => subagent.background));
+        setSubagents([]);
         output.prepareTurn();
         await runAgentLoopWithStats()
           .then(() => {
@@ -1863,7 +1857,7 @@ export function App({
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsStreaming(true);
-    setSubagents((current) => current.filter((subagent) => subagent.background));
+    setSubagents([]);
     output.prepareTurn();
     setError(null);
 
