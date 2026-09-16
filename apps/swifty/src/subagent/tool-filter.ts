@@ -57,12 +57,28 @@ type AllTools =
   | "Grep"
   | "McpCall";
 
-// Global list of tools disallowed for subagents — prevents recursive Agent calls or using main-thread-only tools
-export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
-  "ExitPlanMode",
-  "Agent", // Prevents recursive spawning of subagents
-  "AskUserQuestion",
+// Tools that only work correctly on the main thread: each depends on main-thread
+// UI state or a singleton device, so it is stripped from every delegated agent —
+// both forks (cloneRegistryForFork) and defined subagents (via the spread below).
+//   ComputerUse     — drives the physical screen/mouse/keyboard; delegated agents
+//                     would fight over one device.
+//   AskUserQuestion — prompts through a single modal dialog; a delegated agent
+//                     would hijack it and race parallel siblings (the loser hangs).
+//   ExitPlanMode    — ends the caller's loop and expects the main-thread approval
+//                     dialog, which never fires from a delegated agent.
+export const MAIN_AGENT_ONLY_TOOLS = new Set<AllTools>([
   "ComputerUse",
+  "AskUserQuestion",
+  "ExitPlanMode",
+]);
+
+// Global list of tools disallowed for subagents — MAIN_AGENT_ONLY_TOOLS plus
+// delegation-policy restrictions (recursive Agent spawning, lead-only TaskStop).
+// Forks keep Agent (as a tagged clone) and TaskStop; only MAIN_AGENT_ONLY_TOOLS
+// is stripped from them.
+export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
+  ...MAIN_AGENT_ONLY_TOOLS,
+  "Agent", // Prevents recursive spawning of subagents
   "TaskStop",
 ]);
 
@@ -180,6 +196,10 @@ export function cloneRegistryForFork(registry: ToolRegistry): ToolRegistry {
   const forked = new ToolRegistry();
   forked.mcpLoadingMode = registry.mcpLoadingMode;
   for (const tool of registry.listTools()) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    if ((MAIN_AGENT_ONLY_TOOLS as Set<string>).has(tool.name)) {
+      continue;
+    }
     if (tool.name === "Agent" && "querySource" in tool) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const clone = Object.create(

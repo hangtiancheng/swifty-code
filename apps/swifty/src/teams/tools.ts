@@ -39,7 +39,8 @@ import { asErrorString, strArg } from "@/utils/utils.js";
 const log = createChildLogger({ module: "teams" });
 export class TeamCreateTool implements Tool {
   name = "TeamCreate";
-  description = "Create a team for coordinating multiple agents.";
+  description =
+    "Create a team for coordinating multiple agents. At most one team exists at a time: creating a team deletes any other team, stopping its members.";
   category = "read" as const;
   constructor(private mgr: TeamManager) {}
   schema(): ToolSchema {
@@ -69,16 +70,14 @@ export class TeamCreateTool implements Tool {
       });
     }
 
-    // Auto-append a numeric suffix on name collision. Making the Lead come up with a
-    // unique name would be an unnecessary burden — it has no visibility into which teams
-    // already exist on disk.
-    let name = requested;
-    for (let i = 2; this.mgr.get(name); i++) {
-      name = `${requested}-${String(i)}`;
-    }
+    // Single-team semantics: at most one team exists at any moment. Creating a
+    // team sweeps every other team — running ones are stopped, and residuals
+    // from previous sessions are removed from disk — so the requested name is
+    // always free and no suffix disambiguation is needed.
+    await this.mgr.deleteAll();
 
     const description = strArg(args, "description");
-    const team = this.mgr.create(name, undefined, {
+    const team = this.mgr.create(requested, undefined, {
       leadAgentId: "lead",
       description,
     });
@@ -136,7 +135,13 @@ export class SpawnTeammateTool implements Tool {
         isError: true,
       });
     }
-    const t = this.mgr.get(team) ?? this.mgr.create(team);
+    // Single-team invariant: creating a team sweeps every other team first,
+    // matching TeamCreate semantics.
+    let t = this.mgr.get(team);
+    if (!t) {
+      await this.mgr.deleteAll();
+      t = this.mgr.create(team);
+    }
     t.spawnTeammate(name, task, this.runAgent, undefined, this.providerBaseUrl);
     return Promise.resolve({
       output: `Teammate '${name}' spawned in team '${team}'. Its result will arrive on the team channel; keep working and watch for it.`,

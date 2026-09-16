@@ -401,12 +401,16 @@ ${prompt}`;
     }
     // If the team does not exist, create one on the fly: in coordinator mode TeamCreate is not
     // in the allowlist, so requiring the lead to create a team first would block at step one.
-    const team =
-      this.teamManager.get(teamName) ??
-      this.teamManager.create(teamName, undefined, {
+    // Single-team invariant: creating a team sweeps every other team first,
+    // matching TeamCreate semantics.
+    let team = this.teamManager.get(teamName);
+    if (!team) {
+      await this.teamManager.deleteAll();
+      team = this.teamManager.create(teamName, undefined, {
         leadAgentId: "lead",
         description,
       });
+    }
 
     // Derive teammate name from description and deduplicate
     let memberName = description.replace(/\s+/g, "-").toLowerCase().slice(0, 30);

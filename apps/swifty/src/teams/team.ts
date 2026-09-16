@@ -46,7 +46,7 @@ import {
 } from "./protocol.js";
 import { getNameRegistry } from "./registry.js";
 import { SharedTaskStore } from "./shared-task.js";
-import { readTeamFile, teamDir, writeTeamFile, type TeamFile } from "./team-file.js";
+import { listTeamNames, readTeamFile, teamDir, writeTeamFile, type TeamFile } from "./team-file.js";
 import { saveTranscript } from "./transcript.js";
 
 import type { ConversationManager } from "@/conversation/conversation.js";
@@ -665,6 +665,22 @@ export class TeamManager {
     // The team directory contains config.json, tasks.json, and mailboxes. When the team
     // is deleted, remove everything to prevent a future same-named team from picking up stale data.
     rmSync(teamDir(name), { recursive: true, force: true });
+  }
+
+  /**
+   * Deletes every team: in-memory teams are stopped and unregistered, then any
+   * residual team directories on disk (e.g. leftovers from previous sessions,
+   * which never appear in list()) are removed too. Enforces the single-team
+   * invariant before a new team is created.
+   */
+  async deleteAll(): Promise<void> {
+    for (const team of this.list()) {
+      await this.delete(team.name);
+    }
+    // Directory names are already sanitized; delete() re-sanitizes to the same value.
+    for (const name of listTeamNames()) {
+      await this.delete(name);
+    }
   }
 
   getAllTeammateStates(): TeammateUIState[] {

@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -87,6 +87,21 @@ export function sanitizeTeamName(name: string): string {
 
 export function teamDir(name: string): string {
   return join(teamsBaseDir(), sanitizeTeamName(name));
+}
+
+/**
+ * Lists every team that has data on disk, keyed by the (already sanitized)
+ * team directory name. Returns an empty list when the base dir does not exist.
+ * Used to sweep residual teams left behind by previous sessions.
+ */
+export function listTeamNames(): string[] {
+  try {
+    return readdirSync(teamsBaseDir(), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
 }
 
 export function teamConfigPath(name: string): string {

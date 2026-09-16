@@ -33,6 +33,7 @@ import {
   recordToolStart,
   recordTurnComplete,
 } from "@/teams/progress.js";
+import { listTeamNames } from "@/teams/team-file.js";
 import { TeamManager } from "@/teams/team.js";
 import {
   TeamCreateTool,
@@ -237,6 +238,35 @@ describe("teams orchestration", () => {
     const list = await new ListTeamsTool(mgr).execute();
     expect(list.output).toContain("t1");
     expect(list.output).toContain("w1");
+  });
+
+  it("TeamCreate sweeps other teams so at most one exists", async () => {
+    const mgr = new TeamManager(workDir());
+
+    // A live team with a spawned teammate.
+    await new TeamCreateTool(mgr).execute({ workDir: workDir() }, { team_name: "old" });
+    const spawn = new SpawnTeammateTool(
+      mgr,
+      // eslint-disable-next-line @typescript-eslint/require-await
+      async (task) => `done:${task}`,
+    );
+    await spawn.execute({ workDir: workDir() }, { team: "old", name: "w1", task: "task A" });
+    await wait(200);
+
+    // A disk-only leftover from a previous session, unknown to this manager.
+    new TeamManager(workDir()).create("stale");
+    expect(listTeamNames().sort()).toEqual(["old", "stale"]);
+
+    const result = await new TeamCreateTool(mgr).execute(
+      { workDir: workDir() },
+      { team_name: "fresh" },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.output).toContain("fresh");
+    // Exactly one team remains — in memory and on disk.
+    expect(mgr.list().map((team) => team.name)).toEqual(["fresh"]);
+    expect(listTeamNames()).toEqual(["fresh"]);
   });
 
   it("validates required args", async () => {

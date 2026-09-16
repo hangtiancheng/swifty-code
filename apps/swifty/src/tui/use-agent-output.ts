@@ -195,6 +195,13 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
             );
           }
 
+          // TeamCreate enforces single-team semantics: every existing team is
+          // deleted before the new one is created, so all pinned teammate
+          // cards are stale and must go.
+          if (event.toolName === "TeamCreate" && !event.isError) {
+            setPersistentAgentTools([]);
+          }
+
           if (persistentAgentToolIds.has(event.toolId) && !event.isError) {
             setPersistentAgentTools((tools) => tools.map(completeTool));
             turnToolCalls.delete(event.toolId);
