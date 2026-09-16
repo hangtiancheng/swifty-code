@@ -23,11 +23,21 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import type { ChatMessage, ToolSummaryItem } from "./chat.js";
-import type { ToolBlockInfo } from "./tool-display.js";
+import type { ToolBlockInfo, ToolCardStatus } from "./tool-display.js";
 
 import type { AgentEvent } from "@/agent/events.js";
 import { toDisplayPreview } from "@/tool-result/budget.js";
 import { formatToolArgs } from "@/utils/utils.js";
+
+/**
+ * Final decoration for an Agent tool card, resolved by the app when the tool
+ * result arrives. Carries the subagent's terminal state so committed
+ * foreground cards render like the persistent background cards.
+ */
+export interface AgentCardDecoration {
+  status?: ToolCardStatus;
+  progress?: string;
+}
 
 export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[]>>) {
   const [streamingText, setStreamingText] = useState("");
@@ -72,7 +82,9 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
     setPersistentAgentTools([]);
   };
 
-  const createEventHandler = () => {
+  const createEventHandler = (
+    resolveAgentCard?: (toolId: string) => AgentCardDecoration | undefined,
+  ) => {
     setStreamingThinking("");
     let fullText = "";
     let turnThinkingText = "";
@@ -158,6 +170,11 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
         }
         case "tool_result": {
           const output = toDisplayPreview(event.output);
+          // Agent calls carry their terminal subagent state (completed /
+          // stopped / failed) so the card keeps it after commit; plain tools
+          // derive their look from isError alone.
+          const decoration =
+            event.toolName === "Agent" ? resolveAgentCard?.(event.toolId) : undefined;
           const completeTool = (tool: ToolBlockInfo): ToolBlockInfo =>
             tool.toolId === event.toolId
               ? {
@@ -166,6 +183,8 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
                   isError: event.isError,
                   elapsed: event.elapsed,
                   loading: false,
+                  ...(decoration?.status ? { status: decoration.status } : {}),
+                  ...(decoration?.progress ? { progress: decoration.progress } : {}),
                 }
               : tool;
           setActiveTools((tools) => tools.map(completeTool));
@@ -192,6 +211,8 @@ export function useAgentOutput(setMessages: Dispatch<SetStateAction<ChatMessage[
               output,
               isError: event.isError,
               elapsed: event.elapsed,
+              ...(decoration?.status ? { status: decoration.status } : {}),
+              ...(decoration?.progress ? { progress: decoration.progress } : {}),
             });
           }
           break;

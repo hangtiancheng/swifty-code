@@ -36,7 +36,7 @@ import { ProviderSelect } from "./provider-select.js";
 import type { RewindAction } from "./rewind-dialog.js";
 import { TeamStatus } from "./team-status.js";
 import { Transcript } from "./transcript.js";
-import { useAgentOutput } from "./use-agent-output.js";
+import { useAgentOutput, type AgentCardDecoration } from "./use-agent-output.js";
 import { useTerminalControls } from "./use-terminal-controls.js";
 
 import { Agent } from "@/agent/agent.js";
@@ -101,7 +101,11 @@ import { LoadSkillTool } from "@/skills/load-skill-tool.js";
 import type { SkillHost, SkillForkHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
-import { spawnSubagent, type SubagentProgressEvent } from "@/subagent/spawn.js";
+import {
+  spawnSubagent,
+  SUBAGENT_INTERRUPTED_MARKER,
+  type AgentEventSink,
+} from "@/subagent/spawn.js";
 import {
   TaskManager,
   formatAgentTaskNotification,
@@ -370,6 +374,12 @@ export function App({
   const [subagents, setSubagents] = useState<SubagentProgress[]>([]);
   const [backgroundTasks, setBackgroundTasks] = useState<AgentTask[]>([]);
   const subagentIdRef = useRef(0);
+  // Terminal card decoration (status + progress line) for Agent calls, keyed by
+  // tool call id. Consulted when the tool result is committed to transcript
+  // history so foreground subagent cards render with the same status semantics
+  // as the persistent background cards — interrupted runs show red "stopped"
+  // instead of a green success card whose only hint is an "[Interrupted]" tail.
+  const subagentCardsRef = useRef(new Map<string, AgentCardDecoration>());
   const { insertInputTextRef, clearInputRef } = useIdeInput(workDir);
 
   useEffect(() => backgroundTaskManagerRef.current.subscribe(setBackgroundTasks), []);
@@ -699,128 +709,168 @@ export function App({
         // take precedence. Idempotent: skips names already taken.
         wireSkillsToRegistry(catalog, cmdRegistryRef.current, skillHostRef.current);
 
+        // Track a subagent run for the TUI. Maintains the live progress card
+        // (SubagentProgress) and records the terminal decoration (status +
+        // progress line) consumed when the Agent call is committed to the
+        // transcript, so foreground subagents render with the same status
+        // semantics as the persistent background cards. Shared by the
+        // definition spawn path and the fork path.
+        const trackSubagent = async (
+          tracking: {
+            toolCallId: string;
+            role: string;
+            background: boolean;
+            taskId?: string;
+            abortSignal?: AbortSignal;
+          },
+          run: (onEvent: AgentEventSink) => Promise<string>,
+        ): Promise<string> => {
+          const { toolCallId, role, background, taskId, abortSignal } = tracking;
+          const runningTools = new Map<string, string>();
+          let turns = 0;
+          const syncRunningTools = () => {
+            const tools = [...runningTools].map(([toolId, toolName]) => ({ toolId, toolName }));
+            setSubagents((prev) =>
+              prev.map((subagent) =>
+                subagent.toolCallId === toolCallId ? { ...subagent, activeTools: tools } : subagent,
+              ),
+            );
+          };
+          setSubagents((prev) => [
+            ...prev.filter((subagent) => subagent.toolCallId !== toolCallId),
+            {
+              toolCallId,
+              ...(taskId ? { taskId } : {}),
+              role,
+              turnCount: 0,
+              activeTools: [],
+              status: "running",
+              background,
+            },
+          ]);
+          const finalize = (status: SubagentProgress["status"], output: string) => {
+            subagentCardsRef.current.set(toolCallId, {
+              status,
+              progress: `${role} subagent | ${String(turns)} turns`,
+            });
+            setSubagents((prev) =>
+              prev.map((subagent) =>
+                subagent.toolCallId === toolCallId
+                  ? { ...subagent, activeTools: [], status, output }
+                  : subagent,
+              ),
+            );
+          };
+          const onEvent: AgentEventSink = (event) => {
+            switch (event.type) {
+              case "tool_use":
+                runningTools.set(event.toolId, event.toolName);
+                syncRunningTools();
+                break;
+              case "tool_result":
+                runningTools.delete(event.toolId);
+                syncRunningTools();
+                break;
+              case "turn_complete":
+                runningTools.clear();
+                turns += 1;
+                setSubagents((prev) =>
+                  prev.map((subagent) =>
+                    subagent.toolCallId === toolCallId
+                      ? { ...subagent, turnCount: subagent.turnCount + 1, activeTools: [] }
+                      : subagent,
+                  ),
+                );
+                break;
+              case "usage":
+                break;
+            }
+          };
+          try {
+            const result = await run(onEvent);
+            // An abort that lands while the subagent is finishing still means
+            // the user stopped it — render "stopped", never "completed".
+            finalize(abortSignal?.aborted ? "stopped" : "completed", result);
+            return result;
+          } catch (error) {
+            finalize(
+              abortSignal?.aborted ? "stopped" : "failed",
+              `Agent error: ${asErrorString(error)}`,
+            );
+            throw error;
+          }
+        };
+
         // Register AgentTool with real spawn + live progress reporting.
         const agentTool = new AgentTool(
           workDir,
           registryRef.current,
-          async (def, prompt, background, modelOverride?, workDirOverride?, context?) => {
+          (def, prompt, background, modelOverride?, workDirOverride?, context?) => {
             const toolCallId = context?.toolCallId ?? `subagent-${String(++subagentIdRef.current)}`;
-            const runningTools = new Map<string, string>();
-            const syncRunningTools = () => {
-              const tools = [...runningTools].map(([toolId, toolName]) => ({ toolId, toolName }));
-              setSubagents((prev) =>
-                prev.map((subagent) =>
-                  subagent.toolCallId === toolCallId
-                    ? { ...subagent, activeTools: tools }
-                    : subagent,
-                ),
-              );
-            };
-            setSubagents((prev) => [
-              ...prev.filter((subagent) => subagent.toolCallId !== toolCallId),
+            return trackSubagent(
               {
                 toolCallId,
-                ...(context?.backgroundTaskId ? { taskId: context.backgroundTaskId } : {}),
                 role: def.name,
-                turnCount: 0,
-                activeTools: [],
-                status: "running",
                 background,
+                taskId: context?.backgroundTaskId,
+                abortSignal: context?.abortSignal,
               },
-            ]);
-            const onEvent = (event: SubagentProgressEvent) => {
-              switch (event.type) {
-                case "tool_use":
-                  runningTools.set(event.toolId, event.toolName);
-                  syncRunningTools();
-                  break;
-                case "tool_result":
-                  runningTools.delete(event.toolId);
-                  syncRunningTools();
-                  break;
-                case "turn_complete":
-                  runningTools.clear();
-                  setSubagents((prev) =>
-                    prev.map((subagent) =>
-                      subagent.toolCallId === toolCallId
-                        ? { ...subagent, turnCount: subagent.turnCount + 1, activeTools: [] }
-                        : subagent,
-                    ),
-                  );
-                  break;
-                case "usage":
-                  break;
-              }
-            };
-            try {
-              const result = await spawnSubagent(
-                def,
-                prompt,
-                clientRef.current ?? client,
-                registryRef.current,
-                selectedProviderRef.current,
-                workDirOverride ?? workDir,
-                undefined,
-                onEvent,
-                modelOverride,
-                workDirOverride
-                  ? context?.permissionChecker?.forWorkDir(workDirOverride)
-                  : context?.permissionChecker,
-                {
-                  abortSignal: context?.abortSignal,
-                  background,
-                  onPermissionRequest: context?.onPermissionRequest,
-                  permissionMode: context?.permissionChecker?.mode,
-                },
-              );
-              setSubagents((prev) =>
-                prev.map((subagent) =>
-                  subagent.toolCallId === toolCallId
-                    ? {
-                        ...subagent,
-                        activeTools: [],
-                        status: context?.abortSignal?.aborted ? "stopped" : "completed",
-                        output: result,
-                      }
-                    : subagent,
+              (onEvent) =>
+                spawnSubagent(
+                  def,
+                  prompt,
+                  clientRef.current ?? client,
+                  registryRef.current,
+                  selectedProviderRef.current,
+                  workDirOverride ?? workDir,
+                  undefined,
+                  onEvent,
+                  modelOverride,
+                  workDirOverride
+                    ? context?.permissionChecker?.forWorkDir(workDirOverride)
+                    : context?.permissionChecker,
+                  {
+                    abortSignal: context?.abortSignal,
+                    background,
+                    onPermissionRequest: context?.onPermissionRequest,
+                    permissionMode: context?.permissionChecker?.mode,
+                  },
                 ),
-              );
-              return result;
-            } catch (error) {
-              setSubagents((prev) =>
-                prev.map((subagent) =>
-                  subagent.toolCallId === toolCallId
-                    ? {
-                        ...subagent,
-                        activeTools: [],
-                        status: "failed",
-                        output: `Agent error: ${asErrorString(error)}`,
-                      }
-                    : subagent,
-                ),
-              );
-              throw error;
-            }
+            );
           },
           conversationRef.current,
-          (prompt, conversation, registry, modelOverride, context) =>
-            spawnSubagent(
-              BUILTIN_AGENTS[0],
-              prompt,
-              clientRef.current ?? client,
-              registry,
-              selectedProviderRef.current,
-              context?.workDir ?? workDir,
-              undefined,
-              undefined,
-              modelOverride,
-              context?.permissionChecker,
+          (prompt, conversation, registry, modelOverride, context) => {
+            const toolCallId = context?.toolCallId ?? `subagent-${String(++subagentIdRef.current)}`;
+            return trackSubagent(
               {
-                conversation,
+                toolCallId,
+                role: BUILTIN_AGENTS[0].name,
+                // Forks can run in the background too (run_in_background without
+                // subagent_type); their cards must survive the turn-boundary prune.
+                background: !!context?.backgroundTaskId,
+                taskId: context?.backgroundTaskId,
                 abortSignal: context?.abortSignal,
-                onPermissionRequest: context?.onPermissionRequest,
               },
-            ),
+              (onEvent) =>
+                spawnSubagent(
+                  BUILTIN_AGENTS[0],
+                  prompt,
+                  clientRef.current ?? client,
+                  registry,
+                  selectedProviderRef.current,
+                  context?.workDir ?? workDir,
+                  undefined,
+                  onEvent,
+                  modelOverride,
+                  context?.permissionChecker,
+                  {
+                    conversation,
+                    abortSignal: context?.abortSignal,
+                    onPermissionRequest: context?.onPermissionRequest,
+                  },
+                ),
+            );
+          },
           backgroundTaskManagerRef.current,
         );
         agentTool.forkDisabled = forkDisabled ?? false;
@@ -1029,6 +1079,7 @@ export function App({
           ]);
           backgroundTaskManagerRef.current.clear();
           setSubagents([]);
+          subagentCardsRef.current.clear();
           // Clear messages and start a fresh conversation. Reset in place —
           // AgentTool captures the manager for its fork path, so swapping the
           // instance would leave it pointing at the discarded history.
@@ -1270,13 +1321,24 @@ export function App({
               const toolSummary: ToolSummaryItem[] = m.toolResults.map((tr) => {
                 const use = pendingUses.get(tr.toolUseId);
                 pendingUses.delete(tr.toolUseId);
+                const toolName = use?.toolName ?? "tool";
+                // Restored Agent cards get the same status semantics as live
+                // ones: the interruption marker means the run was stopped, so
+                // it must not render as a green success card.
+                const agentStatus =
+                  toolName === "Agent" && !tr.isError
+                    ? tr.content.includes(SUBAGENT_INTERRUPTED_MARKER)
+                      ? "stopped"
+                      : "completed"
+                    : undefined;
                 return {
-                  toolName: use?.toolName ?? "tool",
+                  toolName,
                   argsSummary: use?.argsSummary ?? "",
                   output: toDisplayPreview(tr.content),
                   isError: tr.isError,
                   // No timing data in the session log; 0 hides the suffix.
                   elapsed: 0,
+                  ...(agentStatus ? { status: agentStatus } : {}),
                 };
               });
               resumedMessages.push({
@@ -1577,7 +1639,9 @@ export function App({
   const runAgentLoop = async (modeOverride?: PermissionMode) => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    const onAgentEvent = output.createEventHandler();
+    const onAgentEvent = output.createEventHandler((toolId) =>
+      subagentCardsRef.current.get(toolId),
+    );
 
     // modeOverride avoids a stale-closure read of permMode right after a
     // setPermMode call (e.g. plan approval switching out of plan mode in the same tick).

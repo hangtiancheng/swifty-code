@@ -36,6 +36,13 @@ import { buildSubagentInstructions } from "@/prompt/delegation.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 
+/**
+ * Marker appended to a subagent's output when its run was interrupted. Shared
+ * with the TUI so restored transcripts can render interrupted Agent cards with
+ * the same "stopped" styling as live ones.
+ */
+export const SUBAGENT_INTERRUPTED_MARKER = "[Interrupted]";
+
 export type SubagentProgressEvent =
   | {
       type: "tool_use";
@@ -161,7 +168,7 @@ export async function spawnSubagent(
         break;
       case "loop_complete":
         if (event.stopReason === "interrupted") {
-          return `${output}${output ? "\n\n" : ""}[Interrupted]`;
+          return `${output}${output ? "\n\n" : ""}${SUBAGENT_INTERRUPTED_MARKER}`;
         }
         return output || "[No output]";
       case "error":

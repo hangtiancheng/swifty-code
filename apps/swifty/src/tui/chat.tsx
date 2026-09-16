@@ -26,7 +26,7 @@ import React, { useRef } from "react";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown.js";
 import { wrapToLines } from "./terminal-text.js";
 import { ThinkingBlock } from "./thinking-block.js";
-import { ToolCard } from "./tool-display.js";
+import { ToolCard, type ToolCardStatus } from "./tool-display.js";
 
 import { parseSkillPrompt } from "@/skills/executor.js";
 import { THEME } from "@/ui/styles.js";
@@ -37,6 +37,15 @@ export interface ToolSummaryItem {
   output: string;
   isError: boolean;
   elapsed: number;
+  /**
+   * Explicit card status for committed Agent calls. Foreground subagents are
+   * committed to history as plain summaries, so without this an interrupted
+   * run would render as a green success card; background cards stay live and
+   * already show "stopped" in red.
+   */
+  status?: ToolCardStatus;
+  /** Progress line (e.g. "explore subagent | 3 turns"), matching live Agent cards. */
+  progress?: string;
 }
 
 export interface ChatMessage {
