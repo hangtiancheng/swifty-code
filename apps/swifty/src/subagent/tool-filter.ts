@@ -57,14 +57,12 @@ type AllTools =
   | "Grep"
   | "McpCall";
 
-export const MAIN_AGENT_ONLY_TOOLS = new Set<AllTools>(["ComputerUse"]);
-
 // Global list of tools disallowed for subagents — prevents recursive Agent calls or using main-thread-only tools
 export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
   "ExitPlanMode",
   "Agent", // Prevents recursive spawning of subagents
   "AskUserQuestion",
-  ...MAIN_AGENT_ONLY_TOOLS,
+  "ComputerUse",
   "TaskStop",
 ]);
 
@@ -182,10 +180,6 @@ export function cloneRegistryForFork(registry: ToolRegistry): ToolRegistry {
   const forked = new ToolRegistry();
   forked.mcpLoadingMode = registry.mcpLoadingMode;
   for (const tool of registry.listTools()) {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    if ((MAIN_AGENT_ONLY_TOOLS as Set<string>).has(tool.name)) {
-      continue;
-    }
     if (tool.name === "Agent" && "querySource" in tool) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const clone = Object.create(
