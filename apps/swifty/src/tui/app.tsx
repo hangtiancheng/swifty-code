@@ -727,11 +727,16 @@ export function App({
           const { toolCallId, role, taskId, abortSignal } = tracking;
           const runningTools = new Map<string, string>();
           let turns = 0;
+          // Last started tool name — kept after the tool finishes so the card's
+          // progress line shows it until the next tool call replaces it.
+          let lastTool: string | undefined;
           const syncRunningTools = () => {
             const tools = [...runningTools].map(([toolId, toolName]) => ({ toolId, toolName }));
             setSubagents((prev) =>
               prev.map((subagent) =>
-                subagent.toolCallId === toolCallId ? { ...subagent, activeTools: tools } : subagent,
+                subagent.toolCallId === toolCallId
+                  ? { ...subagent, activeTools: tools, lastTool }
+                  : subagent,
               ),
             );
           };
@@ -754,7 +759,7 @@ export function App({
             setSubagents((prev) =>
               prev.map((subagent) =>
                 subagent.toolCallId === toolCallId
-                  ? { ...subagent, activeTools: [], status, output }
+                  ? { ...subagent, activeTools: [], lastTool: undefined, status, output }
                   : subagent,
               ),
             );
@@ -762,6 +767,7 @@ export function App({
           const onEvent: AgentEventSink = (event) => {
             switch (event.type) {
               case "tool_use":
+                lastTool = event.toolName;
                 runningTools.set(event.toolId, event.toolName);
                 syncRunningTools();
                 break;

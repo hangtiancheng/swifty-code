@@ -12,6 +12,12 @@ export interface SubagentProgress {
   role: string;
   turnCount: number;
   activeTools: { toolId: string; toolName: string }[];
+  /**
+   * Name of the most recently started tool. Unlike activeTools (which empties
+   * the moment a tool finishes), this persists so the progress line keeps
+   * showing the last tool until the next tool call replaces it.
+   */
+  lastTool?: string;
   status: "running" | "completed" | "failed" | "stopped";
   output?: string;
 }
@@ -26,7 +32,7 @@ interface Props {
 
 function subagentProgress(subagent: SubagentProgress): string {
   const parts = [`${subagent.role} subagent`, `${String(subagent.turnCount)} turns`];
-  const currentTool = subagent.activeTools.at(-1)?.toolName;
+  const currentTool = subagent.activeTools.at(-1)?.toolName ?? subagent.lastTool;
   if (currentTool) {
     parts.push(currentTool);
   }
@@ -35,7 +41,8 @@ function subagentProgress(subagent: SubagentProgress): string {
 
 function teammateProgress(teammate: TeammateUIState): string {
   const parts = [`@${teammate.name}`];
-  const currentTool = teammate.progress.activeTools.at(-1)?.toolName;
+  const currentTool =
+    teammate.progress.activeTools.at(-1)?.toolName ?? teammate.progress.lastActivity?.toolName;
   if (currentTool) {
     parts.push(currentTool);
   }
