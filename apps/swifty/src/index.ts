@@ -28,6 +28,7 @@
 // in that set — the cross-platform hooks under src/ui/** are public API.
 
 // === acp ===
+export * as Acp from "./acp/index.js";
 
 // === agent ===
 export * from "./agent/index.js";
@@ -37,6 +38,10 @@ export * from "./agent/streaming-executor.js";
 // === bootstrap ===
 export * from "./bootstrap/interaction-summary.js";
 export * from "./bootstrap/tool-registry.js";
+// export * from "./bootstrap/terminal-input.js" // Exclude TUI
+// export * from "./bootstrap/terminal-theme.js" // Exclude TUI
+export * from "./bootstrap/tool-registry.js";
+// export * from "./bootstrap/tui-selection.js" // Exclude TUI
 
 // === code-review ===
 export * from "./code-review/handler.js";
@@ -159,6 +164,11 @@ export * from "./teams/team-file.js";
 export * from "./teams/index.js";
 export * from "./teams/tools.js";
 export * from "./teams/transcript.js";
+
+// === telemetry ===
+export * as Telemetry from "./telemetry/index.js";
+export * from "./telemetry/instrumentation.js";
+export * from "./telemetry/providers.js";
 
 // === todo ===
 export * from "./todo/store.js";
