@@ -80,7 +80,7 @@ export function ToolsShowcase() {
             <span className="text-brand-500">not just chat</span>
           </>
         }
-        description="Read and write files, run shells, search the tree, spawn teammates and call MCP servers — each one permission-checked before it runs."
+        description="Read and write files, run shells, search the tree, fetch the web, spawn teammates and call MCP servers — each one permission-checked before it runs."
       />
 
       <docs-reveal delay={0.08} className="mt-12 space-y-3">

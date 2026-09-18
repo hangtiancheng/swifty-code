@@ -25,6 +25,7 @@ import { cn } from "@/lib/cn";
 import {
   agentCards,
   features,
+  observabilityList,
   permissionModes,
   providerList,
 } from "@/lib/content";
@@ -106,6 +107,26 @@ function Decor({ kind }: { kind: NonNullable<Feature["decor"]> }) {
           <span className={chip}>
             {unsafeHTML(icon(icons.shieldCheck, "text-brand-500 h-3 w-3"))}
             {mode.mode}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (kind === "observability") {
+    return (
+      <div className="mt-6 flex flex-wrap gap-2">
+        {observabilityList.map((backend) => (
+          <span
+            className={cn(
+              "border-brand-950/8 bg-brand-50/60 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] text-zinc-600 dark:border-white/8 dark:bg-white/3 dark:text-zinc-400",
+            )}
+          >
+            <span className="bg-brand-500 h-1.5 w-1.5 rounded-full" />
+            {backend.name}
+            <span className="text-zinc-400 dark:text-zinc-500">
+              {backend.detail}
+            </span>
           </span>
         ))}
       </div>

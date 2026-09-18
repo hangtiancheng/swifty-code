@@ -20,6 +20,7 @@
  * SOFTWARE.
  */
 
+import activity from "lucide-static/icons/activity.svg?raw";
 import arrowRight from "lucide-static/icons/arrow-right.svg?raw";
 import arrowUp from "lucide-static/icons/arrow-up.svg?raw";
 import arrowUpRight from "lucide-static/icons/arrow-up-right.svg?raw";
@@ -34,6 +35,8 @@ import download from "lucide-static/icons/download.svg?raw";
 import fileCode from "lucide-static/icons/file-code.svg?raw";
 import folderTree from "lucide-static/icons/folder-tree.svg?raw";
 import gitBranch from "lucide-static/icons/git-branch.svg?raw";
+import globe from "lucide-static/icons/globe.svg?raw";
+import handshake from "lucide-static/icons/handshake.svg?raw";
 import hardDrive from "lucide-static/icons/hard-drive.svg?raw";
 import inbox from "lucide-static/icons/inbox.svg?raw";
 import keyRound from "lucide-static/icons/key-round.svg?raw";
@@ -68,6 +71,7 @@ import x from "lucide-static/icons/x.svg?raw";
 import zap from "lucide-static/icons/zap.svg?raw";
 
 export const icons = {
+  activity,
   arrowRight,
   arrowUp,
   arrowUpRight,
@@ -82,6 +86,8 @@ export const icons = {
   fileCode,
   folderTree,
   gitBranch,
+  globe,
+  handshake,
   hardDrive,
   inbox,
   keyRound,

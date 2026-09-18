@@ -85,7 +85,7 @@ export interface Stat {
 
 export const stats: Stat[] = [
   { value: "3", label: "LLM protocols" },
-  { value: "28", label: "Built-in tools" },
+  { value: "29", label: "Built-in tools" },
   { value: "4", label: "Permission modes" },
   { value: "1M", label: "Context window" },
 ];
@@ -96,7 +96,7 @@ export interface Feature {
   description: string;
   span?: "wide" | "tall" | "normal";
   accent?: "brand" | "accent" | "neutral";
-  decor?: "providers" | "safety" | "agents";
+  decor?: "providers" | "safety" | "agents" | "observability";
 }
 
 export const features: Feature[] = [
@@ -120,7 +120,7 @@ export const features: Feature[] = [
     icon: icons.wrench,
     title: "A real toolbelt",
     description:
-      "Read, write and edit files, run Bash or PowerShell, glob and grep the tree, search deferred tools and call MCP servers.",
+      "Read, write and edit files, run Bash or PowerShell, glob and grep the tree, fetch web pages as Markdown, search deferred tools and call MCP servers.",
     accent: "neutral",
   },
   {
@@ -190,6 +190,22 @@ export const features: Feature[] = [
       "@-mention files straight from VS Code, or run swifty --remote to drive the same agent from a browser over WebSocket.",
     accent: "neutral",
   },
+  {
+    icon: icons.activity,
+    title: "Observability, opt-in",
+    description:
+      "Export traces, metrics and logs over OTLP with OpenTelemetry, stream LLM observations to Langfuse, and report crashes to Sentry. Off by default, configured purely through environment variables — prompts, model output, tool arguments and file paths are never sent, and session IDs are hashed.",
+    span: "wide",
+    accent: "brand",
+    decor: "observability",
+  },
+  {
+    icon: icons.handshake,
+    title: "Agent Client Protocol",
+    description:
+      "swifty --acp speaks ACP over stdio, --acp-ws over WebSocket — editors like Zed can open sessions, stream tool calls and answer permission requests natively.",
+    accent: "accent",
+  },
 ];
 
 export interface ToolItem {
@@ -207,6 +223,7 @@ export const tools: ToolItem[] = [
   { name: "ComputerUse", icon: icons.mousePointerClick, group: "Shell" },
   { name: "Glob", icon: icons.folderTree, group: "Search" },
   { name: "Grep", icon: icons.search, group: "Search" },
+  { name: "WebFetch", icon: icons.globe, group: "Search" },
   { name: "ToolSearch", icon: icons.search, group: "Search" },
   { name: "TaskCreate", icon: icons.scrollText, group: "Orchestrate" },
   { name: "TaskGet", icon: icons.scrollText, group: "Orchestrate" },
@@ -414,6 +431,16 @@ export const faqs: Faq[] = [
     answer:
       "A fork (Agent without subagent_type) inherits your entire conversation and keeps nearly the full toolset — it's you, with full context. A defined subagent (explore, plan, general-purpose, or your own Markdown definition) starts fresh with a restricted toolbelt; pass run_in_background=true and it returns a task id immediately, delivering its result as a notification. Teammates are persistent named agents that outlive a single call and coordinate through mailboxes and a shared task board.",
   },
+  {
+    question: "Can I send traces to my observability stack?",
+    answer:
+      "Yes, and it's opt-in. Set OTEL_* variables to export traces, metrics and logs over OTLP (gRPC or HTTP), LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY to stream LLM observations to Langfuse, and SENTRY_DSN to report process errors to Sentry. Telemetry is off by default, and traces never carry prompts, model output, tool arguments or results, file paths or API keys — session IDs are hashed.",
+  },
+  {
+    question: "What is ACP support?",
+    answer:
+      "Swifty speaks the Agent Client Protocol. Run swifty --acp for stdio or swifty --acp-ws [host:port] for WebSocket, and ACP-compatible editors such as Zed can create, load and resume sessions, stream tool-call updates and answer permission requests natively.",
+  },
 ];
 
 export const footerColumns = [
@@ -453,4 +480,10 @@ export const providerList = [
   { name: "Anthropic", protocol: "anthropic" },
   { name: "OpenAI", protocol: "openai" },
   { name: "OpenAI-compatible", protocol: "openai-compat" },
+] as const;
+
+export const observabilityList = [
+  { name: "OpenTelemetry", detail: "OTLP traces · metrics · logs" },
+  { name: "Langfuse", detail: "LLM tracing" },
+  { name: "Sentry", detail: "error reporting" },
 ] as const;

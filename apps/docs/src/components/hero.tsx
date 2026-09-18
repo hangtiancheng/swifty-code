@@ -108,7 +108,7 @@ export class HeroElement extends LitElement {
               {unsafeHTML(icon(icons.sparkles, "h-3.5 w-3.5"))}
               <span className="font-semibold">{VERSION} is out</span>
               <span className="opacity-80">
-                — multi-agent teams, MCP &amp; sandboxing
+                — ACP, observability &amp; web fetch
               </span>
               <span className="inline-flex items-center gap-1 font-semibold">
                 Read the docs
