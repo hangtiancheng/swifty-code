@@ -23,11 +23,11 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { SocketConnectionError } from "./mcp-socket-client.js";
-import type { ClaudeForChromeContext, SocketClient } from "./types.js";
+import type { SwiftyForChromeContext, SocketClient } from "./types.js";
 import { toLoggerDetail } from "./types.js";
 
 export const handleToolCall = async (
-  context: ClaudeForChromeContext,
+  context: SwiftyForChromeContext,
   socketClient: SocketClient,
   name: string,
   args: Record<string, unknown>,
@@ -64,7 +64,7 @@ export const handleToolCall = async (
 };
 
 async function handleToolCallConnected(
-  context: ClaudeForChromeContext,
+  context: SwiftyForChromeContext,
   socketClient: SocketClient,
   name: string,
   args: Record<string, unknown>,
@@ -165,7 +165,7 @@ async function handleToolCallConnected(
   };
 }
 
-function handleToolCallDisconnected(context: ClaudeForChromeContext): CallToolResult {
+function handleToolCallDisconnected(context: SwiftyForChromeContext): CallToolResult {
   const text = context.onToolCallDisconnected();
   return {
     content: [{ type: "text", text }],

@@ -26,7 +26,7 @@ import type { Socket } from "net";
 import { platform } from "os";
 import { dirname } from "path";
 
-import type { ClaudeForChromeContext } from "./types.js";
+import type { SwiftyForChromeContext } from "./types.js";
 import { toLoggerDetail } from "./types.js";
 
 export class SocketConnectionError extends Error {
@@ -39,7 +39,7 @@ export class SocketConnectionError extends Error {
 interface ToolRequest {
   method: string; // "execute_tool"
   params?: {
-    client_id?: string; // "desktop" | "claude-code"
+    client_id?: "desktop" | "claude-code";
     tool?: string;
     args?: Record<string, unknown>;
   };
@@ -70,18 +70,19 @@ class McpSocketClient {
   private connected = false;
   private connecting = false;
   private responseCallback: ((response: ToolResponse) => void) | null = null;
+  private requestQueue: Promise<void> = Promise.resolve();
   private notificationHandler: ((notification: Notification) => void) | null = null;
   private responseBuffer = Buffer.alloc(0);
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
   private reconnectTimer: NodeJS.Timeout | null = null;
-  private context: ClaudeForChromeContext;
+  private context: SwiftyForChromeContext;
   // When true, disables automatic reconnection. Used by McpSocketPool which
   // manages reconnection externally by rescanning available sockets.
   public disableAutoReconnect = false;
 
-  constructor(context: ClaudeForChromeContext) {
+  constructor(context: SwiftyForChromeContext) {
     this.context = context;
   }
 
@@ -319,7 +320,7 @@ class McpSocketClient {
     });
   }
 
-  public async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  public callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const request: ToolRequest = {
       method: "execute_tool",
       params: {
@@ -329,7 +330,12 @@ class McpSocketClient {
       },
     };
 
-    return this.sendRequestWithRetry(request);
+    const result = this.requestQueue.then(() => this.sendRequestWithRetry(request));
+    this.requestQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   /**
@@ -464,7 +470,7 @@ class McpSocketClient {
   }
 }
 
-export function createMcpSocketClient(context: ClaudeForChromeContext): McpSocketClient {
+export function createMcpSocketClient(context: SwiftyForChromeContext): McpSocketClient {
   return new McpSocketClient(context);
 }
 

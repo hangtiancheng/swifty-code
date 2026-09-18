@@ -22,7 +22,7 @@
 
 import { createMcpSocketClient, SocketConnectionError } from "./mcp-socket-client.js";
 import type { McpSocketClient } from "./mcp-socket-client.js";
-import type { ClaudeForChromeContext } from "./types.js";
+import type { SwiftyForChromeContext } from "./types.js";
 
 /**
  * Manages connections to multiple Chrome native host sockets (one per Chrome profile).
@@ -35,12 +35,12 @@ import type { ClaudeForChromeContext } from "./types.js";
 export class McpSocketPool {
   private clients: Map<string, McpSocketClient> = new Map();
   private tabRoutes: Map<number, string> = new Map();
-  private context: ClaudeForChromeContext;
+  private context: SwiftyForChromeContext;
   private notificationHandler:
     | ((notification: { method: string; params?: Record<string, unknown> }) => void)
     | null = null;
 
-  constructor(context: ClaudeForChromeContext) {
+  constructor(context: SwiftyForChromeContext) {
     this.context = context;
   }
 
@@ -275,7 +275,7 @@ export class McpSocketPool {
     for (const path of socketPaths) {
       if (!this.clients.has(path)) {
         logger.info(`[${serverName}] Adding socket to pool: ${path}`);
-        const clientContext: ClaudeForChromeContext = {
+        const clientContext: SwiftyForChromeContext = {
           ...this.context,
           socketPath: path,
           getSocketPath: undefined,
@@ -310,6 +310,6 @@ export class McpSocketPool {
   }
 }
 
-export function createMcpSocketPool(context: ClaudeForChromeContext): McpSocketPool {
+export function createMcpSocketPool(context: SwiftyForChromeContext): McpSocketPool {
   return new McpSocketPool(context);
 }

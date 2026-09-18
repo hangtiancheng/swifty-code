@@ -28,19 +28,19 @@ import { BROWSER_TOOLS } from "./browser-tools.js";
 import { createMcpSocketClient } from "./mcp-socket-client.js";
 import { createMcpSocketPool } from "./mcp-socket-pool.js";
 import { handleToolCall } from "./tool-calls.js";
-import type { ClaudeForChromeContext, SocketClient } from "./types.js";
+import type { SwiftyForChromeContext, SocketClient } from "./types.js";
 
 /**
  * Create the local socket client for the Chrome extension MCP server.
  * Exported so Desktop can share a single instance between the registered
  * MCP server and the InternalMcpServerManager (CCD sessions).
  */
-export function createChromeSocketClient(context: ClaudeForChromeContext): SocketClient {
+export function createChromeSocketClient(context: SwiftyForChromeContext): SocketClient {
   return context.getSocketPaths ? createMcpSocketPool(context) : createMcpSocketClient(context);
 }
 
-export function createClaudeForChromeMcpServer(
-  context: ClaudeForChromeContext,
+export function createSwiftyForChromeMcpServer(
+  context: SwiftyForChromeContext,
   existingSocketClient?: SocketClient,
 ): Server {
   const { serverName, logger } = context;

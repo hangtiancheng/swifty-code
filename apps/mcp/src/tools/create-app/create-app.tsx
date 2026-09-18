@@ -111,7 +111,7 @@ function Shell(): ReactElement {
   const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
-    const app = new App({ name: "swifty render_app", version: "1.0.0" });
+    const app = new App({ name: "swifty create_app", version: "1.0.0" });
 
     app.ontoolinputpartial = (params) => {
       const html = readStringField(params.arguments, "html");
@@ -128,7 +128,7 @@ function Shell(): ReactElement {
       if (result.isError) {
         setState({
           phase: "failed",
-          message: "The render_app tool call failed.",
+          message: "The create_app tool call failed.",
         });
         return;
       }
@@ -208,6 +208,6 @@ function Shell(): ReactElement {
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
-  throw new Error("render_app shell markup is missing #root");
+  throw new Error("create_app shell markup is missing #root");
 }
 createRoot(rootElement).render(<Shell />);

@@ -20,9 +20,10 @@
  * SOFTWARE.
  */
 
-import { renderAppModule } from "./mcp-app/tool.js";
+import { chromeModule } from "./chrome/tool.js";
+import { createAppModule } from "./create-app/tool.js";
 import { searchDocsModule } from "./search-docs/tool.js";
 import type { ToolModule } from "./types.js";
 
 /** All tool modules hosted by this server. Add future modules here. */
-export const modules: ToolModule[] = [renderAppModule, searchDocsModule];
+export const modules: ToolModule[] = [createAppModule, searchDocsModule, chromeModule];

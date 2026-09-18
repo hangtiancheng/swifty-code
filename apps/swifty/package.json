@@ -62,6 +62,7 @@
   "dependencies": {
     "@a2a-js/sdk": "^1.1.0",
     "@agentclientprotocol/sdk": "^1.4.0",
+    "@anthropic-ai/sandbox-runtime": "^0.0.76",
     "@anthropic-ai/sdk": "^0.104.2",
     "@langfuse/otel": "^5.11.1",
     "@langfuse/tracing": "^5.11.1",
@@ -94,6 +95,7 @@
     "fuse.js": "^7.5.0",
     "glob": "^13.0.6",
     "ink": "^7.1.1",
+    "isolated-vm": "^7.0.1",
     "js-yaml": "^4.3.2",
     "koa": "^3.2.1",
     "marked": "^18.0.13",

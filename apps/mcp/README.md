@@ -2,7 +2,7 @@
 
 The **Swifty MCP server** — an official collection of MCP tools for the
 [Swifty CLI](../../README.md). It ships two tools today: a semantic
-`search_docs` RAG tool over your local Swifty knowledge base, and a `render_app`
+`search_docs` RAG tool over your local Swifty knowledge base, and a `create_app`
 tool that lets agents deliver interactive MCP Apps with a sandboxed UI.
 
 [![npm](https://img.shields.io/npm/v/@swifty.js/mcp?label=npm&color=F05138)](https://www.npmjs.com/package/@swifty.js/mcp)
@@ -23,9 +23,9 @@ similarity scoring.
 - **Degraded mode** — if Redis or the embedding provider is unavailable, the tool
   returns an honest error rather than failing silently.
 
-### `render_app`
+### `create_app`
 
-Delivers an interactive "agentic app" as an MCP App: the agent provides an HTML
+Delivers an interactive MCP App: the agent provides an HTML
 string and a title, and the tool renders it in a sandboxed iframe (no storage or
 cookies; external assets restricted to popular CDNs). Hosts without MCP Apps
 support fall back to a text note.
@@ -72,6 +72,6 @@ mcp/
 │   ├── shared/         # config (zod) + logger
 │   └── tools/
 │       ├── search-docs/   # RAG pipeline (chunk/embed/index/retrieve)
-│       └── mcp-app/    # MCP-App render tool
+│       └── create-app/    # MCP App create tool
 └── tests/
 ```

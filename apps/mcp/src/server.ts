@@ -33,10 +33,11 @@ const INSTRUCTIONS =
   "swifty-mcp provides tools for the Swifty CLI. Use search_docs to semantically " +
   "search the user's local knowledge base (Markdown/text files under ~/.swifty/docs) " +
   "whenever a question may be covered by project- or team-specific documents, " +
-  "runbooks or notes. Use render_app to display a self-contained HTML document as an " +
+  "runbooks or notes. Use create_app to display a self-contained HTML document as an " +
   "interactive app (charts, dashboards, calculators, visual demos) inline in the " +
   "conversation when the user wants to see or interact with a result rather than " +
-  "read text.";
+  "read text. Before using browser automation tools, call tabs_context_mcp to discover " +
+  "the available Chrome tabs and their tab IDs.";
 
 // registerTool throws on duplicate names — with per-request server instances
 // in HTTP mode that would surface as runtime 500s, so fail fast at startup.

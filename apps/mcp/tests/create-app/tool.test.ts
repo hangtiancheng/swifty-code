@@ -30,7 +30,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { RENDER_APP_RESOURCE_URI, renderAppModule } from "@/tools/mcp-app/tool.js";
+import { CREATED_APP_RESOURCE_URI, createAppModule } from "@/tools/create-app/tool.js";
 
 // The SDK types these results loosely (index signatures, text/blob unions), so
 // narrow them with zod before asserting on specific fields.
@@ -62,12 +62,12 @@ const CallToolResultSchema = z.looseObject({
     .optional(),
 });
 
-const builtAppPath = fileURLToPath(new URL("../../dist/mcp-app.html", import.meta.url));
+const builtAppPath = fileURLToPath(new URL("../../dist/create-app.html", import.meta.url));
 const hiddenAppPath = `${builtAppPath}.test-hidden`;
 
 async function connect(): Promise<Client> {
   const server = new McpServer({ name: "test-server", version: "0.0.0" });
-  renderAppModule.register(server);
+  createAppModule.register(server);
   const client = new Client({ name: "test-client", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(clientTransport);
@@ -75,32 +75,32 @@ async function connect(): Promise<Client> {
   return client;
 }
 
-describe("render_app", () => {
+describe("create_app", () => {
   it("exposes an app tool linked to the UI resource", async () => {
     const client = await connect();
     const { tools } = await client.listTools();
-    const tool = tools.find((entry) => entry.name === "render_app");
+    const tool = tools.find((entry) => entry.name === "create_app");
     expect(tool).toBeDefined();
     const parsed = ToolSchema.parse(tool);
     // registerAppTool also mirrors the URI under the flat "ui/resourceUri" key.
-    expect(parsed._meta.ui.resourceUri).toBe(RENDER_APP_RESOURCE_URI);
+    expect(parsed._meta.ui.resourceUri).toBe(CREATED_APP_RESOURCE_URI);
     expect(parsed.annotations.openWorldHint).toBe(true);
   });
 
   it("serves the bundled UI shell resource with the MCP Apps mime type", async () => {
     const client = await connect();
-    const result = await client.readResource({ uri: RENDER_APP_RESOURCE_URI });
+    const result = await client.readResource({ uri: CREATED_APP_RESOURCE_URI });
     const content = TextResourceContentsSchema.parse(result.contents[0]);
     expect(content.mimeType).toBe(RESOURCE_MIME_TYPE);
     expect(content.text).toContain('id="root"');
-    expect(content.text).not.toContain("mcp-app.tsx");
+    expect(content.text).not.toContain("create-app.tsx");
   });
 
   it("fails when the bundled UI shell is missing", async () => {
     await rename(builtAppPath, hiddenAppPath);
     try {
       const client = await connect();
-      await expect(client.readResource({ uri: RENDER_APP_RESOURCE_URI })).rejects.toThrow();
+      await expect(client.readResource({ uri: CREATED_APP_RESOURCE_URI })).rejects.toThrow();
     } finally {
       await rename(hiddenAppPath, builtAppPath);
     }
@@ -110,7 +110,7 @@ describe("render_app", () => {
     const client = await connect();
     const result = CallToolResultSchema.parse(
       await client.callTool({
-        name: "render_app",
+        name: "create_app",
         arguments: { html: "<p>hello</p>", title: "Greeting" },
       }),
     );
@@ -126,7 +126,7 @@ describe("render_app", () => {
     const client = await connect();
     const result = CallToolResultSchema.parse(
       await client.callTool({
-        name: "render_app",
+        name: "create_app",
         arguments: { html: "<p>hello</p>" },
       }),
     );
@@ -137,7 +137,7 @@ describe("render_app", () => {
     const client = await connect();
     const result = CallToolResultSchema.parse(
       await client.callTool({
-        name: "render_app",
+        name: "create_app",
         arguments: { html: "x".repeat(200_001) },
       }),
     );

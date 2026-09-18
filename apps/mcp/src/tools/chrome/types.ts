@@ -41,7 +41,7 @@ export interface Logger {
   silly: (message: string, detail?: LoggerDetail) => void; // most verbose level
 }
 
-export interface ClaudeForChromeContext {
+export interface SwiftyForChromeContext {
   serverName: string;
   logger: Logger;
   socketPath: string;
@@ -51,7 +51,7 @@ export interface ClaudeForChromeContext {
   // Optional resolver returning all available socket paths (for multi-profile support).
   // When provided, a socket pool connects to all sockets and routes by tab ID.
   getSocketPaths?: () => string[];
-  clientTypeId: string; // "desktop" | "claude-code"
+  clientTypeId: "desktop" | "claude-code";
   onToolCallDisconnected: () => string;
   isDisabled?: () => boolean;
 }

@@ -42,6 +42,17 @@
       "@swifty.js/docs": "workspace:*",
       "@swifty.js/swifty": "workspace:*",
       "@swifty.js/mcp": "workspace:*"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@swc/core",
+      "better-sqlite3",
+      "core-js",
+      "esbuild",
+      "isolated-vm",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
