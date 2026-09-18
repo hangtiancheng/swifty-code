@@ -27,10 +27,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 
-import { Agent } from "@/agent/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
-import * as config from "@/config/config.js";
-import type { AppConfig } from "@/config/config.js";
+import { Agent } from "@/agent/index.js";
+import * as config from "@/config/index.js";
+import type { AppConfig } from "@/config/index.js";
 import * as clients from "@/llm/client.js";
 import type { StreamEvent } from "@/llm/events.js";
 import { OpenAIClient } from "@/llm/openai.js";
@@ -40,7 +40,7 @@ import { AgentTool } from "@/subagent/agent-tool.js";
 import * as subagents from "@/subagent/spawn.js";
 import * as backend from "@/teams/backend.js";
 import type { ToolContext } from "@/tools/types.js";
-import * as worktrees from "@/worktree/worktree.js";
+import * as worktrees from "@/worktree/index.js";
 
 vi.mock("node:os", async (importOriginal) => ({
   ...(await importOriginal<typeof os>()),

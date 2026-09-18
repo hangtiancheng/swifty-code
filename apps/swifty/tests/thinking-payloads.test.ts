@@ -6,8 +6,8 @@ import {
   THINKING_LEVELS,
   thinkingBudgetForLevel,
   type ProviderConfig,
-} from "@/config/config.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+} from "@/config/index.js";
+import { ConversationManager } from "@/conversation/index.js";
 import { AnthropicClient } from "@/llm/anthropic.js";
 import type { LLMClient } from "@/llm/client.js";
 import { OpenAIClient, OpenAICompatClient } from "@/llm/openai.js";

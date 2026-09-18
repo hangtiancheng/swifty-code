@@ -31,7 +31,7 @@ import {
 } from "./types.js";
 
 import { MCP_TOOL_PREFIX } from "@/mcp/tool-wrapper.js";
-import { intArg, strArg } from "@/utils/utils.js";
+import { intArg, strArg } from "@/utils/index.js";
 
 export class ToolSearchTool implements Tool {
   name = "ToolSearch";

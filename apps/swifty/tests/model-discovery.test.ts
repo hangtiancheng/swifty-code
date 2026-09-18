@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "@/config/config.js";
+import type { ProviderConfig } from "@/config/index.js";
 import { discoverModels, modelListUrl } from "@/llm/model-discovery.js";
 
 const protocols: ProviderConfig["protocol"][] = ["anthropic", "openai", "openai-compat"];

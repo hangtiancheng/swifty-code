@@ -25,7 +25,7 @@ import { join } from "node:path";
 
 import { parse, z } from "zod";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "history" });
 

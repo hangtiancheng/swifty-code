@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { isValidThinkingLevel, THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
+import { isValidThinkingLevel, THINKING_LEVELS, type ThinkingLevel } from "@/config/index.js";
 
 export type CommandType = "local" | "local_ui" | "prompt" | "skill_fork";
 

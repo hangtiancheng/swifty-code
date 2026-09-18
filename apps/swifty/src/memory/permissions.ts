@@ -23,7 +23,7 @@
 import { homedir } from "node:os";
 import { extname, join, resolve } from "node:path";
 
-import { PermissionChecker, type Decision } from "@/permissions/checker.js";
+import { PermissionChecker, type Decision } from "@/permissions/index.js";
 import type { ToolCategory } from "@/tools/types.js";
 import { canonicalPath, isPathWithin } from "@/utils/paths.js";
 

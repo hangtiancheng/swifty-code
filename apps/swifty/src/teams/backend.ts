@@ -22,9 +22,9 @@
 
 import { execSync, spawn } from "node:child_process";
 
-import type { TeamMode } from "./team.js";
+import type { TeamMode } from "./index.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "teams" });
 

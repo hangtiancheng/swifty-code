@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { HookConfig } from "@/config/config.js";
-import { HookEngine } from "@/hooks/hooks.js";
+import type { HookConfig } from "@/config/index.js";
+import { HookEngine } from "@/hooks/index.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

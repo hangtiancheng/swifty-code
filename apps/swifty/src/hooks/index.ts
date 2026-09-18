@@ -22,10 +22,10 @@
 
 import { exec } from "node:child_process";
 
-import type { HookConfig } from "@/config/config.js";
-import { createChildLogger } from "@/logger/logger.js";
-import { asErrorString } from "@/utils/utils.js";
-import { strArg } from "@/utils/utils.js";
+import type { HookConfig } from "@/config/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import { asErrorString } from "@/utils/index.js";
+import { strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "hooks" });
 

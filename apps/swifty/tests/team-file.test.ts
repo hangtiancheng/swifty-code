@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { describe, expect, test, beforeEach, afterEach } from "vitest";
 
+import { TeamManager } from "@/teams/index.js";
 import { readTeamFile, teamDir, teamsBaseDir } from "@/teams/team-file.js";
-import { TeamManager } from "@/teams/team.js";
 
 // The teams directory lives at <home>/.swifty/teams, so redirect the entire
 // home directory to a temp dir to avoid leaving residue in the real

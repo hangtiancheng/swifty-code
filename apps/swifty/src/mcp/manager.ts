@@ -25,9 +25,9 @@ import { isDeepStrictEqual } from "node:util";
 import { MCPClient } from "./client.js";
 import type { MCPTool } from "./client.js";
 
-import type { MCPServerConfig } from "@/config/config.js";
-import { createChildLogger } from "@/logger/logger.js";
-import { asErrorString } from "@/utils/utils.js";
+import type { MCPServerConfig } from "@/config/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "mcp" });
 

@@ -25,7 +25,7 @@ import { extname } from "node:path";
 
 import sharp from "sharp";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "images" });
 

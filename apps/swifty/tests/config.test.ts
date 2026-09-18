@@ -47,7 +47,7 @@ import {
   type AppConfig,
   type MCPServerConfig,
   type ProviderConfig,
-} from "@/config/config.js";
+} from "@/config/index.js";
 
 describe("config", () => {
   describe("getContextWindow", () => {

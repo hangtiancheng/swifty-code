@@ -25,22 +25,22 @@ import { StreamingExecutor } from "./streaming-executor.js";
 
 import { manageContext, forceCompact, AutoCompactTrackingState } from "@/compact/compact.js";
 import { RecoveryState } from "@/compact/recovery.js";
-import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT_TOKENS } from "@/config/config.js";
-import type { ConversationManager } from "@/conversation/conversation.js";
-import type { ToolUseBlock, ToolResultBlock } from "@/conversation/conversation.js";
+import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT_TOKENS } from "@/config/index.js";
+import type { ConversationManager } from "@/conversation/index.js";
+import type { ToolUseBlock, ToolResultBlock } from "@/conversation/index.js";
 import { REJECTED_TOOL_RESULT } from "@/conversation/pairing.js";
-import type { FileHistory } from "@/file-history/file-history.js";
-import type { HookEngine, EventName } from "@/hooks/hooks.js";
+import type { FileHistory } from "@/file-history/index.js";
+import type { HookEngine, EventName } from "@/hooks/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError, RateLimitError } from "@/llm/errors.js";
 import type { UsageInfo } from "@/llm/events.js";
 import type { RecallResult } from "@/memory/manager.js";
-import type { PermissionChecker } from "@/permissions/checker.js";
-import { getOrCreatePlanPath, planExists } from "@/plan-file/plan-file.js";
+import type { PermissionChecker } from "@/permissions/index.js";
+import { getOrCreatePlanPath, planExists } from "@/plan-file/index.js";
 import { coordinatorReminder } from "@/prompt/coordinator.js";
 import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
-import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "@/session/session.js";
-import { getSessionFilePath } from "@/session/session.js";
+import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "@/session/index.js";
+import { getSessionFilePath } from "@/session/index.js";
 import {
   endAgentTelemetry,
   observeLlmStream,
@@ -52,12 +52,12 @@ import {
   isSpillReadback,
   persistLargeResult,
   replaceToolResultContent,
-} from "@/tool-result/budget.js";
+} from "@/tool-result/index.js";
 import type { FileStateCache } from "@/tools/file-state-cache.js";
 import { McpCallTool } from "@/tools/mcp-call.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 import type { PermissionRequestHandler, ToolResult } from "@/tools/types.js";
-import { asErrorString, asRecord, strArg } from "@/utils/utils.js";
+import { asErrorString, asRecord, strArg } from "@/utils/index.js";
 
 // When the model stops on max_tokens, escalate its output ceiling once to this
 // value, then attempt a bounded number of multi-turn recoveries.

@@ -27,12 +27,12 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { RecoveryState } from "@/compact/recovery.js";
-import { ConversationManager } from "@/conversation/conversation.js";
-import { FileHistory } from "@/file-history/file-history.js";
+import { ConversationManager } from "@/conversation/index.js";
+import { FileHistory } from "@/file-history/index.js";
 import { parseRemoteAddress } from "@/remote/address.js";
 import { RemoteServer } from "@/remote/server.js";
 import { restoreRemoteSession } from "@/remote/session-state.js";
-import type { SessionMessage } from "@/session/session.js";
+import type { SessionMessage } from "@/session/index.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 
 function deferred<T>() {

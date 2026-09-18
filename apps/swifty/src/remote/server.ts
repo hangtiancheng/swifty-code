@@ -36,8 +36,8 @@ import { parseRemoteAddress } from "./address.js";
 import { AgentEventLogger } from "./log.js";
 import { restoreRemoteSession } from "./session-state.js";
 
-import { Agent } from "@/agent/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
+import { Agent } from "@/agent/index.js";
 import {
   parse as parseCommand,
   createDefaultRegistry as createCommandRegistry,
@@ -52,15 +52,15 @@ import {
   getContextWindow,
   getMaxOutputTokens,
   getSupportedThinkingLevels,
-} from "@/config/config.js";
-import type { HookConfig, MCPServerConfig, ProviderConfig } from "@/config/config.js";
+} from "@/config/index.js";
+import type { HookConfig, MCPServerConfig, ProviderConfig } from "@/config/index.js";
 import { persistThinkingLevel } from "@/config/provider-login.js";
-import { ConversationManager } from "@/conversation/conversation.js";
-import { FileHistory } from "@/file-history/file-history.js";
-import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
+import { ConversationManager } from "@/conversation/index.js";
+import { FileHistory } from "@/file-history/index.js";
+import { HookEngine, validate as validateHooks } from "@/hooks/index.js";
 import { createClient, type LLMClient } from "@/llm/client.js";
 import { resolveModelId } from "@/llm/model-resolver.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import { syncMcpInstructions as announceMcpInstructions } from "@/mcp/instructions.js";
 import { MCPManager } from "@/mcp/manager.js";
 import { decideAndApply } from "@/mcp/strategy.js";
@@ -69,8 +69,8 @@ import { MemoryConsolidator } from "@/memory/consolidation.js";
 import { MemoryExtractor } from "@/memory/extractor.js";
 import { loadInstructions } from "@/memory/instructions.js";
 import { MemoryManager } from "@/memory/manager.js";
-import { PermissionChecker, type Decision } from "@/permissions/checker.js";
-import { getOrCreatePlanPath } from "@/plan-file/plan-file.js";
+import { PermissionChecker, type Decision } from "@/permissions/index.js";
+import { getOrCreatePlanPath } from "@/plan-file/index.js";
 import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
 import {
   newSessionId,
@@ -79,22 +79,22 @@ import {
   listSessions,
   loadSession,
   getSessionFilePath,
-} from "@/session/session.js";
+} from "@/session/index.js";
 import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
 import { runInline as runSkillInline } from "@/skills/executor.js";
+import type { SkillForkHost, SkillHost } from "@/skills/index.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
-import type { SkillForkHost, SkillHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import { spawnSubagent } from "@/subagent/spawn.js";
 import { TaskManager, formatAgentTaskNotification } from "@/subagent/task-manager.js";
 import { filterToolsForAgent } from "@/subagent/tool-filter.js";
 import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
+import { TeamManager, type RunAgent } from "@/teams/index.js";
 import { TaskStopTool } from "@/teams/task-stop.js";
-import { TeamManager, type RunAgent } from "@/teams/team.js";
 import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "@/teams/tools.js";
+import { TaskList } from "@/todo/index.js";
 import { TaskStore } from "@/todo/store.js";
-import { TaskList } from "@/todo/todo.js";
 import { TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool } from "@/todo/tools.js";
 import { AskUserQuestionTool, type Question, type Asker } from "@/tools/ask-user.js";
 import { BashTool } from "@/tools/bash.js";
@@ -114,7 +114,7 @@ import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
 import type { PermissionRequestHandler } from "@/tools/types.js";
 import { WriteFileTool } from "@/tools/write-file.js";
-import { contentToText, strArg } from "@/utils/utils.js";
+import { contentToText, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "remote" });
 
@@ -465,8 +465,8 @@ export async function createRemoteAgent(
       if (!client) {
         throw new Error("no llm client (provider not initialized)");
       }
-      const { PermissionChecker: PC } = await import("../permissions/checker.js");
-      const { Agent: AgentClass } = await import("../agent/agent.js");
+      const { PermissionChecker: PC } = await import("../permissions/index.js");
+      const { Agent: AgentClass } = await import("../agent/index.js");
 
       // Sub-agent uses an independent conversation to avoid polluting the main context
       const subConv = new ConversationManager();

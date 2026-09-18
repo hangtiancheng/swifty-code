@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-import type { TeamManager } from "./team.js";
+import type { TeamManager } from "./index.js";
 
 import type { TaskManager } from "@/subagent/task-manager.js";
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
-import { strArg } from "@/utils/utils.js";
+import { strArg } from "@/utils/index.js";
 
 /** Abort a running teammate or one-shot background Agent task. */
 export class TaskStopTool implements Tool {

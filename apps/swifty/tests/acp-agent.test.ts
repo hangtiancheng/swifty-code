@@ -7,8 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createSwiftyAcpApp, type AcpRuntime, type AcpRuntimeFactory } from "@/acp/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
-import { ConversationManager } from "@/conversation/conversation.js";
-import { saveMessage } from "@/session/session.js";
+import { ConversationManager } from "@/conversation/index.js";
+import { saveMessage } from "@/session/index.js";
 
 function fakeRuntime(
   sessionId: string,

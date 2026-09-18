@@ -32,7 +32,7 @@ import {
   loadPlan,
   planExists,
   resetPlanPath,
-} from "@/plan-file/plan-file.js";
+} from "@/plan-file/index.js";
 import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
 
 describe("plan-file", () => {

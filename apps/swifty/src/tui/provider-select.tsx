@@ -27,7 +27,7 @@ import { useMemo, useState } from "react";
 import { SelectorList, SelectorListRow } from "./selector-list.js";
 import { updateSelectorQuery } from "./selector-search.js";
 
-import type { ProviderConfig } from "@/config/config.js";
+import type { ProviderConfig } from "@/config/index.js";
 
 interface ProviderSelectProps {
   currentBaseUrl?: string;

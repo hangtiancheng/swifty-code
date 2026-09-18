@@ -25,7 +25,7 @@ import { useLayoutEffect, useRef } from "react";
 
 import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
-import type { ThinkingLevel } from "@/config/config.js";
+import type { ThinkingLevel } from "@/config/index.js";
 import { THEME, thinkingLevelColor } from "@/ui/styles.js";
 import { compactPath } from "@/utils/paths.js";
 

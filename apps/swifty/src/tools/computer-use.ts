@@ -23,8 +23,8 @@ import type {
   ToolSchema,
 } from "./types.js";
 
-import { maybeResizeAndDownsampleImage } from "@/images/images.js";
-import { asErrorString } from "@/utils/utils.js";
+import { maybeResizeAndDownsampleImage } from "@/images/index.js";
+import { asErrorString } from "@/utils/index.js";
 
 const ACTIONS = [
   "key",

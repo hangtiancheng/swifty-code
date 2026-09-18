@@ -6,16 +6,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { createToolRegistry } from "@/bootstrap/tool-registry.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
 import { AnthropicClient } from "@/llm/anthropic.js";
 import { OpenAIClient } from "@/llm/openai.js";
-import { extractContent } from "@/permissions/checker.js";
+import { extractContent } from "@/permissions/index.js";
 import { cloneRegistryForFork, filterToolsForAgent } from "@/subagent/tool-filter.js";
-import { TaskList } from "@/todo/todo.js";
+import { TaskList } from "@/todo/index.js";
 import { ComputerUseTool } from "@/tools/computer-use.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { ToolContext } from "@/tools/types.js";
-import { asRecord } from "@/utils/utils.js";
+import { asRecord } from "@/utils/index.js";
 
 const context: ToolContext = { workDir: tmpdir() };
 

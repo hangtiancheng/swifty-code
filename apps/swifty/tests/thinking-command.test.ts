@@ -23,7 +23,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createDefaultRegistry, parse } from "@/commands/commands.js";
-import type { ThinkingLevel } from "@/config/config.js";
+import type { ThinkingLevel } from "@/config/index.js";
 
 describe("/thinking command", () => {
   const registry = createDefaultRegistry();

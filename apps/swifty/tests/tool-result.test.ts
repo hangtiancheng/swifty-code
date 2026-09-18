@@ -26,8 +26,8 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import type { ToolResultBlock } from "@/conversation/conversation.js";
-import { applyBudget, isSpillReadback, persistLargeResult } from "@/tool-result/budget.js";
+import type { ToolResultBlock } from "@/conversation/index.js";
+import { applyBudget, isSpillReadback, persistLargeResult } from "@/tool-result/index.js";
 function batch(...sizes: number[]): ToolResultBlock[] {
   return sizes.map((n, i) => ({
     toolUseId: `t${String(i + 1)}`,

@@ -41,17 +41,17 @@ import {
   resolveAPIKey,
   type ThinkingLevel,
   toReasoningEffort,
-} from "@/config/config.js";
+} from "@/config/index.js";
 import type {
   ConversationManager,
   Message,
   ToolResultBlock,
   ToolUseBlock,
-} from "@/conversation/conversation.js";
+} from "@/conversation/index.js";
 import { ensureToolPairing } from "@/conversation/pairing.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import type { ProviderToolSchema, ToolSchema } from "@/tools/types.js";
-import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/utils.js";
+import { asRecord, asString, contentToText, isRecord, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "llm" });
 

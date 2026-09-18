@@ -39,11 +39,11 @@ import { dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 import { buildSkillSection, parseSkillFile, SkillCatalog } from "@/skills/catalog.js";
 import { runFork, runInline } from "@/skills/executor.js";
+import type { Skill, SkillForkHost } from "@/skills/index.js";
 import { InstallSkillTool } from "@/skills/install-tool.js";
-import type { Skill, SkillForkHost } from "@/skills/skills.js";
 
 vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof os>();

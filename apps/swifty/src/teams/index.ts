@@ -49,13 +49,13 @@ import { SharedTaskStore } from "./shared-task.js";
 import { listTeamNames, readTeamFile, teamDir, writeTeamFile, type TeamFile } from "./team-file.js";
 import { saveTranscript } from "./transcript.js";
 
-import type { ConversationManager } from "@/conversation/conversation.js";
-import { createChildLogger } from "@/logger/logger.js";
-import type { PermissionChecker } from "@/permissions/checker.js";
-import { getOrCreatePlanPath } from "@/plan-file/plan-file.js";
+import type { ConversationManager } from "@/conversation/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import type { PermissionChecker } from "@/permissions/index.js";
+import { getOrCreatePlanPath } from "@/plan-file/index.js";
 import { buildTeammatePrompt } from "@/prompt/delegation.js";
 import type { SubagentProgressEvent } from "@/subagent/spawn.js";
-import { asErrorString } from "@/utils/utils.js";
+import { asErrorString } from "@/utils/index.js";
 import { randomVerb } from "@/utils/verbs.js";
 
 const log = createChildLogger({ module: "teams" });

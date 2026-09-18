@@ -25,7 +25,7 @@ import { join, dirname } from "node:path";
 
 import z, { parse } from "zod";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "todo" });
 

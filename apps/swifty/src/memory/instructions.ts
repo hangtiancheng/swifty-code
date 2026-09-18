@@ -24,7 +24,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, resolve, isAbsolute, relative } from "node:path";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 const log = createChildLogger({ module: "memory" });
 
 /** Maximum recursion depth for @include to prevent infinite nesting */

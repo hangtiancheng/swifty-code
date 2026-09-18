@@ -23,14 +23,14 @@
 import type { AgentDefinition } from "./definition.js";
 import { filterToolsForAgent } from "./tool-filter.js";
 
-import { Agent, type AgentConfig } from "@/agent/agent.js";
-import { getContextWindow, getMaxOutputTokens, type ProviderConfig } from "@/config/config.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { Agent, type AgentConfig } from "@/agent/index.js";
+import { getContextWindow, getMaxOutputTokens, type ProviderConfig } from "@/config/index.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { createClient } from "@/llm/client.js";
 import { resolveModelId } from "@/llm/model-resolver.js";
 import { loadInstructions } from "@/memory/instructions.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
 import { buildSubagentInstructions } from "@/prompt/delegation.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";

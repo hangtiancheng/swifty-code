@@ -38,10 +38,10 @@ import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
 import type { Command } from "@/commands/commands.js";
 import type { CommandUsageTracker } from "@/commands/usage-tracker.js";
-import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
+import { THINKING_LEVELS, type ThinkingLevel } from "@/config/index.js";
 import { saveClipboardImage } from "@/images/clipboard.js";
-import { createChildLogger } from "@/logger/logger.js";
-import type { PermissionMode } from "@/permissions/checker.js";
+import { createChildLogger } from "@/logger/index.js";
+import type { PermissionMode } from "@/permissions/index.js";
 import { SKIP_DIRS } from "@/tools/types.js";
 import { ICONS, THEME } from "@/ui/styles.js";
 

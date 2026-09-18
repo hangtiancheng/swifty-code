@@ -23,9 +23,9 @@
 import type { RemoteAgentHandle } from "./server.js";
 
 import { RecoveryState } from "@/compact/recovery.js";
-import { FileHistory } from "@/file-history/file-history.js";
-import { rebuildFromSession } from "@/session/session.js";
-import type { SessionMessage } from "@/session/session.js";
+import { FileHistory } from "@/file-history/index.js";
+import { rebuildFromSession } from "@/session/index.js";
+import type { SessionMessage } from "@/session/index.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 
 type SessionState = Pick<

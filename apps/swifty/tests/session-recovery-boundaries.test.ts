@@ -32,7 +32,7 @@ import {
   saveCompactBoundary,
   saveMessage,
   type SessionMessage,
-} from "@/session/session.js";
+} from "@/session/index.js";
 
 const directories: string[] = [];
 afterEach(() => {

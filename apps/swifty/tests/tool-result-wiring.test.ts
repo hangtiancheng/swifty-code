@@ -26,17 +26,17 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { Agent } from "@/agent/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
+import { Agent } from "@/agent/index.js";
 import { RecoveryState } from "@/compact/recovery.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent, UsageInfo } from "@/llm/events.js";
-import { PermissionChecker } from "@/permissions/checker.js";
-import { loadSession, rebuildFromSession } from "@/session/session.js";
+import { PermissionChecker } from "@/permissions/index.js";
+import { loadSession, rebuildFromSession } from "@/session/index.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool, ToolResultContentBlock } from "@/tools/types.js";
-import { asString, isRecord } from "@/utils/utils.js";
+import { asString, isRecord } from "@/utils/index.js";
 
 // Wiring test for the tool-result budget in the Agent main loop: drives the
 // full main loop and verifies single-result spill, aggregate spill, readback

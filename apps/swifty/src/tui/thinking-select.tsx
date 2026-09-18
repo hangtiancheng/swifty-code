@@ -6,7 +6,7 @@ import { getListWindowStart } from "./list-window.js";
 import { SelectorFrame } from "./selector-frame.js";
 import { truncateToWidth, visibleWidth } from "./terminal-text.js";
 
-import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
+import { THINKING_LEVELS, type ThinkingLevel } from "@/config/index.js";
 import { ICONS, THEME, thinkingLevelColor } from "@/ui/styles.js";
 
 interface ThinkingSelectProps {

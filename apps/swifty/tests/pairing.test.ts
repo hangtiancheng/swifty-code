@@ -22,7 +22,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import type { Message } from "@/conversation/conversation.js";
+import type { Message } from "@/conversation/index.js";
 import { ensureToolPairing, INTERRUPTED_TOOL_RESULT } from "@/conversation/pairing.js";
 
 function assistantWithTool(id: string): Message {

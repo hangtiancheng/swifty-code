@@ -26,6 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
+import { TeamManager } from "@/teams/index.js";
 import {
   createProgress,
   recordTokens,
@@ -34,7 +35,6 @@ import {
   recordTurnComplete,
 } from "@/teams/progress.js";
 import { listTeamNames } from "@/teams/team-file.js";
-import { TeamManager } from "@/teams/team.js";
 import {
   TeamCreateTool,
   SpawnTeammateTool,

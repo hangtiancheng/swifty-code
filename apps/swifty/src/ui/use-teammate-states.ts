@@ -22,8 +22,8 @@
 
 import { useEffect, useState } from "react";
 
+import type { TeamManager } from "@/teams/index.js";
 import type { TeammateUIState } from "@/teams/progress.js";
-import type { TeamManager } from "@/teams/team.js";
 
 export function useTeammateStates(manager: TeamManager) {
   const [states, setStates] = useState<TeammateUIState[]>([]);

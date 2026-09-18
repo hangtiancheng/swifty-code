@@ -25,7 +25,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { fileHistoryDir } from "@/file-history/file-history.js";
+import { fileHistoryDir } from "@/file-history/index.js";
 
 export type SaveClipboardImageResult = { ok: true; value: string } | { ok: false; reason: string };
 

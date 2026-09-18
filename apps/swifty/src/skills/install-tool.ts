@@ -38,9 +38,9 @@ import yaml from "js-yaml";
 
 import { parseSkillFile, type SkillCatalog } from "./catalog.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import type { Tool, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
-import { asErrorString, strArg } from "@/utils/utils.js";
+import { asErrorString, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "skills" });
 

@@ -34,10 +34,10 @@ import {
   type ToolSchema,
 } from "./types.js";
 
-import { isImagePath, loadImageAttachment } from "@/images/images.js";
-import { createChildLogger } from "@/logger/logger.js";
-import { asErrorString } from "@/utils/utils.js";
-import { intArg, strArg } from "@/utils/utils.js";
+import { isImagePath, loadImageAttachment } from "@/images/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import { asErrorString } from "@/utils/index.js";
+import { intArg, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 const DEFAULT_LIMIT = 2000;

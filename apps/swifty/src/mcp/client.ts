@@ -33,11 +33,11 @@ import {
   type StreamableHTTPClientTransportOptions,
 } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-import type { MCPServerConfig } from "@/config/config.js";
-import { asImageMediaType, maybeResizeAndDownsampleImage } from "@/images/images.js";
-import { createChildLogger } from "@/logger/logger.js";
+import type { MCPServerConfig } from "@/config/index.js";
+import { asImageMediaType, maybeResizeAndDownsampleImage } from "@/images/index.js";
+import { createChildLogger } from "@/logger/index.js";
 import type { ToolResult, ToolResultContentBlock, ToolSchema } from "@/tools/types.js";
-import { isRecord } from "@/utils/utils.js";
+import { isRecord } from "@/utils/index.js";
 import { version } from "@/version.js";
 
 const log = createChildLogger({ module: "mcp" });

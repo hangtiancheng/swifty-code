@@ -27,7 +27,7 @@ import { useMemo, useState } from "react";
 import { SelectorList, SelectorListRow } from "./selector-list.js";
 import { updateSelectorQuery } from "./selector-search.js";
 
-import type { SessionInfo } from "@/session/session.js";
+import type { SessionInfo } from "@/session/index.js";
 
 interface SessionSelectorProps {
   currentSessionId?: string;

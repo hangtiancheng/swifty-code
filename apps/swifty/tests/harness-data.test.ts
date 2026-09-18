@@ -34,8 +34,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { Agent } from "@/agent/agent.js";
-import { ConversationManager, type Message } from "@/conversation/conversation.js";
+import { Agent } from "@/agent/index.js";
+import { ConversationManager, type Message } from "@/conversation/index.js";
 import { AnthropicClient, buildAnthropicMessages } from "@/llm/anthropic.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent } from "@/llm/events.js";
@@ -43,7 +43,7 @@ import { buildChatCompletionMessages, buildOpenAIInput } from "@/llm/openai.js";
 import { MemoryExtractor } from "@/memory/extractor.js";
 import { MemoryPermissionChecker } from "@/memory/permissions.js";
 import { extractWrittenPaths } from "@/memory/written-paths.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { EditFileTool } from "@/tools/edit-file.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
@@ -51,7 +51,7 @@ import { ReadFileTool } from "@/tools/read-file.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { ToolContext } from "@/tools/types.js";
 import { WriteFileTool } from "@/tools/write-file.js";
-import * as worktrees from "@/worktree/worktree.js";
+import * as worktrees from "@/worktree/index.js";
 
 const end: StreamEvent = {
   type: "stream_end",

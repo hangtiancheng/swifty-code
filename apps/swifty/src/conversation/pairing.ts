@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { Message, ToolResultBlock } from "./conversation.js";
+import type { Message, ToolResultBlock } from "./index.js";
 
 // Anthropic requires every tool_use to have a matching tool_result; a single missing
 // pairing causes the entire request to be rejected. Unpaired entries can creep into

@@ -26,13 +26,13 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { Agent, type AgentConfig } from "@/agent/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { Agent, type AgentConfig } from "@/agent/index.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError } from "@/llm/errors.js";
 import type { StreamEvent } from "@/llm/events.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool } from "@/tools/types.js";
 

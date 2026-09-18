@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { FileHistory } from "@/file-history/file-history.js";
+import { FileHistory } from "@/file-history/index.js";
 
 function makeTempProject(): { base: string; projectDir: string } {
   const base = mkdtempSync(join(tmpdir(), "swifty-fh-"));

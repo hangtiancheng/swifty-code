@@ -25,7 +25,7 @@ import { useState } from "react";
 
 import { SelectorFrame } from "./selector-frame.js";
 
-import type { Snapshot } from "@/file-history/file-history.js";
+import type { Snapshot } from "@/file-history/index.js";
 import { ICONS, THEME } from "@/ui/styles.js";
 
 export type RewindAction =

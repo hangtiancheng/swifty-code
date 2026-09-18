@@ -22,25 +22,25 @@
 
 /* eslint-disable no-console -- non-interactive output mode: console.log is the program output channel */
 
-import { Agent } from "./agent/agent.js";
 import type { AgentEvent } from "./agent/events.js";
-import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/config.js";
-import { getContextWindow, getMaxOutputTokens } from "./config/config.js";
-import { ConversationManager } from "./conversation/conversation.js";
+import { Agent } from "./agent/index.js";
+import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/index.js";
+import { getContextWindow, getMaxOutputTokens } from "./config/index.js";
+import { ConversationManager } from "./conversation/index.js";
 import { createClient } from "./llm/client.js";
 import { MCPManager } from "./mcp/manager.js";
 import { decideAndApply } from "./mcp/strategy.js";
 import { MCPToolWrapper } from "./mcp/tool-wrapper.js";
 import { loadInstructions } from "./memory/instructions.js";
-import { PermissionChecker } from "./permissions/checker.js";
+import { PermissionChecker } from "./permissions/index.js";
 import { buildSystemPrompt, detectEnvironment } from "./prompt/builder.js";
 import { AgentTool } from "./subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "./subagent/definition.js";
 import { spawnSubagent } from "./subagent/spawn.js";
 import { TaskManager, formatAgentTaskNotification } from "./subagent/task-manager.js";
 import { coordinatorToolFilter, coordinatorActive } from "./teams/coordinator.js";
+import { TeamManager } from "./teams/index.js";
 import { TaskStopTool } from "./teams/task-stop.js";
-import { TeamManager } from "./teams/team.js";
 import { TeamCreateTool, SendMessageTool, TeamDeleteTool } from "./teams/tools.js";
 import { BashTool } from "./tools/bash.js";
 import { ComputerUseTool } from "./tools/computer-use.js";

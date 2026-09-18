@@ -33,7 +33,7 @@ import { z } from "zod";
 import { detectIde } from "./lockfile.js";
 import { WebSocketTransport } from "./ws-transport.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import { version } from "@/version.js";
 
 const log = createChildLogger({ module: "vscode" });

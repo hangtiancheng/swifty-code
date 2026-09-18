@@ -27,7 +27,7 @@ import { join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { createAgentWorktree } from "@/worktree/worktree.js";
+import { createAgentWorktree } from "@/worktree/index.js";
 
 function initRepo(): string {
   // realpath: on macOS mkdtemp returns /var/... which is a symlink to

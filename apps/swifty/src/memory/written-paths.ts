@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { Message } from "@/conversation/conversation.js";
+import type { Message } from "@/conversation/index.js";
 
 /** Only completed writes count as saved memories; assistant prose is not execution evidence. */
 export function extractWrittenPaths(messages: Message[]): string[] {

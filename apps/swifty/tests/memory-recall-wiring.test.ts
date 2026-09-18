@@ -22,12 +22,12 @@
 
 import { describe, it, expect } from "vitest";
 
-import { Agent } from "@/agent/agent.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { Agent } from "@/agent/index.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent, UsageInfo } from "@/llm/events.js";
 import type { RecallResult } from "@/memory/manager.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool } from "@/tools/types.js";
 

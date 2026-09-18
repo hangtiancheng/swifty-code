@@ -28,7 +28,7 @@
 // model's intended execution order if run in parallel.
 import { describe, it, expect } from "vitest";
 
-import { isSafeCommand } from "@/permissions/checker.js";
+import { isSafeCommand } from "@/permissions/index.js";
 import { BashTool } from "@/tools/bash.js";
 
 describe("Bash concurrency safety is determined per command", () => {

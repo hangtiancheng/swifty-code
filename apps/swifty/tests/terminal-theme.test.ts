@@ -28,7 +28,7 @@ import {
   themeForRgb,
   themeFromEnvironment,
 } from "@/bootstrap/terminal-theme.js";
-import { THINKING_LEVELS } from "@/config/config.js";
+import { THINKING_LEVELS } from "@/config/index.js";
 import {
   activityStatusColor,
   DARK_THEME,

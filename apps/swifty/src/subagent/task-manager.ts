@@ -1,4 +1,4 @@
-import { asErrorString } from "@/utils/utils.js";
+import { asErrorString } from "@/utils/index.js";
 
 export type AgentTaskStatus = "running" | "completed" | "failed" | "cancelled";
 

@@ -23,7 +23,7 @@
 import { describe, it, expect } from "vitest";
 import z, { parse, safeParse } from "zod";
 
-import type { Message } from "@/conversation/conversation.js";
+import type { Message } from "@/conversation/index.js";
 import { buildChatCompletionMessages, buildOpenAIInput } from "@/llm/openai.js";
 
 describe("openai-compat chat message building", () => {

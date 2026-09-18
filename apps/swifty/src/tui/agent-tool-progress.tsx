@@ -4,7 +4,7 @@ import { ToolBlock, type ToolBlockInfo, type ToolCardStatus } from "./tool-displ
 
 import type { AgentTask } from "@/subagent/task-manager.js";
 import { formatTokens, type TeammateUIState } from "@/teams/progress.js";
-import { strArg } from "@/utils/utils.js";
+import { strArg } from "@/utils/index.js";
 
 export interface SubagentProgress {
   toolCallId: string;

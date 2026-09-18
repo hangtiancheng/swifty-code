@@ -45,10 +45,10 @@ import {
   thinkingBudgetForLevel,
   toAnthropicThinkingEffort,
   toReasoningEffort,
-} from "@/config/config.js";
-import type { ConversationManager, Message } from "@/conversation/conversation.js";
+} from "@/config/index.js";
+import type { ConversationManager, Message } from "@/conversation/index.js";
 import { ensureToolPairing } from "@/conversation/pairing.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import { NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
 import { normalizeToolResultContentBlock } from "@/tools/types.js";
 import type { AnthropicToolSchema, ProviderToolSchema, ToolSchema } from "@/tools/types.js";
@@ -59,7 +59,7 @@ import {
   contentToText,
   isRecord,
   strArg,
-} from "@/utils/utils.js";
+} from "@/utils/index.js";
 
 /**
  * Place the cache breakpoint on the last non-deferred tool.

@@ -24,7 +24,7 @@ import type { CodeReviewManager } from "./manager.js";
 import { asCriticEvaluation, type ReviewSession } from "./session.js";
 
 import type { CommandContext } from "@/commands/commands.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "code-review" });
 

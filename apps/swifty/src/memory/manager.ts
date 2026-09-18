@@ -37,9 +37,9 @@ import z, { parse } from "zod";
 
 import { memoryAge, memoryFreshnessText } from "./memory-age.js";
 
-import { ConversationManager } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "memory" });
 

@@ -25,7 +25,7 @@ import { access, cp, mkdir, readFile, realpath, stat, symlink } from "fs/promise
 import { dirname, isAbsolute, join } from "path";
 import { promisify } from "util";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "worktree" });
 

@@ -35,7 +35,7 @@ import {
   environmentSection,
 } from "./sections.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 const log = createChildLogger({ module: "prompt" });
 
 export class PromptBuilder {

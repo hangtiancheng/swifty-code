@@ -36,11 +36,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ExitWorktreeTool } from "@/tools/exit-worktree.js";
-import {
-  createAgentWorktree,
-  hasWorktreeChanges,
-  removeAgentWorktree,
-} from "@/worktree/worktree.js";
+import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from "@/worktree/index.js";
 
 const temporaryDirectories: string[] = [];
 

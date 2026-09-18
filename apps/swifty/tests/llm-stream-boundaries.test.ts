@@ -22,8 +22,8 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "@/config/config.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import type { ProviderConfig } from "@/config/index.js";
+import { ConversationManager } from "@/conversation/index.js";
 import { AnthropicClient } from "@/llm/anthropic.js";
 import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError, LLMError, NetworkError, RateLimitError } from "@/llm/errors.js";

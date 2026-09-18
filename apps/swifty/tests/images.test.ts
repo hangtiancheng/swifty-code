@@ -40,7 +40,7 @@ import {
   MAX_IMAGE_BYTES_PASSTHROUGH,
   loadImageAttachment,
   maybeResizeAndDownsampleImage,
-} from "@/images/images.js";
+} from "@/images/index.js";
 
 const TEST_PNG_PATH = join(dirname(fileURLToPath(import.meta.url)), "test.png");
 

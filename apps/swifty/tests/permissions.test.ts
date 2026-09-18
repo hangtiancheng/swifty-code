@@ -27,10 +27,10 @@ import { join } from "path";
 
 import { describe, it, expect, vi } from "vitest";
 
-import { Agent } from "@/agent/agent.js";
+import { Agent } from "@/agent/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { MemoryConsolidator } from "@/memory/consolidation.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import { PermissionChecker } from "@/permissions/index.js";
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), "swifty-test-"));

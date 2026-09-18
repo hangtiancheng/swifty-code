@@ -27,17 +27,17 @@ import {
 } from "./prompts.js";
 import type { RecoveryState } from "./recovery.js";
 
-import { ConversationManager } from "@/conversation/conversation.js";
-import type { Message } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
+import type { Message } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError } from "@/llm/errors.js";
 import {
   type CompactBoundaryPayload,
   toolUsesToRecords,
   toolResultsToRecords,
-} from "@/session/session.js";
+} from "@/session/index.js";
 import type { ProviderToolSchema, ToolResultContentBlock } from "@/tools/types.js";
-import { asErrorString, contentToText, strArg } from "@/utils/utils.js";
+import { asErrorString, contentToText, strArg } from "@/utils/index.js";
 
 // Structured outcome of a compaction. When `compacted` is true, `boundary`
 // carries the summary plus the verbatim kept tail (inlined as role+text) so the

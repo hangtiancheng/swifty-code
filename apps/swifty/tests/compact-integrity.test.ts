@@ -24,7 +24,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { computeKeepStartIndex, forceCompact } from "@/compact/compact.js";
 import { buildCompactionSummaryMessage, buildSummaryPrompt } from "@/compact/prompts.js";
-import { ConversationManager } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError } from "@/llm/errors.js";
 

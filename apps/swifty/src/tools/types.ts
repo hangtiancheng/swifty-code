@@ -26,8 +26,8 @@ import type OpenAI from "openai";
 
 import type { FileStateCache } from "./file-state-cache.js";
 
-import type { FileHistory } from "@/file-history/file-history.js";
-import type { Decision, PermissionChecker } from "@/permissions/checker.js";
+import type { FileHistory } from "@/file-history/index.js";
+import type { Decision, PermissionChecker } from "@/permissions/index.js";
 
 export type ToolCategory = "read" | "write" | "command";
 

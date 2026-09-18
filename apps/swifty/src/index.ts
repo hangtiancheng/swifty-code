@@ -27,8 +27,10 @@
 // tsup.config.ts: reaching one of them fails the build. react/react-dom are not
 // in that set — the cross-platform hooks under src/ui/** are public API.
 
+// === acp ===
+
 // === agent ===
-export * from "./agent/agent.js";
+export * from "./agent/index.js";
 export * from "./agent/events.js";
 export * from "./agent/streaming-executor.js";
 
@@ -52,26 +54,26 @@ export * from "./compact/prompts.js";
 export * from "./compact/recovery.js";
 
 // === config ===
-export * from "./config/config.js";
+export * from "./config/index.js";
 export * from "./config/provider-login.js";
 
 // === conversation ===
 export * from "./conversation/at-expand.js";
-export * from "./conversation/conversation.js";
+export * from "./conversation/index.js";
 export * from "./conversation/pairing.js";
 
 // === file-history ===
-export * from "./file-history/file-history.js";
+export * from "./file-history/index.js";
 
 // === history ===
-export * from "./history/history.js";
+export * from "./history/index.js";
 
 // === hooks ===
-export * from "./hooks/hooks.js";
+export * from "./hooks/index.js";
 
 // === images ===
 export * from "./images/clipboard.js";
-export * from "./images/images.js";
+export * from "./images/index.js";
 
 // === llm ===
 export * from "./llm/anthropic.js";
@@ -83,7 +85,7 @@ export * from "./llm/model-resolver.js";
 export * from "./llm/openai.js";
 
 // === logger ===
-export * from "./logger/logger.js";
+export * from "./logger/index.js";
 
 // === mcp ===
 export * from "./mcp/client.js";
@@ -102,10 +104,10 @@ export * from "./memory/permissions.js";
 export * from "./memory/written-paths.js";
 
 // === permissions ===
-export * from "./permissions/checker.js";
+export * from "./permissions/index.js";
 
 // === plan-file ===
-export * from "./plan-file/plan-file.js";
+export * from "./plan-file/index.js";
 
 // === prompt ===
 export * from "./prompt/builder.js";
@@ -122,18 +124,18 @@ export * from "./remote/session-state.js";
 
 // === sandbox ===
 export * from "./sandbox/bwrap.js";
-export * from "./sandbox/sandbox.js";
+export * from "./sandbox/index.js";
 export * from "./sandbox/seatbelt.js";
 
 // === session ===
-export * from "./session/session.js";
+export * from "./session/index.js";
 
 // === skills ===
 export * from "./skills/catalog.js";
 export * from "./skills/executor.js";
 export * from "./skills/install-tool.js";
 export * from "./skills/load-skill-tool.js";
-export * from "./skills/skills.js";
+export * from "./skills/index.js";
 
 // === subagent ===
 export * from "./subagent/agent-tool.js";
@@ -154,17 +156,17 @@ export * from "./teams/shared-task.js";
 export * from "./teams/task-stop.js";
 export * from "./teams/task-tools.js";
 export * from "./teams/team-file.js";
-export * from "./teams/team.js";
+export * from "./teams/index.js";
 export * from "./teams/tools.js";
 export * from "./teams/transcript.js";
 
 // === todo ===
 export * from "./todo/store.js";
-export * from "./todo/todo.js";
+export * from "./todo/index.js";
 export * from "./todo/tools.js";
 
 // === tool-result ===
-export * from "./tool-result/budget.js";
+export * from "./tool-result/index.js";
 
 // === tools ===
 export * from "./tools/ask-user.js";
@@ -200,7 +202,7 @@ export * from "./ui/use-teammate-states.js";
 
 // === utils ===
 export * from "./utils/paths.js";
-export * from "./utils/utils.js";
+export * from "./utils/index.js";
 export * from "./utils/verbs.js";
 
 // === vscode ===
@@ -209,7 +211,7 @@ export * from "./vscode/lockfile.js";
 export * from "./vscode/ws-transport.js";
 
 // === worktree ===
-export * from "./worktree/worktree.js";
+export * from "./worktree/index.js";
 
 // Process-level headless entry points. They carry no TUI, but on failure they
 // may write crash dumps or process.exit() — prefer the composable modules

@@ -28,7 +28,7 @@ import { formatToolOutputPreview } from "./tool-preview.js";
 
 import { isDiffTool } from "@/tools/is-diff-tool.js";
 import { THEME } from "@/ui/styles.js";
-import { formatToolArgs } from "@/utils/utils.js";
+import { formatToolArgs } from "@/utils/index.js";
 
 export type ToolCardStatus = "running" | "completed" | "failed" | "stopped";
 

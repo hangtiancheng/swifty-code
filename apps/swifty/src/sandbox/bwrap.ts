@@ -22,7 +22,7 @@
 
 import { execSync } from "node:child_process";
 
-import type { Sandbox, SandboxConfig } from "./sandbox.js";
+import type { Sandbox, SandboxConfig } from "./index.js";
 
 /**
  * Linux bubblewrap (bwrap) sandbox implementation.

@@ -27,21 +27,21 @@ import { loadAgentDefinitions } from "./loader.js";
 import { TaskManager } from "./task-manager.js";
 import { SUBAGENT_DISALLOWED_TOOLS, TEAMMATE_DISALLOWED_TOOLS } from "./tool-filter.js";
 
-import type { ConversationManager } from "@/conversation/conversation.js";
-import { createChildLogger } from "@/logger/logger.js";
-import { PermissionChecker } from "@/permissions/checker.js";
+import type { ConversationManager } from "@/conversation/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import { PermissionChecker } from "@/permissions/index.js";
+import type { TeamManager, RunAgent } from "@/teams/index.js";
 import {
   TeamTaskCreateTool,
   TeamTaskGetTool,
   TeamTaskListTool,
   TeamTaskUpdateTool,
 } from "@/teams/task-tools.js";
-import type { TeamManager, RunAgent } from "@/teams/team.js";
 import { SendMessageTool } from "@/teams/tools.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import type { Tool, ToolResult, ToolContext, ToolSchema } from "@/tools/types.js";
-import { asErrorString, boolArg, strArg } from "@/utils/utils.js";
-import { buildWorktreeNotice, createAgentWorktree } from "@/worktree/worktree.js";
+import { asErrorString, boolArg, strArg } from "@/utils/index.js";
+import { buildWorktreeNotice, createAgentWorktree } from "@/worktree/index.js";
 
 const log = createChildLogger({ module: "subagent" });
 /** Fallback target when subagent_type is omitted and fork is disabled */

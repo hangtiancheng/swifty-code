@@ -27,7 +27,7 @@ import { dirname, join } from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import { fileHistoryDir } from "@/file-history/file-history.js";
+import { fileHistoryDir } from "@/file-history/index.js";
 import { clipboardImageFileName, isPngBuffer, storeClipboardImage } from "@/images/clipboard.js";
 
 const PNG_BYTES = Buffer.concat([

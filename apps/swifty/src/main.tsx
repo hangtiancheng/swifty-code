@@ -31,11 +31,11 @@ import {
 import { TerminalInput } from "./bootstrap/terminal-input.js";
 import { detectTerminalTheme } from "./bootstrap/terminal-theme.js";
 import { parseResumeArgument } from "./bootstrap/tui-selection.js";
-import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/config.js";
-import { initLogger, logger } from "./logger/logger.js";
+import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/index.js";
+import { initLogger, logger } from "./logger/index.js";
 import { parsePrintFlags, runPrintMode } from "./print-mode.js";
 import { recover, recordError, recordExit } from "./recover.js";
-import { newSessionId } from "./session/session.js";
+import { newSessionId } from "./session/index.js";
 import { parseTeammateFlags, runTeammate } from "./teammate.js";
 import {
   captureTelemetryError,
@@ -47,7 +47,7 @@ import {
 import { App } from "./tui/app.js";
 import { installSyncOutput } from "./tui/sync-output.js";
 import { setThemeMode } from "./ui/styles.js";
-import { asErrorString } from "./utils/utils.js";
+import { asErrorString } from "./utils/index.js";
 
 async function main() {
   recover();

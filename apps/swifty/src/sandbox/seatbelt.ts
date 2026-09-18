@@ -22,7 +22,7 @@
 
 import { existsSync, statSync } from "node:fs";
 
-import type { Sandbox, SandboxConfig } from "./sandbox.js";
+import type { Sandbox, SandboxConfig } from "./index.js";
 
 // Hardcoded path to prevent PATH injection attacks
 const SANDBOX_EXEC_PATH = "/usr/bin/sandbox-exec";

@@ -33,8 +33,8 @@ import {
 } from "./conversion.js";
 
 import type { AgentEvent } from "@/agent/events.js";
-import { forkEnabled, loadConfig, withProjectMcpServers } from "@/config/config.js";
-import type { ConversationManager } from "@/conversation/conversation.js";
+import { forkEnabled, loadConfig, withProjectMcpServers } from "@/config/index.js";
+import type { ConversationManager } from "@/conversation/index.js";
 import { createRemoteAgent } from "@/remote/server.js";
 import {
   getSessionFilePath,
@@ -43,7 +43,7 @@ import {
   rebuildFromSession,
   saveCompactBoundary,
   saveMessage,
-} from "@/session/session.js";
+} from "@/session/index.js";
 import type { PermissionRequestHandler } from "@/tools/types.js";
 import { version } from "@/version.js";
 

@@ -29,7 +29,7 @@ import { describe, it, expect } from "vitest";
 
 import { expandAtRefs, expandAtRefsWithImages } from "@/conversation/at-expand.js";
 import { collapseImage, expandPastes } from "@/tui/input-paste.js";
-import { isRecord, strArg } from "@/utils/utils.js";
+import { isRecord, strArg } from "@/utils/index.js";
 
 const TEST_PNG_PATH = join(dirname(fileURLToPath(import.meta.url)), "test.png");
 

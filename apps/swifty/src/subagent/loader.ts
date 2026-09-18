@@ -29,7 +29,7 @@ import z, { parse } from "zod";
 
 import { BUILTIN_AGENTS, type AgentDefinition } from "./definition.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "subagent" });
 

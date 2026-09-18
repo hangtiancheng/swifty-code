@@ -27,12 +27,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 
-import { Agent } from "@/agent/agent.js";
 import type { AgentEvent } from "@/agent/events.js";
-import * as config from "@/config/config.js";
+import { Agent } from "@/agent/index.js";
+import * as config from "@/config/index.js";
 import * as clients from "@/llm/client.js";
 import { OpenAIClient } from "@/llm/openai.js";
-import * as logger from "@/logger/logger.js";
+import * as logger from "@/logger/index.js";
 import { MCPManager } from "@/mcp/manager.js";
 import { runTeammate } from "@/teammate.js";
 import { FileMailbox } from "@/teams/file-mailbox.js";

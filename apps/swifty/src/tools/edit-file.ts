@@ -34,9 +34,9 @@ import {
   type ToolSchema,
 } from "./types.js";
 
-import { createChildLogger } from "@/logger/logger.js";
-import { boolArg, strArg } from "@/utils/utils.js";
-import { asErrorString } from "@/utils/utils.js";
+import { createChildLogger } from "@/logger/index.js";
+import { boolArg, strArg } from "@/utils/index.js";
+import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tools" });
 

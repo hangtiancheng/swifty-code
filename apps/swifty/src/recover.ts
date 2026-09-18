@@ -25,7 +25,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { closeLogger, logger } from "./logger/logger.js";
+import { closeLogger, logger } from "./logger/index.js";
 import { captureTelemetryError, shutdownTelemetry } from "./telemetry/index.js";
 
 const LOG_DIR = ".swifty";

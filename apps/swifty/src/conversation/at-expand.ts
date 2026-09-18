@@ -23,8 +23,8 @@
 import { readFileSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 
-import { isImagePath, MAX_IMAGES_PER_MESSAGE, loadImageAttachment } from "@/images/images.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { isImagePath, MAX_IMAGES_PER_MESSAGE, loadImageAttachment } from "@/images/index.js";
+import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "tui" });
 const MAX_INLINE_BYTES = 100_000;

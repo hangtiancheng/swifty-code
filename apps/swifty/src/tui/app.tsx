@@ -39,7 +39,7 @@ import { Transcript } from "./transcript.js";
 import { useAgentOutput, type AgentCardDecoration } from "./use-agent-output.js";
 import { useTerminalControls } from "./use-terminal-controls.js";
 
-import { Agent } from "@/agent/agent.js";
+import { Agent } from "@/agent/index.js";
 import type { InteractionSummary } from "@/bootstrap/interaction-summary.js";
 import {
   buildComposedToolFilter,
@@ -61,7 +61,7 @@ import type {
   MCPServerConfig,
   HookConfig,
   SandboxYamlConfig,
-} from "@/config/config.js";
+} from "@/config/index.js";
 import {
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_THINKING_LEVEL,
@@ -70,17 +70,17 @@ import {
   getSupportedThinkingLevels,
   loadConfig,
   withProjectMcpServers,
-} from "@/config/config.js";
+} from "@/config/index.js";
 import { persistThinkingLevel, saveProvider } from "@/config/provider-login.js";
 import { expandAtRefsWithImages } from "@/conversation/at-expand.js";
-import { ConversationManager } from "@/conversation/conversation.js";
-import { FileHistory } from "@/file-history/file-history.js";
-import type { Snapshot } from "@/file-history/file-history.js";
-import * as historyMod from "@/history/history.js";
-import { HookEngine, validate as validateHooks } from "@/hooks/hooks.js";
+import { ConversationManager } from "@/conversation/index.js";
+import { FileHistory } from "@/file-history/index.js";
+import type { Snapshot } from "@/file-history/index.js";
+import * as historyMod from "@/history/index.js";
+import { HookEngine, validate as validateHooks } from "@/hooks/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import { createClient } from "@/llm/client.js";
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import { syncMcpInstructions as announceMcpInstructions } from "@/mcp/instructions.js";
 import { MCPManager, type ConnectResult } from "@/mcp/manager.js";
 import { applyMode, decideAndApply } from "@/mcp/strategy.js";
@@ -88,17 +88,17 @@ import { MCPToolWrapper } from "@/mcp/tool-wrapper.js";
 import { MemoryExtractor } from "@/memory/extractor.js";
 import { loadInstructions } from "@/memory/instructions.js";
 import { MemoryManager, type RecallResult } from "@/memory/manager.js";
-import { PermissionChecker, type PermissionMode } from "@/permissions/checker.js";
-import { getOrCreatePlanPath, loadPlan, planExists, resetPlanPath } from "@/plan-file/plan-file.js";
+import { PermissionChecker, type PermissionMode } from "@/permissions/index.js";
+import { getOrCreatePlanPath, loadPlan, planExists, resetPlanPath } from "@/plan-file/index.js";
 import { buildSystemPrompt, detectEnvironment } from "@/prompt/builder.js";
 import { buildPlanModeExitReminder, buildPlanModeReentryReminder } from "@/prompt/plan-mode.js";
-import { createSandbox, type Sandbox } from "@/sandbox/sandbox.js";
-import * as sessionMod from "@/session/session.js";
+import { createSandbox, type Sandbox } from "@/sandbox/index.js";
+import * as sessionMod from "@/session/index.js";
 import { SkillCatalog, buildSkillSection } from "@/skills/catalog.js";
 import { runFork as runSkillFork } from "@/skills/executor.js";
+import type { SkillHost, SkillForkHost } from "@/skills/index.js";
 import { InstallSkillTool } from "@/skills/install-tool.js";
 import { LoadSkillTool } from "@/skills/load-skill-tool.js";
-import type { SkillHost, SkillForkHost } from "@/skills/skills.js";
 import { AgentTool } from "@/subagent/agent-tool.js";
 import { BUILTIN_AGENTS } from "@/subagent/definition.js";
 import {
@@ -112,9 +112,9 @@ import {
   type AgentTask,
 } from "@/subagent/task-manager.js";
 import { coordinatorToolFilter, coordinatorActive } from "@/teams/coordinator.js";
+import type { RunAgent } from "@/teams/index.js";
+import { TeamManager } from "@/teams/index.js";
 import { TaskStopTool } from "@/teams/task-stop.js";
-import type { RunAgent } from "@/teams/team.js";
-import { TeamManager } from "@/teams/team.js";
 import {
   TeamCreateTool,
   SpawnTeammateTool,
@@ -122,9 +122,9 @@ import {
   ListTeamsTool,
   TeamDeleteTool,
 } from "@/teams/tools.js";
+import { TaskList } from "@/todo/index.js";
 import { TaskStore } from "@/todo/store.js";
-import { TaskList } from "@/todo/todo.js";
-import { toDisplayPreview } from "@/tool-result/budget.js";
+import { toDisplayPreview } from "@/tool-result/index.js";
 import { AskUserQuestionTool, type Question } from "@/tools/ask-user.js";
 import type { BashTool } from "@/tools/bash.js";
 import type { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
@@ -135,7 +135,7 @@ import { activityStatusColor, THEME, thinkingLevelColor } from "@/ui/styles.js";
 import { useFollowUpQueue } from "@/ui/use-follow-up-queue.js";
 import { useIdeInput } from "@/ui/use-ide-input.js";
 import { useTeammateStates } from "@/ui/use-teammate-states.js";
-import { asErrorString, asRecord, contentToText, formatToolArgs, strArg } from "@/utils/utils.js";
+import { asErrorString, asRecord, contentToText, formatToolArgs, strArg } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "tui" });
 

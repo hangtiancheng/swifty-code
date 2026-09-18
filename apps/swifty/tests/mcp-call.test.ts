@@ -30,7 +30,7 @@ import {
   measureSchemaChars,
 } from "@/mcp/strategy.js";
 import { buildMcpToolName, mcpToolNamePrefix } from "@/mcp/tool-wrapper.js";
-import { extractContent } from "@/permissions/checker.js";
+import { extractContent } from "@/permissions/index.js";
 import { McpCallTool, coerceBySchema, mcpCallPermissionContent } from "@/tools/mcp-call.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
@@ -41,7 +41,7 @@ import type {
   ToolResult,
   ToolSchema,
 } from "@/tools/types.js";
-import { asRecord, strArg } from "@/utils/utils.js";
+import { asRecord, strArg } from "@/utils/index.js";
 
 const toolContext: ToolContext = { workDir: process.cwd() };
 

@@ -25,9 +25,9 @@ import { join } from "node:path";
 
 import z, { parse } from "zod";
 
-import type { ConversationManager } from "@/conversation/conversation.js";
-import { createChildLogger } from "@/logger/logger.js";
-import { contentToText } from "@/utils/utils.js";
+import type { ConversationManager } from "@/conversation/index.js";
+import { createChildLogger } from "@/logger/index.js";
+import { contentToText } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "teams" });
 

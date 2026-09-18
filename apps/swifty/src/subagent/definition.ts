@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import type { PermissionMode } from "@/permissions/checker.js";
+import type { PermissionMode } from "@/permissions/index.js";
 
 export interface AgentDefinition {
   name: string;

@@ -30,8 +30,8 @@ import { act, createElement } from "react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ProviderConfig } from "@/config/config.js";
-import type { SessionInfo } from "@/session/session.js";
+import type { ProviderConfig } from "@/config/index.js";
+import type { SessionInfo } from "@/session/index.js";
 import { AskUserDialog } from "@/tui/ask-user-dialog.js";
 import { PermissionDialog } from "@/tui/permission-dialog.js";
 import { PlanApprovalDialog } from "@/tui/plan-approval.js";

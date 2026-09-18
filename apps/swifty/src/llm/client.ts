@@ -22,8 +22,8 @@
 
 import type { StreamEvent } from "./events.js";
 
-import type { ProviderConfig, ThinkingLevel } from "@/config/config.js";
-import type { ConversationManager } from "@/conversation/conversation.js";
+import type { ProviderConfig, ThinkingLevel } from "@/config/index.js";
+import type { ConversationManager } from "@/conversation/index.js";
 import { registerLlmClient } from "@/telemetry/instrumentation.js";
 import type { ProviderToolSchema, ToolProtocol } from "@/tools/types.js";
 

@@ -8,7 +8,7 @@ import { act, createElement } from "react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { THINKING_LEVELS, type ThinkingLevel } from "@/config/config.js";
+import { THINKING_LEVELS, type ThinkingLevel } from "@/config/index.js";
 import { visibleWidth } from "@/tui/terminal-text.js";
 import { ThinkingSelect } from "@/tui/thinking-select.js";
 import { ICONS, setThemeMode, thinkingLevelColor } from "@/ui/styles.js";

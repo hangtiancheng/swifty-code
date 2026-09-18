@@ -9,7 +9,7 @@ import {
   stopReason,
   toolKind,
 } from "@/acp/conversion.js";
-import type { SessionMessage } from "@/session/session.js";
+import type { SessionMessage } from "@/session/index.js";
 
 describe("ACP conversion", () => {
   it("converts supported prompt blocks to text", () => {

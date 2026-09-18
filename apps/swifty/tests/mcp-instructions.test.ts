@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ConversationManager } from "@/conversation/conversation.js";
+import { ConversationManager } from "@/conversation/index.js";
 import {
   MCP_INSTRUCTIONS_MARKER,
   syncMcpInstructions,
@@ -8,7 +8,7 @@ import {
   type McpInstructionSource,
   type ReminderHistory,
 } from "@/mcp/instructions.js";
-import { contentToText } from "@/utils/utils.js";
+import { contentToText } from "@/utils/index.js";
 
 class FakeHistory implements ReminderHistory {
   reminders: string[] = [];

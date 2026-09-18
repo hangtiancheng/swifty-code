@@ -26,8 +26,8 @@ import type { ChatMessage, ToolSummaryItem } from "./chat.js";
 import type { ToolBlockInfo, ToolCardStatus } from "./tool-display.js";
 
 import type { AgentEvent } from "@/agent/events.js";
-import { toDisplayPreview } from "@/tool-result/budget.js";
-import { formatToolArgs } from "@/utils/utils.js";
+import { toDisplayPreview } from "@/tool-result/index.js";
+import { formatToolArgs } from "@/utils/index.js";
 
 /**
  * Final decoration for an Agent tool card, resolved by the app when the tool

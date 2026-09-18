@@ -22,43 +22,38 @@
 
 import { basename, dirname, join } from "node:path";
 
-import { Agent } from "./agent/agent.js";
+import { Agent } from "./agent/index.js";
 import {
   getContextWindow,
   getMaxOutputTokens,
   loadConfig,
   withProjectMcpServers,
-} from "./config/config.js";
-import type { MCPServerConfig } from "./config/config.js";
-import { ConversationManager } from "./conversation/conversation.js";
+} from "./config/index.js";
+import type { MCPServerConfig } from "./config/index.js";
+import { ConversationManager } from "./conversation/index.js";
 import { createClient } from "./llm/client.js";
-import {
-  initLogger,
-  closeLogger,
-  createChildLogger,
-  sanitizeNameSegment,
-} from "./logger/logger.js";
+import { initLogger, closeLogger, createChildLogger, sanitizeNameSegment } from "./logger/index.js";
 import { MCPManager } from "./mcp/manager.js";
 import { decideAndApply } from "./mcp/strategy.js";
 import { MCPToolWrapper } from "./mcp/tool-wrapper.js";
 import { loadInstructions } from "./memory/instructions.js";
-import { PermissionChecker } from "./permissions/checker.js";
+import { PermissionChecker } from "./permissions/index.js";
 import { buildSystemPrompt, detectEnvironment } from "./prompt/builder.js";
 import { buildTeammatePrompt } from "./prompt/delegation.js";
 import { SkillCatalog } from "./skills/catalog.js";
 import { buildSkillSection } from "./skills/catalog.js";
+import type { SkillHost } from "./skills/index.js";
 import { InstallSkillTool } from "./skills/install-tool.js";
 import { LoadSkillTool } from "./skills/load-skill-tool.js";
-import type { SkillHost } from "./skills/skills.js";
 import type { FileMailMessage } from "./teams/file-mailbox.js";
 import { FileMailbox } from "./teams/file-mailbox.js";
+import { TeamManager } from "./teams/index.js";
 import {
   TeamTaskCreateTool,
   TeamTaskGetTool,
   TeamTaskListTool,
   TeamTaskUpdateTool,
 } from "./teams/task-tools.js";
-import { TeamManager } from "./teams/team.js";
 import { SendMessageTool } from "./teams/tools.js";
 import { BashTool } from "./tools/bash.js";
 import { EditFileTool } from "./tools/edit-file.js";

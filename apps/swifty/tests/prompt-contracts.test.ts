@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ConversationManager } from "@/conversation/conversation.js";
+import type { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent } from "@/llm/events.js";
 import { MemoryConsolidator } from "@/memory/consolidation.js";
@@ -21,7 +21,7 @@ import {
 import type { EnvironmentContext } from "@/prompt/sections.js";
 import { buildSkillSection, SkillCatalog } from "@/skills/catalog.js";
 import { runFork, runInline } from "@/skills/executor.js";
-import type { Skill, SkillForkHost } from "@/skills/skills.js";
+import type { Skill, SkillForkHost } from "@/skills/index.js";
 import {
   BASH_DESCRIPTION,
   EDIT_FILE_DESCRIPTION,

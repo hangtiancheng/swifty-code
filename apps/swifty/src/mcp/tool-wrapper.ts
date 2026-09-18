@@ -22,7 +22,7 @@
 
 import type { MCPClient, MCPTool } from "./client.js";
 
-import { createChildLogger } from "@/logger/logger.js";
+import { createChildLogger } from "@/logger/index.js";
 import type {
   MCPToolLike,
   ToolResult,
@@ -30,7 +30,7 @@ import type {
   ToolCategory,
   ToolSchema,
 } from "@/tools/types.js";
-import { asErrorString } from "@/utils/utils.js";
+import { asErrorString } from "@/utils/index.js";
 
 const log = createChildLogger({ module: "mcp" });
 

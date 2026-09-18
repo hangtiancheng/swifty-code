@@ -3,8 +3,8 @@ import type TurndownService from "turndown";
 import { WEB_FETCH_DESCRIPTION } from "./descriptions.js";
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "./types.js";
 
-import { createChildLogger } from "@/logger/logger.js";
-import { asErrorString, strArg } from "@/utils/utils.js";
+import { createChildLogger } from "@/logger/index.js";
+import { asErrorString, strArg } from "@/utils/index.js";
 // import { version } from "@/version.js";
 
 const log = createChildLogger({ module: "tools" });

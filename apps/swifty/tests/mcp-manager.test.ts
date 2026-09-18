@@ -22,7 +22,7 @@
 
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import type { MCPServerConfig } from "@/config/config.js";
+import type { MCPServerConfig } from "@/config/index.js";
 import { MCPClient } from "@/mcp/client.js";
 import { MCPManager } from "@/mcp/manager.js";
 

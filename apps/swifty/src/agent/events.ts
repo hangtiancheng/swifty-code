@@ -21,7 +21,7 @@
  */
 
 import type { UsageInfo } from "@/llm/events.js";
-import type { CompactBoundaryPayload } from "@/session/session.js";
+import type { CompactBoundaryPayload } from "@/session/index.js";
 import type { ToolResultContentBlock } from "@/tools/types.js";
 
 export type AgentEvent =
