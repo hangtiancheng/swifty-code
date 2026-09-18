@@ -30,7 +30,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { RENDER_APP_RESOURCE_URI, renderAppModule } from "@/tools/render-app/tool.js";
+import { RENDER_APP_RESOURCE_URI, renderAppModule } from "@/tools/mcp-app/tool.js";
 
 // The SDK types these results loosely (index signatures, text/blob unions), so
 // narrow them with zod before asserting on specific fields.
@@ -130,7 +130,7 @@ describe("render_app", () => {
         arguments: { html: "<p>hello</p>" },
       }),
     );
-    expect(result.structuredContent).toMatchObject({ title: "Agentic App" });
+    expect(result.structuredContent).toMatchObject({ title: "MCP App" });
   });
 
   it("rejects oversized html documents", async () => {

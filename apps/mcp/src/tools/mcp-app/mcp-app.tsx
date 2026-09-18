@@ -40,7 +40,7 @@ type RenderState =
   | { phase: "ready"; html: string; title: string }
   | { phase: "failed"; message: string };
 
-const FALLBACK_TITLE = "Agentic App";
+const FALLBACK_TITLE = "MCP App";
 
 function readStringField(
   record: Record<string, unknown> | undefined,
@@ -126,7 +126,10 @@ function Shell(): ReactElement {
     };
     app.ontoolresult = (result) => {
       if (result.isError) {
-        setState({ phase: "failed", message: "The render_app tool call failed." });
+        setState({
+          phase: "failed",
+          message: "The render_app tool call failed.",
+        });
         return;
       }
       const html = readStringField(result._meta, "html");
@@ -136,7 +139,10 @@ function Shell(): ReactElement {
       if (html !== undefined) {
         setState({ phase: "ready", html, title: title ?? FALLBACK_TITLE });
       } else {
-        setState({ phase: "failed", message: "Tool result contained no app HTML." });
+        setState({
+          phase: "failed",
+          message: "Tool result contained no app HTML.",
+        });
       }
     };
     // daisyUI themes key off the data-theme attribute, so the host theme must

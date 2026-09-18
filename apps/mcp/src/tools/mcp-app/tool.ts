@@ -33,7 +33,7 @@ import { z } from "zod";
 import { logger } from "../../shared/logger.js";
 import type { ToolModule } from "../types.js";
 
-export const RENDER_APP_RESOURCE_URI = "ui://render-app/mcp-app.html";
+export const RENDER_APP_RESOURCE_URI = "ui://mcp-app/mcp-app.html";
 
 // The shell renders user HTML through a same-document srcdoc iframe, which
 // inherits the host's CSP for the app resource. Without this allowlist, every
@@ -67,7 +67,7 @@ const InputSchema = {
     .string()
     .min(1)
     .max(120)
-    .default("Agentic App")
+    .default("MCP App")
     .describe("Short human-readable label shown above the app."),
 };
 
@@ -84,10 +84,7 @@ async function readAppHtml(): Promise<string> {
   try {
     return await readFile(appHtmlUrl, "utf-8");
   } catch (err) {
-    logger.error(
-      { err, path: appHtmlUrl.pathname },
-      "render_app UI shell is unavailable",
-    );
+    logger.error({ err, path: appHtmlUrl.pathname }, "render_app UI shell is unavailable");
     throw new Error("render_app UI shell is unavailable; run pnpm build:fe", {
       cause: err,
     });

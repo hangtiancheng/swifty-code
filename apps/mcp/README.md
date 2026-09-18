@@ -72,6 +72,6 @@ mcp/
 │   ├── shared/         # config (zod) + logger
 │   └── tools/
 │       ├── search-docs/   # RAG pipeline (chunk/embed/index/retrieve)
-│       └── render-app/    # MCP-App render tool
+│       └── mcp-app/    # MCP-App render tool
 └── tests/
 ```

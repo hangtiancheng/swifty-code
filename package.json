@@ -10,7 +10,7 @@
     "git:push": "pnpm git:commit && git push origin main",
     "git:push:skip": "pnpm git:commit:skip && git push origin main",
     "format:sh": "shfmt -w ./install.sh",
-    "format": "pnpm --filter @swifty.js/swifty format",
+    "format": "concurrently \"pnpm --filter @swifty.js/docs format\" \"pnpm --filter @swifty.js/mcp format\" \"pnpm --filter @swifty.js/swifty format\"",
     "build": "pnpm --filter @swifty.js/swifty build",
     "prepare": "husky"
   },
@@ -19,10 +19,17 @@
     "code"
   ],
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1"
   },
   "lint-staged": {
+    "apps/docs/**/*.{json,jsonc,js,cjs,mjs,jsx,ts,cts,mts,tsx,html,vue,css,scss,md,mdx}": [
+      "pnpm --filter @swifty.js/docs format"
+    ],
+    "apps/mcp/**/*.{json,jsonc,js,cjs,mjs,jsx,ts,cts,mts,tsx,html,vue,css,scss,md,mdx}": [
+      "pnpm --filter @swifty.js/mcp format"
+    ],
     "apps/swifty/**/*.{json,jsonc,js,cjs,mjs,jsx,ts,cts,mts,tsx,html,vue,css,scss,md,mdx}": [
       "pnpm --filter @swifty.js/swifty format"
     ]
@@ -32,7 +39,9 @@
   "packageManager": "pnpm@10.33.1",
   "pnpm": {
     "overrides": {
-      "@swifty.js/swifty": "workspace:*"
+      "@swifty.js/docs": "workspace:*",
+      "@swifty.js/swifty": "workspace:*",
+      "@swifty.js/mcp": "workspace:*"
     }
   }
 }

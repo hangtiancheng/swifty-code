@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { renderAppModule } from "./render-app/tool.js";
+import { renderAppModule } from "./mcp-app/tool.js";
 import { searchDocsModule } from "./search-docs/tool.js";
 import type { ToolModule } from "./types.js";
 
