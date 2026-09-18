@@ -186,8 +186,10 @@ class McpSocketClient {
 
     this.socket.on("close", () => {
       clearTimeout(connectTimeout);
-      this.connected = false;
-      this.connecting = false;
+      // Drop the dead socket reference: ensureConnected() only starts a fresh
+      // connect when the socket is null, so keeping it would make every later
+      // call poll a connection that can never succeed again.
+      this.closeSocket();
       this.scheduleReconnect();
     });
   }

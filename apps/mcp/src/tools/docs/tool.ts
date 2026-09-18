@@ -207,6 +207,20 @@ export const docsModule: ToolModule = {
           return { content: [{ type: "text", text: formatResults(docs) }] };
         } catch (err) {
           logger.warn({ err }, "docs query failed");
+          // The Redis client's reconnect strategy gives up quickly by design,
+          // so a dropped connection never self-heals. Mark the engine degraded
+          // (cached, so the retry-window backoff still applies) to let a later
+          // call re-initialize it from scratch.
+          if (!state.ctx.client.isOpen) {
+            const degraded: EngineState = {
+              status: "degraded",
+              reason: `redis connection lost: ${errorMessage(err)}`,
+            };
+            settled = degraded;
+            statePromise = Promise.resolve(degraded);
+            lastDegradedAt = Date.now();
+            void closeRedis(state.ctx.client);
+          }
           return {
             content: [{ type: "text", text: `docs failed: ${errorMessage(err)}` }],
             isError: true,

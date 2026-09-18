@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z, type core } from "zod";
 
-import { logger } from "@/shared/logger.js";
+import { logger } from "../../shared/logger.js";
 import type { ToolModule } from "../types.js";
 import { BROWSER_TOOLS } from "./browser-tools.js";
 import { createChromeSocketClient } from "./mcp-server.js";
@@ -30,6 +30,10 @@ function getUsername(): string {
   }
 }
 
+// Wire contract with the Chrome extension's native messaging host: the socket
+// name and the client_id below must match what the native host creates and
+// expects. The "claude-" prefix is legacy naming kept for compatibility —
+// do not rename without changing the extension side in lockstep.
 const SOCKET_NAME = `claude-mcp-browser-bridge-${getUsername()}`;
 
 function getChromeSocketPaths(): string[] {

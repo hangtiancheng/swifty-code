@@ -78,10 +78,13 @@ export function startHttpServer(host: string, port: number): HttpServerHandle {
     ctx.respond = false;
     const transport = new SSEServerTransport("/messages", ctx.res);
     sseTransports.set(transport.sessionId, transport);
+    const server = createServer();
     ctx.res.on("close", () => {
       sseTransports.delete(transport.sessionId);
+      void server.close().catch(() => {
+        // The response stream is already gone; nothing left to clean up.
+      });
     });
-    const server = createServer();
     await server.connect(transport);
   });
 

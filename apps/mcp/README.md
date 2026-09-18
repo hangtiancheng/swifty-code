@@ -1,9 +1,11 @@
 # @swifty.js/mcp
 
 The **Swifty MCP server** — an official collection of MCP tools for the
-[Swifty CLI](../../README.md). It ships two tools today: a semantic
-`docs` RAG tool over your local Swifty knowledge base, and a `create_app`
-tool that lets agents deliver interactive MCP Apps with a sandboxed UI.
+[Swifty CLI](../../README.md). It ships three tool groups today: a semantic
+`docs` RAG tool over your local Swifty knowledge base, a `create_app`
+tool that lets agents deliver interactive MCP Apps with a sandboxed UI, and
+a `chrome` tool group that drives the user's browser through the Swifty
+Chrome extension.
 
 [![npm](https://img.shields.io/npm/v/@swifty.js/mcp?label=npm&color=F05138)](https://www.npmjs.com/package/@swifty.js/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-f5a623.svg)](../../LICENSE)
@@ -30,6 +32,23 @@ string and a title, and the tool renders it in a sandboxed iframe (no storage or
 cookies; external assets restricted to popular CDNs). Hosts without MCP Apps
 support fall back to a text note.
 
+### `chrome` (browser automation)
+
+Drives the user's Chrome through the Swifty browser extension. The MCP server
+talks to the extension's native messaging host over a local Unix socket
+(per-user socket directory, permission- and ownership-validated) and exposes
+the extension's tools: tab discovery (`tabs_context_mcp`, `tabs_create_mcp`),
+page inspection (`read_page`, `find`, `get_page_text`, `read_console_messages`,
+`read_network_requests`), interaction (`computer`, `javascript_tool`,
+`form_input`, `navigate`, `upload_image`, `resize_window`), plus `gif_creator`,
+`shortcuts_*` and `update_plan`.
+
+- **Multi-profile** — when several Chrome profiles expose sockets, a pool
+  connects to all of them and routes calls by `tabId` (call `tabs_context_mcp`
+  first to build the routing table).
+- **Degraded mode** — without the extension installed/running, calls return a
+  setup hint instead of failing silently.
+
 ## Configuration
 
 | Environment variable | Description                                      | Default                  |
@@ -43,7 +62,11 @@ support fall back to a text note.
 | `SWIFTY_DOCS_DIR`    | Local docs directory to index                    | `~/.swifty/docs`         |
 
 Both **stdio** (default) and **HTTP** transports are supported — `startHttpServer`
-serves the same tools over a streamable HTTP endpoint.
+serves the same tools over streamable HTTP (`POST /mcp`) and legacy SSE
+(`GET /sse` + `POST /messages`). The HTTP endpoints are **unauthenticated**;
+keep `HOST` bound to localhost (the default) and only enable HTTP on a
+trusted machine — with the `chrome` tools registered, anyone who can reach
+the port can drive the browser.
 
 ## Getting started
 
@@ -71,7 +94,8 @@ mcp/
 │   ├── http.ts         # streamable HTTP transport
 │   ├── shared/         # config (zod) + logger
 │   └── tools/
-│       ├── docs/   # RAG pipeline (chunk/embed/index/retrieve)
-│       └── create-app/    # MCP App create tool
+│       ├── docs/       # RAG pipeline (chunk/embed/index/retrieve)
+│       ├── create-app/ # MCP App create tool + UI shell
+│       └── chrome/     # browser automation via the Chrome extension socket
 └── tests/
 ```

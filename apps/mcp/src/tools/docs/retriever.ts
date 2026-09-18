@@ -22,7 +22,7 @@
 
 import { z } from "zod";
 
-import type { DocsContext as DocsContext } from "./redis-client.js";
+import type { DocsContext } from "./redis-client.js";
 import { float32ToBuffer } from "./utils.js";
 
 export interface RetrievedDoc {
