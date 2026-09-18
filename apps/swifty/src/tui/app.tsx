@@ -2143,6 +2143,7 @@ export function App({
           expanded={toolsExpanded}
           model={selectedProvider.model || selectedProvider.name}
           workDir={workDir}
+          provider={selectedProvider.name}
         />
 
         <ChatView

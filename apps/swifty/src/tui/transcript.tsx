@@ -25,6 +25,7 @@ import { Box, Static, Text } from "ink";
 import { CommittedMessage, type ChatMessage } from "./chat.js";
 
 import { THEME } from "@/ui/styles.js";
+import { compactPath } from "@/utils/paths.js";
 import { version } from "@/version.js";
 
 interface Props {
@@ -34,9 +35,18 @@ interface Props {
   expanded: boolean;
   model: string;
   workDir: string;
+  provider: string;
 }
 
-export function Transcript({ messages, sessionId, termWidth, expanded, model, workDir }: Props) {
+export function Transcript({
+  messages,
+  sessionId,
+  termWidth,
+  expanded,
+  model,
+  workDir,
+  provider,
+}: Props) {
   return (
     <Static
       key={`transcript-${sessionId}-${String(termWidth)}-${String(expanded)}`}
@@ -59,10 +69,10 @@ export function Transcript({ messages, sessionId, termWidth, expanded, model, wo
               <Text color={THEME.dim}> v{version}</Text>
             </Text>
             <Text color={THEME.muted}>
-              Esc interrupt · Ctrl+C clear/exit · / commands · Ctrl+O details · Ctrl+T teams
+              Esc interrupt · Ctrl+C clear/exit · /commands · Ctrl+O details · Ctrl+T teams
             </Text>
             <Text color={THEME.dim} wrap="truncate-end">
-              {model} · {workDir}
+              {provider}/{model} · {compactPath(workDir)}
             </Text>
           </Box>
         ) : (

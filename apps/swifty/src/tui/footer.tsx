@@ -20,8 +20,6 @@
  * SOFTWARE.
  */
 
-import { homedir } from "node:os";
-
 import { Box, Text, useBoxMetrics, useStdout, type DOMElement } from "ink";
 import { useLayoutEffect, useRef } from "react";
 
@@ -29,6 +27,7 @@ import { truncateToWidth, visibleWidth, wrapToLines } from "./terminal-text.js";
 
 import type { ThinkingLevel } from "@/config/config.js";
 import { THEME, thinkingLevelColor } from "@/ui/styles.js";
+import { compactPath } from "@/utils/paths.js";
 
 interface FooterProps {
   /** Current context occupancy in tokens (not the cumulative session total). */
@@ -63,15 +62,6 @@ function permissionModeColor(mode: string): string {
     return THEME.error;
   }
   return THEME.dim;
-}
-
-function compactPath(path: string): string {
-  const home = homedir();
-  return path === home
-    ? "~"
-    : path.startsWith(`${home}/`)
-      ? `~/${path.slice(home.length + 1)}`
-      : path;
 }
 
 function formatTokens(value: number): string {
