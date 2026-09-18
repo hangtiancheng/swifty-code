@@ -23,10 +23,10 @@
 import { createClient } from "redis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LockConflictError } from "@/tools/search-docs/indexer.js";
-import { buildChunks, syncDocs } from "@/tools/search-docs/pipeline.js";
-import type { SearchDocsContext } from "@/tools/search-docs/redis-client.js";
-import { sha256 } from "@/tools/search-docs/utils.js";
+import { LockConflictError } from "@/tools/docs/indexer.js";
+import { buildChunks, syncDocs } from "@/tools/docs/pipeline.js";
+import type { DocsContext } from "@/tools/docs/redis-client.js";
+import { sha256 } from "@/tools/docs/utils.js";
 
 const indexerMocks = vi.hoisted(() => ({
   deleteBySource: vi.fn<(ctx: unknown, source: string) => Promise<void>>(async () => undefined),
@@ -44,13 +44,13 @@ const scannerMocks = vi.hoisted(() => ({
   scanDocsDir: vi.fn<() => Promise<{ source: string; content: string }[]>>(async () => []),
 }));
 
-vi.mock("@/tools/search-docs/indexer.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/tools/search-docs/indexer.js")>();
+vi.mock("@/tools/docs/indexer.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/tools/docs/indexer.js")>();
   return { ...indexerMocks, LockConflictError: actual.LockConflictError };
 });
-vi.mock("@/tools/search-docs/scanner.js", () => scannerMocks);
+vi.mock("@/tools/docs/scanner.js", () => scannerMocks);
 
-function makeCtx(): SearchDocsContext {
+function makeCtx(): DocsContext {
   return {
     // Never connected: syncDocs only forwards the context to (mocked) indexer functions.
     client: createClient(),
@@ -58,7 +58,11 @@ function makeCtx(): SearchDocsContext {
       embedText: async () => [0],
       embedTexts: async (texts: string[]) => texts.map(() => [0]),
     },
-    redis: { url: "redis://localhost:6379", indexName: "idx:test", keyPrefix: "test:" },
+    redis: {
+      url: "redis://localhost:6379",
+      indexName: "idx:test",
+      keyPrefix: "test:",
+    },
   };
 }
 
@@ -98,7 +102,13 @@ describe("syncDocs", () => {
       "new.md",
       sha256(content),
     );
-    expect(stats).toEqual({ indexed: 1, skipped: 0, removed: 0, failed: 0, chunks: 1 });
+    expect(stats).toEqual({
+      indexed: 1,
+      skipped: 0,
+      removed: 0,
+      failed: 0,
+      chunks: 1,
+    });
   });
 
   it("skips files whose content hash is unchanged", async () => {

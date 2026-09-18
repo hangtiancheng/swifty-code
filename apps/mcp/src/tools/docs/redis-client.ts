@@ -35,7 +35,7 @@ import type { Embedder } from "./embedder.js";
 const CONNECT_TIMEOUT_MS = 3000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 
-export interface SearchDocsContext {
+export interface DocsContext {
   client: RedisClientType;
   embedder: Embedder;
   redis: RedisConfig;
@@ -115,7 +115,7 @@ function readVectorDim(info: unknown): number | null {
  * model output is authoritative — a mismatch makes every HSET silently fail
  * RediSearch indexing (num_docs stays 0 while hash_indexing_failures climbs).
  */
-export async function ensureIndex(ctx: SearchDocsContext): Promise<void> {
+export async function ensureIndex(ctx: DocsContext): Promise<void> {
   const dim = (await ctx.embedder.embedText("dimension probe")).length;
 
   let indexExists = false;

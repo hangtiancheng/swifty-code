@@ -28,12 +28,10 @@ import { logger } from "../../shared/logger.js";
 import type { ToolModule } from "../types.js";
 import { createEmbedder } from "./embedder.js";
 import { syncDocs } from "./pipeline.js";
-import { closeRedis, connectRedis, ensureIndex, type SearchDocsContext } from "./redis-client.js";
+import { closeRedis, connectRedis, ensureIndex, type DocsContext } from "./redis-client.js";
 import { retrieve, type RetrievedDoc } from "./retriever.js";
 
-type EngineState =
-  | { status: "ready"; ctx: SearchDocsContext }
-  | { status: "degraded"; reason: string };
+type EngineState = { status: "ready"; ctx: DocsContext } | { status: "degraded"; reason: string };
 
 // Fast phase budget (connect + dimension probe + index check). Callers sit on
 // the MCP client's 60s call timeout, so a hanging provider must degrade early.
@@ -96,12 +94,12 @@ async function initEngine(): Promise<EngineState> {
 
   if (!config.embedding.ok) {
     const reason = `embedding provider is not configured (${config.embedding.reason})`;
-    logger.warn({ reason }, "search_docs degraded");
+    logger.warn({ reason }, "docs degraded");
     return { status: "degraded", reason };
   }
   const embedder = createEmbedder(config.embedding.config);
 
-  let ctx: SearchDocsContext;
+  let ctx: DocsContext;
   try {
     const client = await withTimeout(
       connectRedis(config.redis),
@@ -113,7 +111,7 @@ async function initEngine(): Promise<EngineState> {
     const reason =
       `cannot connect to Redis at ${config.redis.url} ` +
       `(is Redis Stack running?): ${errorMessage(err)}`;
-    logger.warn({ err }, "search_docs degraded: redis unreachable");
+    logger.warn({ err }, "docs degraded: redis unreachable");
     return { status: "degraded", reason };
   }
 
@@ -124,7 +122,7 @@ async function initEngine(): Promise<EngineState> {
     const reason =
       "failed to initialize the vector index (check the embedding endpoint/API key " +
       `and that Redis has the RediSearch module): ${errorMessage(err)}`;
-    logger.warn({ err }, "search_docs degraded: index initialization failed");
+    logger.warn({ err }, "docs degraded: index initialization failed");
     return { status: "degraded", reason };
   }
 
@@ -132,7 +130,7 @@ async function initEngine(): Promise<EngineState> {
     logger.warn({ err }, "background docs sync failed");
   });
 
-  logger.info("search_docs ready (docs sync continues in the background)");
+  logger.info("docs ready (docs sync continues in the background)");
   return { status: "ready", ctx };
 }
 
@@ -163,13 +161,13 @@ const InputSchema = {
     .describe("Number of most relevant chunks to return (1-10, default 3)."),
 };
 
-export const searchDocsModule: ToolModule = {
-  name: "search_docs",
+export const docsModule: ToolModule = {
+  name: "docs",
 
   register(server: McpServer): void {
     const docsDir = loadConfig().docsDir;
     server.registerTool(
-      "search_docs",
+      "docs",
       {
         title: "Search Docs",
         description:
@@ -190,7 +188,7 @@ export const searchDocsModule: ToolModule = {
         const state = await getState();
         if (state.status === "degraded") {
           return {
-            content: [{ type: "text", text: `search_docs is unavailable: ${state.reason}` }],
+            content: [{ type: "text", text: `docs is unavailable: ${state.reason}` }],
             isError: true,
           };
         }
@@ -198,14 +196,19 @@ export const searchDocsModule: ToolModule = {
           const docs = await retrieve(state.ctx, query, top_k);
           if (docs.length === 0) {
             return {
-              content: [{ type: "text", text: "No matching documents in the knowledge base." }],
+              content: [
+                {
+                  type: "text",
+                  text: "No matching documents in the knowledge base.",
+                },
+              ],
             };
           }
           return { content: [{ type: "text", text: formatResults(docs) }] };
         } catch (err) {
-          logger.warn({ err }, "search_docs query failed");
+          logger.warn({ err }, "docs query failed");
           return {
-            content: [{ type: "text", text: `search_docs failed: ${errorMessage(err)}` }],
+            content: [{ type: "text", text: `docs failed: ${errorMessage(err)}` }],
             isError: true,
           };
         }

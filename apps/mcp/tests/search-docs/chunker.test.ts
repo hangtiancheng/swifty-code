@@ -22,7 +22,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { CHUNK_OVERLAP, CHUNK_SIZE, splitMarkdown } from "@/tools/search-docs/chunker.js";
+import { CHUNK_OVERLAP, CHUNK_SIZE, splitMarkdown } from "@/tools/docs/chunker.js";
 
 describe("splitMarkdown", () => {
   it("keeps a small document as a single chunk with its heading title", async () => {

@@ -26,7 +26,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { scanDocsDir } from "@/tools/search-docs/scanner.js";
+import { scanDocsDir } from "@/tools/docs/scanner.js";
 
 let dir: string;
 

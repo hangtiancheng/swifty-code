@@ -31,7 +31,7 @@ import {
   writeSourceHash,
   type IndexChunk,
 } from "./indexer.js";
-import type { SearchDocsContext } from "./redis-client.js";
+import type { DocsContext } from "./redis-client.js";
 import { scanDocsDir } from "./scanner.js";
 import { sha256 } from "./utils.js";
 
@@ -65,10 +65,16 @@ export async function buildChunks(source: string, content: string): Promise<Inde
  * sync; a lock conflict means a sibling server instance is already handling
  * that source and counts as skipped, not failed.
  */
-export async function syncDocs(ctx: SearchDocsContext, docsDir: string): Promise<SyncStats> {
+export async function syncDocs(ctx: DocsContext, docsDir: string): Promise<SyncStats> {
   const docs = await scanDocsDir(docsDir);
   const known = await readSourceHashes(ctx);
-  const stats: SyncStats = { indexed: 0, skipped: 0, removed: 0, failed: 0, chunks: 0 };
+  const stats: SyncStats = {
+    indexed: 0,
+    skipped: 0,
+    removed: 0,
+    failed: 0,
+    chunks: 0,
+  };
 
   const seen = new Set<string>();
   for (const doc of docs) {

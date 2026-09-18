@@ -22,7 +22,7 @@
 
 import { z } from "zod";
 
-import type { SearchDocsContext } from "./redis-client.js";
+import type { DocsContext as DocsContext } from "./redis-client.js";
 import { float32ToBuffer } from "./utils.js";
 
 export interface RetrievedDoc {
@@ -78,7 +78,7 @@ function distanceToScore(distance: unknown): number {
 }
 
 export async function retrieve(
-  ctx: SearchDocsContext,
+  ctx: DocsContext,
   query: string,
   topK: number,
 ): Promise<RetrievedDoc[]> {

@@ -28,22 +28,22 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { RedisConfig } from "@/shared/config.js";
-import type { Embedder } from "@/tools/search-docs/embedder.js";
+import type { Embedder } from "@/tools/docs/embedder.js";
 import {
   deleteBySource,
   indexChunks,
   readSourceHashes,
   removeSourceHash,
   writeSourceHash,
-} from "@/tools/search-docs/indexer.js";
+} from "@/tools/docs/indexer.js";
 import {
   closeRedis,
   connectRedis,
   ensureIndex,
   sourcesKey,
-  type SearchDocsContext,
-} from "@/tools/search-docs/redis-client.js";
-import { retrieve } from "@/tools/search-docs/retriever.js";
+  type DocsContext,
+} from "@/tools/docs/redis-client.js";
+import { retrieve } from "@/tools/docs/retriever.js";
 
 const redisUrl = process.env["REDIS_URL"];
 
@@ -67,7 +67,7 @@ describe.skipIf(!redisUrl)("redis integration", () => {
     indexName: `idx:swifty-mcp-test-${String(process.pid)}`,
     keyPrefix: `swifty-mcp-test-${String(process.pid)}:`,
   };
-  let ctx: SearchDocsContext;
+  let ctx: DocsContext;
 
   beforeAll(async () => {
     const client = await connectRedis(redis);
@@ -95,8 +95,16 @@ describe.skipIf(!redisUrl)("redis integration", () => {
 
   it("indexes chunks and retrieves them by KNN with scores in [0, 1]", async () => {
     await indexChunks(ctx, [
-      { id: "a:0", content: "alpha content", metadata: { _source: "a.md", title: "Alpha" } },
-      { id: "b:0", content: "bravo content", metadata: { _source: "b.md", title: "Bravo" } },
+      {
+        id: "a:0",
+        content: "alpha content",
+        metadata: { _source: "a.md", title: "Alpha" },
+      },
+      {
+        id: "b:0",
+        content: "bravo content",
+        metadata: { _source: "b.md", title: "Bravo" },
+      },
     ]);
 
     const docs = await retrieve(ctx, "alpha content", 2);
@@ -112,8 +120,16 @@ describe.skipIf(!redisUrl)("redis integration", () => {
   it("deletes chunks by source, including hostile tag values", async () => {
     const source = "my-file.v2.md";
     await indexChunks(ctx, [
-      { id: "h:0", content: "hostile one", metadata: { _source: source, title: "" } },
-      { id: "h:1", content: "hostile two", metadata: { _source: source, title: "" } },
+      {
+        id: "h:0",
+        content: "hostile one",
+        metadata: { _source: source, title: "" },
+      },
+      {
+        id: "h:1",
+        content: "hostile two",
+        metadata: { _source: source, title: "" },
+      },
     ]);
     await deleteBySource(ctx, source);
 
@@ -134,11 +150,15 @@ describe.skipIf(!redisUrl)("redis integration", () => {
 
   it("recreates the index and wipes stale data on dimension change", async () => {
     await indexChunks(ctx, [
-      { id: "stale:0", content: "stale vector", metadata: { _source: "stale.md", title: "" } },
+      {
+        id: "stale:0",
+        content: "stale vector",
+        metadata: { _source: "stale.md", title: "" },
+      },
     ]);
     await writeSourceHash(ctx, "stale.md", "stale-hash");
 
-    const wider: SearchDocsContext = { ...ctx, embedder: fakeEmbedder(16) };
+    const wider: DocsContext = { ...ctx, embedder: fakeEmbedder(16) };
     await ensureIndex(wider);
 
     const docs = await retrieve(wider, "stale vector", 5);

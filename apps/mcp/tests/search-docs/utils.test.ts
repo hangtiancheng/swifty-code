@@ -22,7 +22,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { escapeTagValue, float32ToBuffer, sha256 } from "@/tools/search-docs/utils.js";
+import { escapeTagValue, float32ToBuffer, sha256 } from "@/tools/docs/utils.js";
 
 describe("escapeTagValue", () => {
   it("escapes hyphens, dots and slashes in filenames", () => {

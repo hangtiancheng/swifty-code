@@ -30,7 +30,7 @@ export const SERVER_NAME = "swifty-mcp";
 // Surfaced to clients at initialize time; swifty injects it into the model's
 // context, improving tool selection.
 const INSTRUCTIONS =
-  "swifty-mcp provides tools for the Swifty CLI. Use search_docs to semantically " +
+  "swifty-mcp provides tools for the Swifty CLI. Use docs to semantically " +
   "search the user's local knowledge base (Markdown/text files under ~/.swifty/docs) " +
   "whenever a question may be covered by project- or team-specific documents, " +
   "runbooks or notes. Use create_app to display a self-contained HTML document as an " +

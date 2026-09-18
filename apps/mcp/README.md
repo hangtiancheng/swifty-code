@@ -2,7 +2,7 @@
 
 The **Swifty MCP server** — an official collection of MCP tools for the
 [Swifty CLI](../../README.md). It ships two tools today: a semantic
-`search_docs` RAG tool over your local Swifty knowledge base, and a `create_app`
+`docs` RAG tool over your local Swifty knowledge base, and a `create_app`
 tool that lets agents deliver interactive MCP Apps with a sandboxed UI.
 
 [![npm](https://img.shields.io/npm/v/@swifty.js/mcp?label=npm&color=F05138)](https://www.npmjs.com/package/@swifty.js/mcp)
@@ -10,7 +10,7 @@ tool that lets agents deliver interactive MCP Apps with a sandboxed UI.
 
 ## Tools
 
-### `search_docs`
+### `docs`
 
 Semantic (embedding-based) RAG search over the local Swifty knowledge base,
 built from the Markdown/text documents in `SWIFTY_DOCS_DIR` (default
@@ -71,7 +71,7 @@ mcp/
 │   ├── http.ts         # streamable HTTP transport
 │   ├── shared/         # config (zod) + logger
 │   └── tools/
-│       ├── search-docs/   # RAG pipeline (chunk/embed/index/retrieve)
+│       ├── docs/   # RAG pipeline (chunk/embed/index/retrieve)
 │       └── create-app/    # MCP App create tool
 └── tests/
 ```

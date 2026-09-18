@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { sourcesKey, type SearchDocsContext } from "./redis-client.js";
+import { sourcesKey, type DocsContext } from "./redis-client.js";
 import { escapeTagValue, float32ToBuffer } from "./utils.js";
 
 export interface IndexChunk {
@@ -35,7 +35,7 @@ const MAX_CONTENT_LENGTH = 8192;
 
 // Insert document chunks. hSet is idempotent (overwrites), so re-indexing the
 // same id is safe. Uses MULTI/EXEC for atomic batch writes.
-export async function indexChunks(ctx: SearchDocsContext, chunks: IndexChunk[]): Promise<number> {
+export async function indexChunks(ctx: DocsContext, chunks: IndexChunk[]): Promise<number> {
   if (chunks.length === 0) {
     return 0;
   }
@@ -68,7 +68,7 @@ export class LockConflictError extends Error {
 // DELETE-WHERE, so search-then-delete in batches. A SETNX lock guards against
 // concurrent deletions of the same source from parallel server instances
 // (one MCP server is spawned per CLI session).
-export async function deleteBySource(ctx: SearchDocsContext, source: string): Promise<void> {
+export async function deleteBySource(ctx: DocsContext, source: string): Promise<void> {
   const escaped = escapeTagValue(source);
   const lockKey = `${ctx.redis.keyPrefix}lock:delete:${escaped}`;
 
@@ -105,19 +105,19 @@ export async function deleteBySource(ctx: SearchDocsContext, source: string): Pr
 }
 
 /** Read the source -> content-hash map recorded by previous syncs. */
-export async function readSourceHashes(ctx: SearchDocsContext): Promise<Map<string, string>> {
+export async function readSourceHashes(ctx: DocsContext): Promise<Map<string, string>> {
   const raw = await ctx.client.hGetAll(sourcesKey(ctx.redis));
   return new Map(Object.entries(raw));
 }
 
 export async function writeSourceHash(
-  ctx: SearchDocsContext,
+  ctx: DocsContext,
   source: string,
   hash: string,
 ): Promise<void> {
   await ctx.client.hSet(sourcesKey(ctx.redis), source, hash);
 }
 
-export async function removeSourceHash(ctx: SearchDocsContext, source: string): Promise<void> {
+export async function removeSourceHash(ctx: DocsContext, source: string): Promise<void> {
   await ctx.client.hDel(sourcesKey(ctx.redis), source);
 }

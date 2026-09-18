@@ -22,7 +22,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createEmbedder, EMBED_BATCH_SIZE } from "@/tools/search-docs/embedder.js";
+import { createEmbedder, EMBED_BATCH_SIZE } from "@/tools/docs/embedder.js";
 
 const embedManyMock = vi.hoisted(() =>
   vi.fn(async ({ values }: { values: string[] }) => ({
@@ -30,7 +30,9 @@ const embedManyMock = vi.hoisted(() =>
   })),
 );
 const embedMock = vi.hoisted(() =>
-  vi.fn(async ({ value }: { value: string }) => ({ embedding: [value.length] })),
+  vi.fn(async ({ value }: { value: string }) => ({
+    embedding: [value.length],
+  })),
 );
 
 vi.mock("ai", () => ({
@@ -38,7 +40,11 @@ vi.mock("ai", () => ({
   embedMany: embedManyMock,
 }));
 
-const config = { model: "test-model", baseUrl: "http://localhost:8", apiKey: "k" };
+const config = {
+  model: "test-model",
+  baseUrl: "http://localhost:8",
+  apiKey: "k",
+};
 
 describe("embedTexts batching", () => {
   it("splits inputs into provider-sized batches preserving order", async () => {
