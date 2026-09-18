@@ -232,7 +232,7 @@ export interface RestoredMessage {
   toolUses?: {
     toolUseId: string;
     toolName: string;
-    arguments?: Record<string, unknown>;
+    arguments: Record<string, unknown>;
     providerItemId?: string;
   }[];
   toolResults?: ToolResultBlock[];
@@ -243,7 +243,7 @@ function recordsToCamelUses(recs?: ToolUseRecord[]) {
   return recs?.map((tu) => ({
     toolUseId: tu.tool_use_id,
     toolName: tu.tool_name,
-    arguments: tu.arguments,
+    arguments: tu.arguments ?? {},
     providerItemId: tu.provider_item_id,
   }));
 }

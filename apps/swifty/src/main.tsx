@@ -51,9 +51,15 @@ import { asErrorString } from "./utils/utils.js";
 
 async function main() {
   recover();
-  await initializeTelemetry();
   const args = process.argv.slice(2);
 
+  if (args.includes("--acp") || args.includes("--acp-ws")) {
+    const { runAcp } = await import("./acp/index.js");
+    await runAcp(args);
+    return;
+  }
+
+  await initializeTelemetry();
   const teammateArgs = parseTeammateFlags(args);
   if (teammateArgs) {
     setTelemetryMode("teammate");

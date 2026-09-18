@@ -112,6 +112,7 @@ import { ReadFileTool } from "@/tools/read-file.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
+import type { PermissionRequestHandler } from "@/tools/types.js";
 import { WriteFileTool } from "@/tools/write-file.js";
 import { contentToText, strArg } from "@/utils/utils.js";
 
@@ -182,11 +183,7 @@ function serveStatic(path: string): { body: Buffer; mime: string } | null {
 
 /** Callbacks injected into each agent run for permission and user-interaction flows. */
 export interface RunCallbacks {
-  onPermissionRequest: (
-    toolName: string,
-    args: Record<string, unknown>,
-    decision: Decision,
-  ) => Promise<"allow" | "deny" | "allowAlways">;
+  onPermissionRequest: PermissionRequestHandler;
 }
 
 /** Encapsulates ALL agent state needed by the remote server. */
@@ -377,14 +374,15 @@ class AgentHandleImpl implements RemoteAgentHandle {
 
 // -- createRemoteAgent factory -------------------------------------------------
 
-interface CreateRemoteAgentOptions {
+export interface CreateRemoteAgentOptions {
   provider: ProviderConfig;
   workDir: string;
   hooks?: HookConfig[];
   mcpServers?: MCPServerConfig[];
   enableCoordinatorMode: boolean;
   forkDisabled: boolean;
-  askUser: Asker;
+  askUser?: Asker;
+  sessionId?: string;
 }
 
 /**
@@ -403,10 +401,10 @@ export async function createRemoteAgent(
     enableCoordinatorMode,
     forkDisabled,
     askUser,
+    sessionId = newSessionId(),
   } = opts;
 
   // 1. Create session and file history
-  const sessionId = newSessionId();
   const fileHistory = new FileHistory(workDir, sessionId);
   const fileStateCache = new FileStateCache();
 
@@ -502,8 +500,10 @@ export async function createRemoteAgent(
   // 12. Register LoadSkill tool
   registry.register(new LoadSkillTool(catalog, skillHost, skillForkHost));
 
-  // 13. Register AskUserQuestion tool (uses the injected askUser callback)
-  registry.register(new AskUserQuestionTool(askUser));
+  // 13. Register AskUserQuestion tool when the host supports interactive questions
+  if (askUser) {
+    registry.register(new AskUserQuestionTool(askUser));
+  }
 
   // Register team-related tools. teamRunAgentFactory receives a teammate-scoped
   // registry (with shared task-board tools injected) and returns the callback

@@ -48,12 +48,7 @@ export function restoreRemoteSession(
   const replay = rebuildFromSession(saved);
   // AgentTool's fork closure holds this conversation object across runs.
   state.conv.reset();
-  state.conv.appendMessages(
-    replay.map((message) => ({
-      ...message,
-      toolUses: message.toolUses?.map((tool) => ({ ...tool, arguments: tool.arguments ?? {} })),
-    })),
-  );
+  state.conv.appendMessages(replay);
   state.sessionId = sessionId;
   state.fileHistory = new FileHistory(state.workDir, sessionId);
   state.fileStateCache = new FileStateCache();

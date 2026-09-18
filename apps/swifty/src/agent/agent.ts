@@ -35,7 +35,7 @@ import type { LLMClient } from "@/llm/client.js";
 import { ContextTooLongError, RateLimitError } from "@/llm/errors.js";
 import type { UsageInfo } from "@/llm/events.js";
 import type { RecallResult } from "@/memory/manager.js";
-import type { PermissionChecker, Decision } from "@/permissions/checker.js";
+import type { PermissionChecker } from "@/permissions/checker.js";
 import { getOrCreatePlanPath, planExists } from "@/plan-file/plan-file.js";
 import { coordinatorReminder } from "@/prompt/coordinator.js";
 import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
@@ -56,7 +56,7 @@ import {
 import type { FileStateCache } from "@/tools/file-state-cache.js";
 import { McpCallTool } from "@/tools/mcp-call.js";
 import type { ToolRegistry } from "@/tools/registry.js";
-import type { ToolResult } from "@/tools/types.js";
+import type { PermissionRequestHandler, ToolResult } from "@/tools/types.js";
 import { asErrorString, asRecord, strArg } from "@/utils/utils.js";
 
 // When the model stops on max_tokens, escalate its output ceiling once to this
@@ -117,11 +117,7 @@ export interface AgentConfig {
    * each turn, the caller maintains the injected set across turns.
    */
   onMemoriesSurfaced?: (paths: string[]) => void;
-  onPermissionRequest?: (
-    toolName: string,
-    args: Record<string, unknown>,
-    decision: Decision,
-  ) => Promise<"allow" | "deny" | "allowAlways">;
+  onPermissionRequest?: PermissionRequestHandler;
 }
 
 export class Agent {
@@ -898,7 +894,12 @@ export class Agent {
       if (decision.effect === "ask" && this.onPermissionRequest) {
         let response: "allow" | "deny" | "allowAlways";
         try {
-          response = await this.onPermissionRequest(tu.toolName, tu.arguments, decision);
+          response = await this.onPermissionRequest(
+            tu.toolName,
+            tu.arguments,
+            decision,
+            tu.toolUseId,
+          );
           if (response === "allowAlways" && !this.abortSignal?.aborted) {
             this.checker.allowAlways(tu.toolName, tu.arguments);
           }

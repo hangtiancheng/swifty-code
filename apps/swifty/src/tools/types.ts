@@ -191,6 +191,13 @@ export interface ToolResult {
   isError: boolean;
 }
 
+export type PermissionRequestHandler = (
+  toolName: string,
+  args: Record<string, unknown>,
+  decision: Decision,
+  toolCallId: string,
+) => Promise<"allow" | "deny" | "allowAlways">;
+
 export interface ToolContext {
   workDir: string;
   toolCallId?: string;
@@ -199,11 +206,7 @@ export interface ToolContext {
   fileHistory?: FileHistory | undefined;
   fileStateCache?: FileStateCache | undefined;
   permissionChecker?: PermissionChecker;
-  onPermissionRequest?: (
-    toolName: string,
-    args: Record<string, unknown>,
-    decision: Decision,
-  ) => Promise<"allow" | "deny" | "allowAlways">;
+  onPermissionRequest?: PermissionRequestHandler;
 }
 
 /**

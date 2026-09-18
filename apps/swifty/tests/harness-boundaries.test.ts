@@ -116,15 +116,18 @@ describe("harness execution boundaries", () => {
 
   it("rechecks cancellation after the permission callback", async () => {
     const controller = new AbortController();
+    const toolCallIds: string[] = [];
     const { config, execute } = fixture({
       abortSignal: controller.signal,
-      onPermissionRequest: () => {
+      onPermissionRequest: (_toolName, _args, _decision, toolCallId) => {
+        toolCallIds.push(toolCallId);
         controller.abort();
         return Promise.resolve("allow");
       },
     });
     config.checker.mode = "default";
     const events = await collect(config);
+    expect(toolCallIds).toEqual(["write"]);
     expect(execute).not.toHaveBeenCalled();
     expect(events.at(-1)).toEqual({ type: "loop_complete", stopReason: "interrupted" });
   });

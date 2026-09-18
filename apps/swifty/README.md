@@ -139,6 +139,70 @@ The thinking level controls reasoning depth. For `anthropic` it maps to a thinki
 
 API keys are resolved in this order: explicit api_key field, then environment variables (ANTHROPIC_API_KEY for anthropic, OPENAI_API_KEY for openai and openai-compat).
 
+### Telemetry
+
+Telemetry is disabled by default and is configured only through environment variables. Swifty does not send prompts, model output, thinking content, tool arguments, tool results, file paths, API keys, or raw session IDs. Session identifiers included in traces are hashed.
+
+#### OpenTelemetry
+
+Set at least one exporter variable to enable OpenTelemetry:
+
+| Variable                              | Values / purpose                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `OTEL_SDK_DISABLED`                   | Set to `true` to disable OpenTelemetry and Langfuse tracing.                                                        |
+| `OTEL_SERVICE_NAME`                   | Service name; defaults to `swifty`.                                                                                 |
+| `OTEL_RESOURCE_ATTRIBUTES`            | Comma-separated resource attributes, for example `deployment.environment.name=production`.                          |
+| `OTEL_TRACES_EXPORTER`                | Comma-separated `otlp`, `console`, or `none`.                                                                       |
+| `OTEL_LOGS_EXPORTER`                  | Comma-separated `otlp`, `console`, or `none`.                                                                       |
+| `OTEL_METRICS_EXPORTER`               | Comma-separated `otlp`, `console`, `prometheus`, or `none`.                                                         |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`         | Default OTLP protocol: `grpc`, `http/json`, or `http/protobuf`.                                                     |
+| `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`  | Optional trace-specific protocol override.                                                                          |
+| `OTEL_EXPORTER_OTLP_LOGS_PROTOCOL`    | Optional log-specific protocol override.                                                                            |
+| `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL` | Optional metric-specific protocol override.                                                                         |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`         | Shared OTLP collector endpoint.                                                                                     |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`  | Optional trace-specific endpoint.                                                                                   |
+| `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`    | Optional log-specific endpoint.                                                                                     |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | Optional metric-specific endpoint.                                                                                  |
+| `OTEL_EXPORTER_OTLP_HEADERS`          | Shared comma-separated OTLP headers. Signal-specific standard header variables are also supported by the exporters. |
+| `OTEL_METRIC_EXPORT_INTERVAL`         | Metric export interval in milliseconds; defaults to `60000`.                                                        |
+
+Example:
+
+```bash
+export OTEL_TRACES_EXPORTER=otlp
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://collector.example.com
+export OTEL_EXPORTER_OTLP_HEADERS="authorization=Bearer token"
+```
+
+#### Langfuse
+
+Langfuse tracing is enabled when both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set. It shares Swifty's trace hierarchy with OpenTelemetry.
+
+| Variable                       | Purpose                                             |
+| ------------------------------ | --------------------------------------------------- |
+| `LANGFUSE_PUBLIC_KEY`          | Langfuse project public key.                        |
+| `LANGFUSE_SECRET_KEY`          | Langfuse project secret key.                        |
+| `LANGFUSE_BASE_URL`            | Langfuse cloud or self-hosted endpoint.             |
+| `LANGFUSE_TRACING_ENVIRONMENT` | Environment attached to traces.                     |
+| `LANGFUSE_RELEASE`             | Release identifier; defaults to the Swifty version. |
+| `LANGFUSE_FLUSH_AT`            | Number of spans accumulated before export.          |
+| `LANGFUSE_FLUSH_INTERVAL`      | Batch flush interval in seconds.                    |
+| `LANGFUSE_TIMEOUT`             | Export request timeout in seconds.                  |
+
+#### Sentry
+
+Sentry is enabled when `SENTRY_DSN` is set. It reports process-level errors only; performance tracing remains handled by OpenTelemetry.
+
+| Variable             | Purpose                                             |
+| -------------------- | --------------------------------------------------- |
+| `SENTRY_DSN`         | Sentry project DSN.                                 |
+| `SENTRY_ENVIRONMENT` | Deployment environment.                             |
+| `SENTRY_RELEASE`     | Release identifier; defaults to the Swifty version. |
+| `SENTRY_DEBUG`       | Set to `true` to enable Sentry SDK diagnostics.     |
+
 ### Project-level MCP servers (.mcp.json)
 
 In addition to `mcp_servers` in `config.yaml`, Swifty reads a project-level `.mcp.json` from the working directory, using the Claude Code-compatible format:
