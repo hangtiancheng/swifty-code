@@ -26,6 +26,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { closeLogger, logger } from "./logger/logger.js";
+import { captureTelemetryError, shutdownTelemetry } from "./telemetry/index.js";
 
 const LOG_DIR = ".swifty";
 const LOG_PATH = join(LOG_DIR, "crash.log");
@@ -69,12 +70,8 @@ let terminalGoneRecorded = false;
 /**
  * End the process when the terminal is gone: records the condition once and
  * exits 0, so crash.log shows a `start` + `exit` pair with no `crash` line.
- * Returns false for unrelated errors, which the caller reports as crashes.
  */
-function exitOnTerminalGone(context: string, error: unknown): boolean {
-  if (!isTerminalGone(error)) {
-    return false;
-  }
+function exitForTerminalGone(context: string, error: unknown): never {
   if (!terminalGoneRecorded) {
     terminalGoneRecorded = true;
     const detail = error instanceof Error ? error.message : String(error);
@@ -83,7 +80,6 @@ function exitOnTerminalGone(context: string, error: unknown): boolean {
   // No terminal is left to render into or read from, so there is nothing to
   // unwind: shut down before the next frame fails the same way.
   process.exit(0);
-  return true;
 }
 
 let exitRecorded = false;
@@ -125,9 +121,10 @@ export function recover(): void {
   // close from surfacing as an uncaughtException, and keeps the last frame
   // from racing the teardown below.
   const onStdioError = (err: unknown): void => {
-    if (!exitOnTerminalGone("stdio", err)) {
-      throw err;
+    if (isTerminalGone(err)) {
+      exitForTerminalGone("stdio", err);
     }
+    throw err;
   };
   process.stdout.on("error", onStdioError);
   process.stderr.on("error", onStdioError);
@@ -135,23 +132,29 @@ export function recover(): void {
   process.on("uncaughtException", (err) => {
     // Losing the terminal mid-write is an expected end of session (the user
     // closed the window), so report it as a clean exit instead of a crash.
-    if (exitOnTerminalGone("uncaught exception", err)) {
-      return;
+    if (isTerminalGone(err)) {
+      exitForTerminalGone("uncaught exception", err);
     }
     recordError("uncaught exception", err);
     // Once a handler is registered the runtime no longer prints on its own; restore terminal output
     logger.fatal({ err }, "uncaught exception");
-    process.exit(1);
+    captureTelemetryError(err, "uncaught exception");
+    void shutdownTelemetry().finally(() => {
+      process.exit(1);
+    });
   });
 
   // Catch async errors that escape the main loop.
   process.on("unhandledRejection", (reason) => {
-    if (exitOnTerminalGone("unhandled rejection", reason)) {
-      return;
+    if (isTerminalGone(reason)) {
+      exitForTerminalGone("unhandled rejection", reason);
     }
     recordError("unhandled rejection", reason);
     logger.fatal({ err: reason }, "unhandled rejection");
-    process.exit(1);
+    captureTelemetryError(reason, "unhandled rejection");
+    void shutdownTelemetry().finally(() => {
+      process.exit(1);
+    });
   });
 
   // Flush logs on exit.

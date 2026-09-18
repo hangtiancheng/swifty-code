@@ -37,6 +37,13 @@ import { parsePrintFlags, runPrintMode } from "./print-mode.js";
 import { recover, recordError, recordExit } from "./recover.js";
 import { newSessionId } from "./session/session.js";
 import { parseTeammateFlags, runTeammate } from "./teammate.js";
+import {
+  captureTelemetryError,
+  initializeTelemetry,
+  installRemoteTelemetrySignalHandlers,
+  setTelemetryMode,
+  shutdownTelemetry,
+} from "./telemetry/index.js";
 import { App } from "./tui/app.js";
 import { installSyncOutput } from "./tui/sync-output.js";
 import { setThemeMode } from "./ui/styles.js";
@@ -44,15 +51,20 @@ import { asErrorString } from "./utils/utils.js";
 
 async function main() {
   recover();
+  await initializeTelemetry();
   const args = process.argv.slice(2);
 
   const teammateArgs = parseTeammateFlags(args);
   if (teammateArgs) {
+    setTelemetryMode("teammate");
     try {
       await runTeammate(teammateArgs);
     } catch (err) {
+      captureTelemetryError(err, "teammate");
       console.error(`teammate: ${asErrorString(err)}`);
-      process.exit(1);
+      process.exitCode = 1;
+    } finally {
+      await shutdownTelemetry();
     }
     return;
   }
@@ -71,11 +83,15 @@ async function main() {
 
   const printArgs = parsePrintFlags(args);
   if (printArgs) {
+    setTelemetryMode("print");
     try {
       await runPrintMode(printArgs);
     } catch (err) {
+      captureTelemetryError(err, "print");
       console.error(`Error: ${asErrorString(err)}`);
-      process.exit(1);
+      process.exitCode = 1;
+    } finally {
+      await shutdownTelemetry();
     }
     return;
   }
@@ -87,11 +103,16 @@ async function main() {
       process.cwd(),
     );
   } catch (err) {
+    captureTelemetryError(err, "config");
     console.error(`Error: ${asErrorString(err)}`);
-    process.exit(1);
+    await shutdownTelemetry();
+    process.exitCode = 1;
+    return;
   }
 
   if (args.includes("--remote") && remoteAddr) {
+    setTelemetryMode("remote");
+    installRemoteTelemetrySignalHandlers();
     const { RemoteServer } = await import("./remote/server.js");
     initLogger({ sessionId: newSessionId(), mode: "remote", stdout: true });
     const srv = new RemoteServer({
@@ -108,13 +129,16 @@ async function main() {
       //   /** noop */
       // });
     } catch (err) {
+      captureTelemetryError(err, "remote");
       console.error(`Remote server error: ${asErrorString(err)}`);
-      process.exit(1);
+      await shutdownTelemetry();
+      process.exitCode = 1;
     }
     return;
   }
 
   // TUI mode: initialize logger before rendering.
+  setTelemetryMode("tui");
   initLogger({ sessionId: newSessionId(), mode: "tui" });
   const terminalInput = new TerminalInput(process.stdin);
   setThemeMode(await detectTerminalTheme(terminalInput));
@@ -150,14 +174,17 @@ async function main() {
   if (interactionSummary) {
     process.stdout.write(`\n${formatInteractionSummary(interactionSummary)}\n`);
   }
+  await shutdownTelemetry();
 }
 
 main()
   .then(() => {
-    recordExit(0);
+    recordExit(process.exitCode ?? 0);
   })
-  .catch((err: unknown) => {
+  .catch(async (err: unknown) => {
+    captureTelemetryError(err, "main");
     recordError("main", err);
     logger.fatal({ err }, "main() unhandled error");
+    await shutdownTelemetry();
     process.exit(-1);
   });

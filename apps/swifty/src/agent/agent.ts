@@ -42,6 +42,12 @@ import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
 import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "@/session/session.js";
 import { getSessionFilePath } from "@/session/session.js";
 import {
+  endAgentTelemetry,
+  observeLlmStream,
+  startAgentTelemetry,
+  type AgentTelemetry,
+} from "@/telemetry/instrumentation.js";
+import {
   applyBudget,
   isSpillReadback,
   persistLargeResult,
@@ -210,6 +216,7 @@ export class Agent {
   }
 
   async *run(): AsyncGenerator<AgentEvent> {
+    const telemetry = startAgentTelemetry(this.sessionId, this.client);
     this.restoreContext();
     // The filter is the sole authority — no exception branches.
     const toolSchemas = this.registry.getAllSchemas(
@@ -356,7 +363,11 @@ export class Agent {
 
           try {
             // Initiate API call directly with the conversation — no need to rebuild
-            const stream = this.client.stream(this.conversation, toolSchemas, this.abortSignal);
+            const stream = observeLlmStream(
+              this.client,
+              this.client.stream(this.conversation, toolSchemas, this.abortSignal),
+              telemetry,
+            );
 
             for await (const event of stream) {
               if (this.abortSignal?.aborted) {
@@ -558,7 +569,7 @@ export class Agent {
           }
 
           if (toolUses.length > 0) {
-            const results = await this.executeTools(toolUses);
+            const results = await this.executeTools(toolUses, telemetry);
             for (const r of results) {
               yield r;
             }
@@ -675,7 +686,11 @@ export class Agent {
         }
       }
     } finally {
-      await this.fireLifecycle("session_end");
+      try {
+        await this.fireLifecycle("session_end");
+      } finally {
+        endAgentTelemetry(telemetry, this.abortSignal?.aborted ? "interrupted" : "completed");
+      }
     }
   }
 
@@ -717,7 +732,10 @@ export class Agent {
     });
   }
 
-  private async executeTools(toolUses: ToolUseBlock[]): Promise<AgentEvent[]> {
+  private async executeTools(
+    toolUses: ToolUseBlock[],
+    telemetry: AgentTelemetry,
+  ): Promise<AgentEvent[]> {
     const events: AgentEvent[] = [];
 
     // Partition by adjacency: consecutive read-only tools form one parallel batch; write/command tools each get their own batch
@@ -727,6 +745,7 @@ export class Agent {
       const batchEvents = await this.executeBatch(
         batch.blocks,
         batch.concurrent && batch.blocks.length > 1,
+        telemetry,
       );
       events.push(...batchEvents);
     }
@@ -758,16 +777,24 @@ export class Agent {
   // executeBatch runs a set of tool calls through permission checks, hooks,
   // and the streaming executor. When parallel is true all calls run
   // concurrently; otherwise they run one at a time.
-  private async executeBatch(toolUses: ToolUseBlock[], parallel: boolean): Promise<AgentEvent[]> {
+  private async executeBatch(
+    toolUses: ToolUseBlock[],
+    parallel: boolean,
+    telemetry: AgentTelemetry,
+  ): Promise<AgentEvent[]> {
     const events: AgentEvent[] = [];
-    const executor = new StreamingExecutor(this.registry, {
-      workDir: this.workDir,
-      abortSignal: this.abortSignal,
-      fileHistory: this.fileHistory,
-      fileStateCache: this.fileStateCache,
-      permissionChecker: this.checker,
-      onPermissionRequest: this.onPermissionRequest,
-    });
+    const executor = new StreamingExecutor(
+      this.registry,
+      {
+        workDir: this.workDir,
+        abortSignal: this.abortSignal,
+        fileHistory: this.fileHistory,
+        fileStateCache: this.fileStateCache,
+        permissionChecker: this.checker,
+        onPermissionRequest: this.onPermissionRequest,
+      },
+      telemetry,
+    );
 
     for (const tu of toolUses) {
       // Once the user interrupts, don't launch the remaining calls; report

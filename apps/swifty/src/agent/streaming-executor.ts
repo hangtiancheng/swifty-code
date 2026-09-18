@@ -21,6 +21,7 @@
  */
 
 import { createChildLogger } from "@/logger/logger.js";
+import { observeToolExecution, type AgentTelemetry } from "@/telemetry/instrumentation.js";
 import type { ToolRegistry } from "@/tools/registry.js";
 import type { ToolResult, ToolContext } from "@/tools/types.js";
 import { asErrorString } from "@/utils/utils.js";
@@ -44,10 +45,12 @@ export class StreamingExecutor {
   private pending: PendingCall[] = [];
   private registry: ToolRegistry;
   private ctx: ToolContext;
+  private telemetry: AgentTelemetry;
 
-  constructor(registry: ToolRegistry, ctx: ToolContext) {
+  constructor(registry: ToolRegistry, ctx: ToolContext, telemetry: AgentTelemetry) {
     this.registry = registry;
     this.ctx = ctx;
+    this.telemetry = telemetry;
   }
 
   submit(toolId: string, toolName: string, args: Record<string, unknown>): void {
@@ -84,7 +87,11 @@ export class StreamingExecutor {
       }
 
       try {
-        const result = await tool.execute({ ...this.ctx, toolCallId: call.toolId }, call.arguments);
+        const result = await observeToolExecution(
+          call.toolName,
+          () => tool.execute({ ...this.ctx, toolCallId: call.toolId }, call.arguments),
+          this.telemetry,
+        );
         return {
           toolId: call.toolId,
           toolName: call.toolName,
