@@ -44,6 +44,7 @@ type AllTools =
   // === team run agent ===
   | "AskUserQuestion"
   | "Bash"
+  | "JavaScript"
   | "PowerShell"
   | "ComputerUse"
   | "EditFile"
@@ -104,6 +105,7 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set<AllTools>([
   "Grep",
   "Glob",
   "Bash",
+  "JavaScript",
   "PowerShell",
   "EditFile",
   "WriteFile",

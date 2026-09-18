@@ -80,12 +80,15 @@ const externalizeNodeBuiltinsPlugin: EsbuildPlugin = {
       path: args.path,
       external: true,
     }));
-    // sharp is a native module (prebuilt binaries) — esbuild cannot
-    // bundle it, so keep it external and resolved from node_modules.
-    build.onResolve({ filter: /^sharp$/ }, () => ({
-      path: "sharp",
-      external: true,
-    }));
+    // Native modules and packages with runtime assets must stay external so
+    // their binaries and companion files remain resolvable from node_modules.
+    build.onResolve(
+      { filter: /^(?:sharp|isolated-vm|@anthropic-ai\/sandbox-runtime)(?:\/|$)/ },
+      (args) => ({
+        path: args.path,
+        external: true,
+      }),
+    );
     // Not referenced by src/: ink itself requires it from its devtools entry
     // (ink/build/devtools.js) and declares it a peer dependency. Since the CLI
     // build bundles ink, the resolution happens here, and the peer is not

@@ -34,6 +34,11 @@ export const POWERSHELL_DESCRIPTION = `Execute command in PowerShell; return std
 - Prefer dedicated file/search tools over Get-Content, Select-String, or Write-Output. Scope recursion to a directory, not a drive root. Diagnose failures rather than retrying in Start-Sleep loops.
 ${GIT_GUIDANCE}`;
 
+export const JAVASCRIPT_DESCRIPTION = `Execute JavaScript in a fresh isolated V8 context for pure computation.
+- Provide a function body and use return to produce a JSON-compatible result. Optional input is available as globalThis.input.
+- No filesystem, network, process, require, imports, timers, or host callbacks are available. Use Bash for Node.js or system operations.
+- timeout_ms defaults to 1000 (max 10000); memory_limit_mb defaults to 64 (max 256). Requires Node.js 24 or newer.`;
+
 export const READ_FILE_DESCRIPTION = `Read text with 1-based display line numbers, or images (png, jpg, jpeg, gif, webp) as visual content; not directories.
 - file_path is absolute or relative to the Agent's working directory. offset skips lines (0-based, default 0); limit defaults to 2000 lines, with a 50KB text output cap. Displayed line 101 starts at offset=100. Follow continuation/readback instructions for partial output.
 - Images ignore offset/limit. A successful read refreshes the file-state cache used by EditFile/WriteFile; re-read after an external-change error.`;

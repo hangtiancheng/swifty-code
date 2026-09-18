@@ -35,6 +35,7 @@ import { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
 import { ExitWorktreeTool } from "@/tools/exit-worktree.js";
 import { GlobTool } from "@/tools/glob.js";
 import { GrepTool } from "@/tools/grep.js";
+import { JavaScriptTool } from "@/tools/javascript.js";
 import { McpCallTool } from "@/tools/mcp-call.js";
 import { PowerShellTool } from "@/tools/powershell.js";
 import { ReadFileTool } from "@/tools/read-file.js";
@@ -85,6 +86,7 @@ export function createToolRegistry(workDir: string, taskList: TaskList): ToolReg
   registry.register(new WriteFileTool());
   registry.register(new GlobTool());
   registry.register(new GrepTool());
+  registry.register(new JavaScriptTool());
   registry.register(new WebFetchTool());
   return registry;
 }

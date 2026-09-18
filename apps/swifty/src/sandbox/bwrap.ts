@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 import type { Sandbox, SandboxConfig } from "./index.js";
 
@@ -29,20 +29,25 @@ import type { Sandbox, SandboxConfig } from "./index.js";
  * Leverages Linux user namespaces to create lightweight isolated environments.
  */
 export class BwrapSandbox implements Sandbox {
+  readonly implementation = "bwrap";
+
+  private detected?: boolean;
+
   available(): boolean {
-    try {
-      execSync("which bwrap", { stdio: "ignore" });
-      return true;
-    } catch {
-      return false;
+    if (this.detected !== undefined) {
+      return this.detected;
     }
+    try {
+      execFileSync("which", ["bwrap"], { stdio: "ignore" });
+      this.detected = true;
+    } catch {
+      this.detected = false;
+    }
+    return this.detected;
   }
 
-  wrap(command: string, config: SandboxConfig): string {
-    const args: string[] = [];
-
-    // Isolate user and PID namespaces
-    args.push("bwrap", "--unshare-user", "--unshare-pid");
+  prepare(command: string, config: SandboxConfig): { executable: string; args: string[] } {
+    const args = ["--unshare-user", "--unshare-pid"];
 
     // Mount the root filesystem as read-only
     args.push("--ro-bind", "/", "/");
@@ -68,14 +73,6 @@ export class BwrapSandbox implements Sandbox {
     // Append the command to execute
     args.push("--", "bash", "-c", command);
 
-    // Join into a single command string; quote arguments containing whitespace or special characters
-    return args
-      .map((arg) => {
-        if (/[ \t\n"'\\$`!]/.test(arg)) {
-          return `'${arg.replace(/'/g, "'\\''")}'`;
-        }
-        return arg;
-      })
-      .join(" ");
+    return { executable: "bwrap", args };
   }
 }

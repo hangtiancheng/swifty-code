@@ -24,7 +24,11 @@ import os from "node:os";
 
 // Submodule namespaces for library consumers (Sandbox.<Sub>.*).
 export * as Bwrap from "./bwrap.js";
+export * as SandboxRuntime from "./sandbox-runtime.js";
 export * as Seatbelt from "./seatbelt.js";
+
+export type SandboxBackend = "native" | "sandbox-runtime";
+export type SandboxImplementation = "bwrap" | "sandbox-runtime" | "seatbelt";
 
 /**
  * Sandbox configuration: controls file write permissions and network access.
@@ -38,23 +42,48 @@ export interface SandboxConfig {
   networkEnabled: boolean;
 }
 
+export interface SandboxExecutionContext {
+  cwd: string;
+  abortSignal?: AbortSignal;
+  commandId?: string;
+}
+
+export interface PreparedSandboxCommand {
+  executable: string;
+  args: string[];
+  env?: NodeJS.ProcessEnv;
+  annotateStderr?(stderr: string): string;
+  cleanup?(): Promise<void> | void;
+}
+
 /**
  * Unified sandbox interface with platform-specific implementations for macOS and Linux.
  */
 export interface Sandbox {
-  /** Wraps a raw command into a sandboxed command string. */
-  wrap(command: string, config: SandboxConfig): string;
+  readonly implementation: SandboxImplementation;
+  readonly availabilityError?: string;
   /** Checks whether the platform sandbox tooling is available. */
-  available(): boolean;
+  available(): boolean | Promise<boolean>;
+  /** Prepares an executable and argv for sandboxed execution. */
+  prepare(
+    command: string,
+    config: SandboxConfig,
+    context: SandboxExecutionContext,
+  ): PreparedSandboxCommand | Promise<PreparedSandboxCommand>;
+  /** Releases session-level resources held by the sandbox. */
+  dispose?(): Promise<void> | void;
 }
 
 /**
- * Creates a platform-appropriate sandbox instance.
- * macOS: seatbelt (sandbox-exec)
- * Linux: bubblewrap (bwrap)
- * Other platforms: null (sandbox not supported)
+ * Creates the requested sandbox backend.
+ * native: seatbelt on macOS, bubblewrap on Linux.
  */
-export async function createSandbox(): Promise<Sandbox | null> {
+export async function createSandbox(backend: SandboxBackend = "native"): Promise<Sandbox | null> {
+  if (backend === "sandbox-runtime") {
+    const { SandboxRuntimeSandbox } = await import("./sandbox-runtime.js");
+    return new SandboxRuntimeSandbox();
+  }
+
   const platform = os.platform();
   if (platform === "darwin") {
     const { SeatbeltSandbox } = await import("./seatbelt.js");

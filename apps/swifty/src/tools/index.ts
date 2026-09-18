@@ -35,6 +35,7 @@ export * as FileStateCache from "./file-state-cache.js";
 export * as Glob from "./glob.js";
 export * as Grep from "./grep.js";
 export * as IsDiffTool from "./is-diff-tool.js";
+export * as JavaScript from "./javascript.js";
 export * as McpCall from "./mcp-call.js";
 export * as PowerShell from "./powershell.js";
 export * as ReadFile from "./read-file.js";

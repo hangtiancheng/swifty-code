@@ -76,6 +76,18 @@ describe("sandbox auto-allow respects deny/ask rules", () => {
     });
     expect(result.effect).toBe("ask");
   });
+
+  it("does not auto-allow when the sandbox backend is not ready", () => {
+    const dir = makeTmpDir();
+    const checker = makeChecker(dir, []);
+    checker.sandboxEnabled = false;
+
+    const result = checker.check("Bash", "command", {
+      command: "touch generated.txt",
+    });
+
+    expect(result.effect).toBe("ask");
+  });
 });
 
 describe("extra allowed roots", () => {

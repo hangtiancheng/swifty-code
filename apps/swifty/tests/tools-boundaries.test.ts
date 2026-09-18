@@ -32,8 +32,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import type { Sandbox } from "@/sandbox/index.js";
 import { BashTool } from "@/tools/bash.js";
 import { EditFileTool } from "@/tools/edit-file.js";
 import { withFileMutationQueue } from "@/tools/file-mutation-queue.js";
@@ -309,5 +310,40 @@ describe("shell tool boundaries", () => {
         timeout: -1,
       }),
     ).resolves.toEqual(expected);
+  });
+
+  it("fails closed when a required sandbox is unavailable", async () => {
+    const prepare = vi.fn();
+    const sandbox: Sandbox = {
+      implementation: "bwrap",
+      available: () => false,
+      prepare,
+    };
+    const tool = new BashTool();
+    tool.sandboxRequired = true;
+    tool.sandbox = sandbox;
+
+    const result = await tool.execute(makeContext(), { command: "printf unsafe" });
+
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain("command was not executed");
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it("runs sandbox cleanup after a prepared command completes", async () => {
+    const cleanup = vi.fn();
+    const sandbox: Sandbox = {
+      implementation: "seatbelt",
+      available: () => true,
+      prepare: () => ({ executable: "bash", args: ["-c", "printf sandboxed"], cleanup }),
+    };
+    const tool = new BashTool();
+    tool.sandbox = sandbox;
+
+    const result = await tool.execute(makeContext(), { command: "printf original" });
+
+    expect(result.isError).toBe(false);
+    expect(result.output).toContain("sandboxed");
+    expect(cleanup).toHaveBeenCalledOnce();
   });
 });

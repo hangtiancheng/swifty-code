@@ -1,6 +1,6 @@
 {
   "name": "@swifty.js/swifty",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "Swifty is a terminal-based AI coding agent. It provides an interactive TUI (terminal user interface) for conversing with large language models, executing code, manipulating files, and orchestrating multi-agent workflows, all from the command line.",
   "keywords": [
     "agent",
@@ -45,7 +45,6 @@
     "build:fe": "cd src/remote/fe && rm -rf ./dist && tsup",
     "preview:fe": "pnpm dlx serve src/remote/fe/dist",
     "dev": "tsx ./src/main.tsx",
-    "AB:TODO": "pnpm add @growthbook/growthbook",
     "build": "rm -rf ./dist && tsup",
     "lint": "eslint --cache --quiet ./src ./tests",
     "lint:fix": "eslint --cache --fix --quiet ./src ./tests",
@@ -53,7 +52,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
-    "all": "pnpm typecheck && pnpm lint && pnpm build && pnpm test",
+    "happy": "pnpm typecheck && pnpm lint && pnpm build && pnpm test",
+    "happy:fix": "pnpm typecheck && pnpm format && pnpm lint:fix && pnpm build && pnpm test",
     "prepublishOnly": "pnpm build",
     "add:user": "pnpm adduser --registry=https://registry.npmjs.org/",
     "publish:latest": "pnpm publish --access public --registry=https://registry.npmjs.org/",

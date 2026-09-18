@@ -294,6 +294,7 @@ export type HookConfig = z.infer<typeof HookConfigSchema>;
 
 const SandboxYamlConfigSchema = z.object({
   enabled: z.boolean().optional(),
+  backend: z.enum(["native", "sandbox-runtime"]).optional(),
   auto_allow: z.boolean().optional(),
   network_enabled: z.boolean().optional(),
 });
@@ -386,6 +387,10 @@ function loadSingleFile(path: string): AppConfig {
     const parsed = safeParse(SandboxYamlConfigSchema, raw.sandbox);
     if (parsed.success) {
       sandbox = parsed.data;
+    } else {
+      throw new ConfigError(
+        `Invalid sandbox configuration in ${path}: ${getParseErrorMessage(parsed.error)}`,
+      );
     }
   }
   if ("enable_coordinator_mode" in raw) {

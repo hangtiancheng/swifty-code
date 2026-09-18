@@ -39,8 +39,8 @@ import {
 } from "./types.js";
 
 import { isSafeCommand } from "@/permissions/index.js";
-import type { Sandbox, SandboxConfig } from "@/sandbox/index.js";
-import { intArg, strArg } from "@/utils/index.js";
+import type { PreparedSandboxCommand, Sandbox, SandboxConfig } from "@/sandbox/index.js";
+import { asErrorString, intArg, strArg } from "@/utils/index.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between SIGTERM and the SIGKILL escalation when terminating a command.
@@ -57,6 +57,7 @@ export class BashTool implements Tool {
 
   // OS-level sandbox instance and config, injected externally
   sandbox: Sandbox | null = null;
+  sandboxRequired = false;
   sandboxConfig: SandboxConfig = {
     allowWrite: [],
     denyWrite: [],
@@ -102,38 +103,67 @@ export class BashTool implements Tool {
     };
   }
 
-  execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
-    // TODO: Migrate manual parse to zod.
+  async execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
     const command = strArg(args, "command");
     if (!command) {
-      return Promise.resolve({
+      return {
         output: "Error: command is required",
         isError: true,
-      });
+      };
     }
 
     let timeout = intArg(args, "timeout", 120);
     if (!Number.isFinite(timeout) || timeout <= 0) {
-      return Promise.resolve({
+      return {
         output: "Error: timeout must be a finite number greater than 0 seconds",
         isError: true,
-      });
+      };
     }
     if (timeout > MAX_TIMEOUT) {
       timeout = MAX_TIMEOUT;
     }
 
-    // Sandbox wrapping: if a sandbox is available, wrap the command in the sandbox environment
-    let actualCommand = command;
-    if (this.sandbox?.available()) {
-      actualCommand = this.sandbox.wrap(command, this.sandboxConfig);
+    let prepared: PreparedSandboxCommand = {
+      executable: "bash",
+      args: ["-c", command],
+    };
+    if (this.sandboxRequired || this.sandbox) {
+      if (!this.sandbox) {
+        return {
+          output: "Error: sandbox is enabled but unavailable; command was not executed",
+          isError: true,
+        };
+      }
+      try {
+        if (!(await this.sandbox.available())) {
+          return {
+            output: `Error: ${this.sandbox.implementation} sandbox is unavailable; command was not executed`,
+            isError: true,
+          };
+        }
+        prepared = await this.sandbox.prepare(command, this.sandboxConfig, {
+          cwd: ctx.workDir,
+          abortSignal: ctx.abortSignal,
+          commandId: ctx.toolCallId,
+        });
+      } catch (error) {
+        return {
+          output: `Error preparing sandbox: ${asErrorString(error)}`,
+          isError: true,
+        };
+      }
     }
 
     if (ctx.abortSignal?.aborted) {
-      return Promise.resolve({
+      try {
+        await prepared.cleanup?.();
+      } catch {
+        // The command never started, so interruption remains the primary result.
+      }
+      return {
         output: "Error: command interrupted",
         isError: true,
-      });
+      };
     }
 
     // Async execution keeps the Node event loop free: with spawnSync the TUI
@@ -151,11 +181,13 @@ export class BashTool implements Tool {
       let timedOut = false;
       let aborted = false;
       let terminating = false;
+      let settled = false;
       let escalateTimer: NodeJS.Timeout | null = null;
 
-      const child = spawn("bash", ["-c", actualCommand], {
+      const child = spawn(prepared.executable, prepared.args, {
         cwd: ctx.workDir,
         detached: true,
+        env: prepared.env,
         stdio: ["ignore", "pipe", "pipe"],
       });
 
@@ -252,41 +284,49 @@ export class BashTool implements Tool {
         ctx.abortSignal?.removeEventListener("abort", onAbort);
       };
 
-      // Spawn-level failure (e.g. bash not found): no close event guaranteed.
-      child.on("error", (err) => {
+      const settle = (result: ToolResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         cleanup();
-        resolve({
-          output: `Error executing command: ${err.message}`,
+        const finalize = async () => {
+          await prepared.cleanup?.();
+        };
+        void finalize().then(
+          () => {
+            resolve(result);
+          },
+          (error: unknown) => {
+            resolve({
+              output: `${result.output}\nError cleaning up sandbox: ${asErrorString(error)}`,
+              isError: true,
+            });
+          },
+        );
+      };
+
+      // Spawn-level failure (e.g. bash not found): no close event guaranteed.
+      child.on("error", (error) => {
+        settle({
+          output: `Error executing command: ${error.message}`,
           isError: true,
         });
       });
 
       child.on("close", (code, signal) => {
-        cleanup();
+        stderr = prepared.annotateStderr?.(stderr) ?? stderr;
 
-        if (aborted) {
+        if (aborted || timedOut) {
           const captured =
             stdout || stderr || outputTruncated
               ? formatShellOutput("$ ", command, stdout, stderr, outputTruncated)
               : "";
-          resolve({
-            output: captured
-              ? `${captured}\nError: command interrupted`
-              : "Error: command interrupted",
-            isError: true,
-          });
-          return;
-        }
-
-        if (timedOut) {
-          const captured =
-            stdout || stderr || outputTruncated
-              ? formatShellOutput("$ ", command, stdout, stderr, outputTruncated)
-              : "";
-          resolve({
-            output: captured
-              ? `${captured}\nError: command timed out after ${String(timeout)}s`
-              : `Error: command timed out after ${String(timeout)}s`,
+          const error = aborted
+            ? "Error: command interrupted"
+            : `Error: command timed out after ${String(timeout)}s`;
+          settle({
+            output: captured ? `${captured}\n${error}` : error,
             isError: true,
           });
           return;
@@ -296,7 +336,7 @@ export class BashTool implements Tool {
         let output = formatShellOutput("$ ", command, stdout, stderr, outputTruncated);
 
         if (outputTruncated) {
-          resolve({ output, isError: true });
+          settle({ output, isError: true });
           return;
         }
 
@@ -311,7 +351,7 @@ export class BashTool implements Tool {
           output += `\nProcess terminated${signal ? ` by ${signal}` : " unexpectedly"}`;
         }
 
-        resolve({ output, isError: exitCode !== 0 || code === null });
+        settle({ output, isError: exitCode !== 0 || code === null });
       });
     });
   }

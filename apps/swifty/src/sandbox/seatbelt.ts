@@ -32,15 +32,17 @@ const SANDBOX_EXEC_PATH = "/usr/bin/sandbox-exec";
  * Dynamically generates a seatbelt profile to control file write and network access permissions.
  */
 export class SeatbeltSandbox implements Sandbox {
+  readonly implementation = "seatbelt";
+
   available(): boolean {
     return existsSync(SANDBOX_EXEC_PATH);
   }
 
-  wrap(command: string, config: SandboxConfig): string {
-    const profile = buildProfile(config);
-    // Pass the profile via -p; use %q-style quoting to prevent secondary shell interpretation
-    const escaped = command.replace(/'/g, "'\\''");
-    return `${SANDBOX_EXEC_PATH} -p '${profile}' bash -c '${escaped}'`;
+  prepare(command: string, config: SandboxConfig): { executable: string; args: string[] } {
+    return {
+      executable: SANDBOX_EXEC_PATH,
+      args: ["-p", buildProfile(config), "bash", "-c", command],
+    };
   }
 }
 

@@ -60,6 +60,7 @@ const ALL = [
   "Agent",
   "ReadFile",
   "Bash",
+  "JavaScript",
 ];
 
 describe("main-agent-only tool policy", () => {
@@ -79,7 +80,7 @@ describe("main-agent-only tool policy", () => {
     // A fork is the lead's own extension: coordination (TaskStop) and delegation
     // (Agent, re-tagged as a fork) stay available; only the main-thread-only set
     // is stripped.
-    for (const name of ["TaskStop", "Agent", "ReadFile", "Bash"]) {
+    for (const name of ["TaskStop", "Agent", "ReadFile", "Bash", "JavaScript"]) {
       expect(names.has(name)).toBe(true);
     }
   });
@@ -91,8 +92,13 @@ describe("main-agent-only tool policy", () => {
     for (const name of ["ComputerUse", "AskUserQuestion", "ExitPlanMode", "Agent", "TaskStop"]) {
       expect(names.has(name)).toBe(false);
     }
-    for (const name of ["ReadFile", "Bash"]) {
+    for (const name of ["ReadFile", "Bash", "JavaScript"]) {
       expect(names.has(name)).toBe(true);
     }
+  });
+
+  it("keeps JavaScript available to asynchronous agents", () => {
+    const filtered = filterToolsForAgent(buildRegistry(["JavaScript"]), ["*"], undefined, true);
+    expect(filtered.get("JavaScript")).toBeDefined();
   });
 });

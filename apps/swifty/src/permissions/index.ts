@@ -631,8 +631,8 @@ export class PermissionChecker {
 
     // Layer 3.5: Sandbox auto-allow — OS sandbox already isolates writes; non-dangerous commands can skip human confirmation.
     // Split compound commands and check deny/ask rules individually to prevent bypassing permission checks via command chaining.
-    // Only Bash is wrapped by the OS sandbox (seatbelt/bwrap wrap into `bash -c`);
-    // other command tools (e.g. PowerShell) run unwrapped, so they never get auto-allow.
+    // Only Bash is wrapped by the configured OS sandbox; other command tools
+    // (e.g. PowerShell and JavaScript) never inherit this auto-allow.
     if (this.sandboxEnabled && this.sandboxAutoAllow && toolName === "Bash") {
       const subcommands = strArg(args, "command")
         .split(/\s*(?:&&|\|\||[;|])\s*/)

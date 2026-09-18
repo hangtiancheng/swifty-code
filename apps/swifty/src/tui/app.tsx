@@ -339,7 +339,21 @@ export function App({
   const backgroundTaskManagerRef = useRef(new TaskManager());
   const fileHistoryRef = useRef<FileHistory | null>(null);
   const fileStateCacheRef = useRef(new FileStateCache());
-  const sandboxRef = useRef<Promise<Sandbox | null>>(createSandbox());
+  const sandboxBackend = sandboxYaml?.backend ?? "native";
+  const sandboxRef = useRef<Promise<Sandbox | null> | null>(null);
+  const getSandbox = (): Promise<Sandbox | null> =>
+    (sandboxRef.current ??= createSandbox(sandboxBackend));
+  const disposeSandbox = async (): Promise<void> => {
+    const pending = sandboxRef.current;
+    sandboxRef.current = null;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const bashTool = registryRef.current.get("Bash") as BashTool | undefined;
+    if (bashTool) {
+      bashTool.sandbox = null;
+      bashTool.sandboxRequired = false;
+    }
+    await (await pending)?.dispose?.();
+  };
   const [sandboxEnabled, setSandboxEnabled] = useState(sandboxYaml?.enabled ?? false);
   const [sandboxAutoAllow, setSandboxAutoAllow] = useState(sandboxYaml?.auto_allow ?? false);
   const sandboxEnabledRef = useRef(sandboxYaml?.enabled ?? false);
@@ -351,6 +365,12 @@ export function App({
   useEffect(() => {
     sandboxAutoAllowRef.current = sandboxAutoAllow;
   }, [sandboxAutoAllow]);
+  useEffect(
+    () => () => {
+      void disposeSandbox();
+    },
+    [],
+  );
   const abortControllerRef = useRef<AbortController | null>(null);
   // Checker of the in-flight agent loop: a fresh checker is created per loop,
   // so mid-loop permission-mode changes (Shift+Tab) must be applied to this
@@ -1012,11 +1032,11 @@ export function App({
 
     // Rich status/memory commands need live app state, so handle them here.
     if (cmd.name === "status") {
+      const sandbox = sandboxEnabled ? await getSandbox() : null;
+      const sandboxReady = sandbox ? await sandbox.available() : false;
       const sbStatus = sandboxEnabled
-        ? sandboxAutoAllow
-          ? "ON (auto-allow)"
-          : "ON (manual)"
-        : "OFF";
+        ? `${sandboxAutoAllow ? "ON (auto-allow)" : "ON (manual)"}, ${sandboxBackend}, ${sandboxReady ? "ready" : "blocked"}`
+        : `OFF, ${sandboxBackend}`;
       const lines = [
         `Mode:      ${permMode}`,
         `Model:     ${selectedProvider.model}`,
@@ -1441,48 +1461,37 @@ export function App({
         }
         case "sandbox": {
           const arg = parsed.args.trim();
-          const sbAvailable = (await sandboxRef.current)?.available() ?? false;
-          if (arg === "1" || arg === "on") {
-            // Mode 1: enable sandbox + auto-allow
-            setSandboxEnabled(true);
-            setSandboxAutoAllow(true);
-            sandboxEnabledRef.current = true;
-            sandboxAutoAllowRef.current = true;
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "system",
-                content: `Sandbox: ON + auto-allow${sbAvailable ? "" : " (sandbox tool not found, wrapping disabled)"}`,
-              },
-            ]);
-          } else if (arg === "2" || arg === "manual") {
-            // Mode 2: enable sandbox + manual permission confirmation
-            setSandboxEnabled(true);
-            setSandboxAutoAllow(false);
-            sandboxEnabledRef.current = true;
-            sandboxAutoAllowRef.current = false;
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "system",
-                content: `Sandbox: ON + manual permissions${sbAvailable ? "" : " (sandbox tool not found, wrapping disabled)"}`,
-              },
-            ]);
-          } else if (arg === "3" || arg === "off") {
-            // Mode 3: disable sandbox
+          if (arg === "3" || arg === "off") {
             setSandboxEnabled(false);
             setSandboxAutoAllow(false);
             sandboxEnabledRef.current = false;
             sandboxAutoAllowRef.current = false;
+            await disposeSandbox();
+            setMessages((prev) => [
+              ...prev,
+              { role: "system", content: `Sandbox (${sandboxBackend}): OFF` },
+            ]);
+            break;
+          }
+
+          const sandbox = await getSandbox();
+          const sbAvailable = (await sandbox?.available()) ?? false;
+          const unavailableReason = sandbox?.availabilityError ?? "sandbox backend unavailable";
+          const autoAllow = arg === "1" || arg === "on";
+          const manual = arg === "2" || arg === "manual";
+          if (autoAllow || manual) {
+            setSandboxEnabled(true);
+            setSandboxAutoAllow(autoAllow);
+            sandboxEnabledRef.current = true;
+            sandboxAutoAllowRef.current = autoAllow;
             setMessages((prev) => [
               ...prev,
               {
                 role: "system",
-                content: "Sandbox: OFF",
+                content: `Sandbox (${sandboxBackend}): ON + ${autoAllow ? "auto-allow" : "manual permissions"}${sbAvailable ? "" : ` (blocked: ${unavailableReason})`}`,
               },
             ]);
           } else {
-            // No/unknown argument: show current status and usage
             const status = sandboxEnabled
               ? sandboxAutoAllow
                 ? "ON + auto-allow"
@@ -1490,7 +1499,8 @@ export function App({
               : "OFF";
             const lines = [
               `Sandbox status: ${status}`,
-              `Platform tool: ${sbAvailable ? "available" : "not found"}`,
+              `Backend: ${sandboxBackend}`,
+              `Runtime: ${sbAvailable ? "ready" : `blocked (${unavailableReason})`}`,
               "",
               "Usage: /sandbox <mode>",
               "  1 (on)     — Enable sandbox + auto-allow (recommended)",
@@ -1647,16 +1657,16 @@ export function App({
     // setPermMode call (e.g. plan approval switching out of plan mode in the same tick).
     const checker = new PermissionChecker(workDir, modeOverride ?? permMode);
     checkerRef.current = checker;
-    // Propagate the current sandbox settings to the permission checker
-    checker.sandboxEnabled = sandboxEnabledRef.current;
-    checker.sandboxAutoAllow = sandboxAutoAllowRef.current;
 
-    // Attach the sandbox to the BashTool when sandboxing is enabled
-
+    // Attach the sandbox to the BashTool when sandboxing is enabled.
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const bashTool = registryRef.current.get("Bash") as BashTool | undefined;
+    let sandboxReady = false;
     if (bashTool && sandboxEnabledRef.current) {
-      bashTool.sandbox = await sandboxRef.current;
+      const sandbox = await getSandbox();
+      sandboxReady = (await sandbox?.available()) ?? false;
+      bashTool.sandbox = sandbox;
+      bashTool.sandboxRequired = true;
       bashTool.sandboxConfig = {
         allowWrite: [workDir, "/tmp"],
         denyWrite: [],
@@ -1664,7 +1674,12 @@ export function App({
       };
     } else if (bashTool) {
       bashTool.sandbox = null;
+      bashTool.sandboxRequired = false;
     }
+
+    // Auto-allow is safe only when the requested backend is actually ready.
+    checker.sandboxEnabled = sandboxEnabledRef.current && sandboxReady;
+    checker.sandboxAutoAllow = sandboxAutoAllowRef.current && sandboxReady;
     // Memory recall: query relevant memories and provide context to LLM
     const recallPromise =
       memManagerRef.current && clientRef.current
