@@ -40,6 +40,7 @@ import { PowerShellTool } from "@/tools/powershell.js";
 import { ReadFileTool } from "@/tools/read-file.js";
 import { ToolRegistry } from "@/tools/registry.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
+import { WebFetchTool } from "@/tools/web-fetch.js";
 import { WriteFileTool } from "@/tools/write-file.js";
 
 export function countMcpTools(registry: ToolRegistry): number {
@@ -84,6 +85,7 @@ export function createToolRegistry(workDir: string, taskList: TaskList): ToolReg
   registry.register(new WriteFileTool());
   registry.register(new GlobTool());
   registry.register(new GrepTool());
+  registry.register(new WebFetchTool());
   return registry;
 }
 

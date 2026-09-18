@@ -107,6 +107,7 @@
     "slice-ansi": "^9.0.0",
     "string-width": "^8.2.2",
     "supports-hyperlinks": "^4.5.0",
+    "turndown": "^7.2.4",
     "wrap-ansi": "^10.0.1",
     "ws": "^8.21.3",
     "zod": "^4.6.5"
@@ -120,6 +121,7 @@
     "@types/node": "^24.13.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.5",

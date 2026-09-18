@@ -138,6 +138,8 @@ function describeToolActivity(toolName: string, input: Record<string, unknown>):
       return `Searching ${strArg(input, "pattern", "files")}`;
     case "Grep":
       return `Grepping ${strArg(input, "pattern", "pattern")}`;
+    case "WebFetch":
+      return `Fetching ${strArg(input, "url", "page")}`;
     default:
       return toolName;
   }

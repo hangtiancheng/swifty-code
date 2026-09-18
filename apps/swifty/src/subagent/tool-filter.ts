@@ -55,6 +55,7 @@ type AllTools =
   | "WriteFile"
   | "Glob"
   | "Grep"
+  | "WebFetch"
   | "McpCall";
 
 // Tools that only work correctly on the main thread: each depends on main-thread

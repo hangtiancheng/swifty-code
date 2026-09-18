@@ -57,3 +57,8 @@ export const GREP_DESCRIPTION = `Search file content with a case-insensitive, li
 - include is an optional glob: "*.ts" matches names at any depth; patterns with "/" match working-directory-relative paths. A direct file path is searched without this filter.
 - Traversal includes dotfiles but skips fixed directories such as .git, .agents, .swifty, node_modules, dist, and __pycache__, not .gitignore rules. Binary/unreadable files are skipped; directory symlinks are not traversed.
 - At most 500 matching lines. Narrow searches; never search the filesystem root. Use ReadFile for context and this tool instead of shell grep/rg.`;
+
+export const WEB_FETCH_DESCRIPTION = `Fetch a URL over HTTP(S) and return its content as Markdown. Use it to retrieve and analyze web pages.
+- url must be a fully-formed http or https URL; redirects are followed automatically and the final URL is reported when it differs.
+- HTML is converted to Markdown; other text formats (plain text, JSON, XML, Markdown) are returned as-is. Binary content (images, PDFs, archives) is rejected.
+- Responses over 10MB are rejected and results are truncated at 100K characters. Successful fetches are cached for 15 minutes.`;
