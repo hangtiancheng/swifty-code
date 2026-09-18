@@ -22,6 +22,10 @@
 
 import type { StoredTaskStatus, TaskStore } from "./store.js";
 
+// Submodule namespaces for library consumers (Todo.<Sub>.*).
+export * as Store from "./store.js";
+export * as Tools from "./tools.js";
+
 export interface Task {
   id: string;
   subject: string;

@@ -161,3 +161,7 @@ export function installRemoteTelemetrySignalHandlers(): void {
   install("SIGINT", 130);
   install("SIGTERM", 143);
 }
+
+// Submodule namespaces for library consumers (Telemetry.<Sub>.*).
+export * as Instrumentation from "./instrumentation.js";
+export * as Providers from "./providers.js";

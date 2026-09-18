@@ -1,0 +1,25 @@
+// Submodule namespaces for library consumers (Tools.<Sub>.*).
+export * as AskUser from "./ask-user.js";
+export * as Bash from "./bash.js";
+export * as ComputerUse from "./computer-use.js";
+export * as Descriptions from "./descriptions.js";
+export * as Diff from "./diff.js";
+export * as EditFile from "./edit-file.js";
+export * as EnterWorktree from "./enter-worktree.js";
+export * as ExitPlanMode from "./exit-plan-mode.js";
+export * as ExitWorktree from "./exit-worktree.js";
+export * as FileMutationQueue from "./file-mutation-queue.js";
+export * as FileStateCache from "./file-state-cache.js";
+export * as Glob from "./glob.js";
+export * as Grep from "./grep.js";
+export * as IsDiffTool from "./is-diff-tool.js";
+export * as McpCall from "./mcp-call.js";
+export * as PowerShell from "./powershell.js";
+export * as ReadFile from "./read-file.js";
+export * as Registry from "./registry.js";
+export * as ShellOutput from "./shell-output.js";
+export * as Snippets from "./snippets.js";
+export * as SyntheticOutput from "./synthetic-output.js";
+export * as ToolSearch from "./tool-search.js";
+export * as Types from "./types.js";
+export * as WriteFile from "./write-file.js";

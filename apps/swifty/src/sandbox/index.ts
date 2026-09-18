@@ -22,6 +22,10 @@
 
 import os from "node:os";
 
+// Submodule namespaces for library consumers (Sandbox.<Sub>.*).
+export * as Bwrap from "./bwrap.js";
+export * as Seatbelt from "./seatbelt.js";
+
 /**
  * Sandbox configuration: controls file write permissions and network access.
  */

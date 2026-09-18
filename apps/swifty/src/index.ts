@@ -21,214 +21,125 @@
  */
 
 // Library entry: re-exports every terminal-independent module of
-// @swifty.js/swifty. The CLI entry (bin) is dist/main.js; nothing here may
-// import from src/tui or any terminal-only dependency (ink, chalk, ...). That is
-// enforced at build time by the ban-terminal-only-deps esbuild plugin in
-// tsup.config.ts: reaching one of them fails the build. react/react-dom are not
-// in that set — the cross-platform hooks under src/ui/** are public API.
+// @swifty.js/swifty, one namespace per source directory
+// (`export * as Group from "./group/index.js"`; each group barrel nests its
+// submodules the same way), so top-level export names cannot collide across
+// groups. The CLI entry (bin) is dist/main.js; nothing here may import from
+// src/tui or any terminal-only dependency (ink, chalk, ...). That is enforced
+// at build time by the ban-terminal-only-deps esbuild plugin in
+// tsup.config.ts: reaching one of them fails the build. react/react-dom are
+// not in that set — the cross-platform hooks under src/ui/** are public API.
 
 // === acp ===
 export * as Acp from "./acp/index.js";
 
 // === agent ===
-export * from "./agent/index.js";
-export * from "./agent/events.js";
-export * from "./agent/streaming-executor.js";
+export * as Agent from "./agent/index.js";
 
 // === bootstrap ===
-export * from "./bootstrap/interaction-summary.js";
-export * from "./bootstrap/tool-registry.js";
+export * as Bootstrap from "./bootstrap/index.js";
 // export * from "./bootstrap/terminal-input.js" // Exclude TUI
 // export * from "./bootstrap/terminal-theme.js" // Exclude TUI
-export * from "./bootstrap/tool-registry.js";
 // export * from "./bootstrap/tui-selection.js" // Exclude TUI
 
 // === code-review ===
-export * from "./code-review/handler.js";
-export * from "./code-review/manager.js";
-export * from "./code-review/session.js";
+export * as CodeReview from "./code-review/index.js";
 
 // === commands ===
-export * from "./commands/commands.js";
-export * from "./commands/loader.js";
-export * from "./commands/usage-tracker.js";
+export * as Commands from "./commands/index.js";
 
 // === compact ===
-export * from "./compact/compact.js";
-export * from "./compact/prompts.js";
-export * from "./compact/recovery.js";
+export * as Compact from "./compact/index.js";
 
 // === config ===
-export * from "./config/index.js";
-export * from "./config/provider-login.js";
+export * as Config from "./config/index.js";
+// provider-login value-imports config/index.js at module scope, so nesting
+// it under Config would create an evaluation cycle (TDZ on barrel import);
+// it stays a sibling namespace.
+export * as ProviderLogin from "./config/provider-login.js";
 
 // === conversation ===
-export * from "./conversation/at-expand.js";
-export * from "./conversation/index.js";
-export * from "./conversation/pairing.js";
+export * as Conversation from "./conversation/index.js";
 
 // === file-history ===
-export * from "./file-history/index.js";
+export * as FileHistory from "./file-history/index.js";
 
 // === history ===
-export * from "./history/index.js";
+export * as History from "./history/index.js";
 
 // === hooks ===
-export * from "./hooks/index.js";
+export * as Hooks from "./hooks/index.js";
 
 // === images ===
-export * from "./images/clipboard.js";
-export * from "./images/index.js";
+export * as Images from "./images/index.js";
 
 // === llm ===
-export * from "./llm/anthropic.js";
-export * from "./llm/client.js";
-export * from "./llm/errors.js";
-export * from "./llm/events.js";
-export * from "./llm/model-discovery.js";
-export * from "./llm/model-resolver.js";
-export * from "./llm/openai.js";
+export * as LLM from "./llm/index.js";
 
 // === logger ===
-export * from "./logger/index.js";
+export * as Logger from "./logger/index.js";
 
 // === mcp ===
-export * from "./mcp/client.js";
-export * from "./mcp/instructions.js";
-export * from "./mcp/manager.js";
-export * from "./mcp/strategy.js";
-export * from "./mcp/tool-wrapper.js";
+export * as MCP from "./mcp/index.js";
 
 // === memory ===
-export * from "./memory/consolidation.js";
-export * from "./memory/extractor.js";
-export * from "./memory/instructions.js";
-export * from "./memory/manager.js";
-export * from "./memory/memory-age.js";
-export * from "./memory/permissions.js";
-export * from "./memory/written-paths.js";
+export * as Memory from "./memory/index.js";
 
 // === permissions ===
-export * from "./permissions/index.js";
+export * as Permissions from "./permissions/index.js";
 
 // === plan-file ===
-export * from "./plan-file/index.js";
+export * as PlanFile from "./plan-file/index.js";
 
 // === prompt ===
-export * from "./prompt/builder.js";
-export * from "./prompt/coordinator.js";
-export * from "./prompt/delegation.js";
-export * from "./prompt/plan-mode.js";
-export * from "./prompt/sections.js";
+export * as Prompt from "./prompt/index.js";
 
 // === remote ===
-export * from "./remote/address.js";
-export * from "./remote/log.js";
-export * from "./remote/server.js";
-export * from "./remote/session-state.js";
+export * as Remote from "./remote/index.js";
 
 // === sandbox ===
-export * from "./sandbox/bwrap.js";
-export * from "./sandbox/index.js";
-export * from "./sandbox/seatbelt.js";
+export * as Sandbox from "./sandbox/index.js";
 
 // === session ===
-export * from "./session/index.js";
+export * as Session from "./session/index.js";
 
 // === skills ===
-export * from "./skills/catalog.js";
-export * from "./skills/executor.js";
-export * from "./skills/install-tool.js";
-export * from "./skills/load-skill-tool.js";
-export * from "./skills/index.js";
+export * as Skills from "./skills/index.js";
 
 // === subagent ===
-export * from "./subagent/agent-tool.js";
-export * from "./subagent/definition.js";
-export * from "./subagent/loader.js";
-export * from "./subagent/spawn.js";
-export * from "./subagent/task-manager.js";
-export * from "./subagent/tool-filter.js";
+export * as Subagent from "./subagent/index.js";
 
 // === teams ===
-export * from "./teams/backend.js";
-export * from "./teams/coordinator.js";
-export * from "./teams/file-mailbox.js";
-export * from "./teams/progress.js";
-export * from "./teams/protocol.js";
-export * from "./teams/registry.js";
-export * from "./teams/shared-task.js";
-export * from "./teams/task-stop.js";
-export * from "./teams/task-tools.js";
-export * from "./teams/team-file.js";
-export * from "./teams/index.js";
-export * from "./teams/tools.js";
-export * from "./teams/transcript.js";
+export * as Teams from "./teams/index.js";
 
 // === telemetry ===
 export * as Telemetry from "./telemetry/index.js";
-export * from "./telemetry/instrumentation.js";
-export * from "./telemetry/providers.js";
 
 // === todo ===
-export * from "./todo/store.js";
-export * from "./todo/index.js";
-export * from "./todo/tools.js";
+export * as Todo from "./todo/index.js";
 
 // === tool-result ===
-export * from "./tool-result/index.js";
+export * as ToolResult from "./tool-result/index.js";
 
 // === tools ===
-export * from "./tools/ask-user.js";
-export * from "./tools/bash.js";
-export * from "./tools/computer-use.js";
-export * from "./tools/descriptions.js";
-export * from "./tools/diff.js";
-export * from "./tools/edit-file.js";
-export * from "./tools/enter-worktree.js";
-export * from "./tools/exit-plan-mode.js";
-export * from "./tools/exit-worktree.js";
-export * from "./tools/file-mutation-queue.js";
-export * from "./tools/file-state-cache.js";
-export * from "./tools/glob.js";
-export * from "./tools/grep.js";
-export * from "./tools/is-diff-tool.js";
-export * from "./tools/mcp-call.js";
-export * from "./tools/powershell.js";
-export * from "./tools/read-file.js";
-export * from "./tools/registry.js";
-export * from "./tools/shell-output.js";
-export * from "./tools/snippets.js";
-export * from "./tools/synthetic-output.js";
-export * from "./tools/tool-search.js";
-export * from "./tools/types.js";
-export * from "./tools/write-file.js";
+export * as Tools from "./tools/index.js";
 
 // === ui ===
-export * from "./ui/styles.js";
-export * from "./ui/use-follow-up-queue.js";
-export * from "./ui/use-ide-input.js";
-export * from "./ui/use-teammate-states.js";
+export * as UI from "./ui/index.js";
 
 // === utils ===
-export * from "./utils/paths.js";
-export * from "./utils/index.js";
-export * from "./utils/verbs.js";
+export * as Utils from "./utils/index.js";
 
 // === vscode ===
-export * from "./vscode/ide-client.js";
-export * from "./vscode/lockfile.js";
-export * from "./vscode/ws-transport.js";
+export * as VSCode from "./vscode/index.js";
 
 // === worktree ===
-export * from "./worktree/index.js";
+export * as Worktree from "./worktree/index.js";
 
 // Process-level headless entry points. They carry no TUI, but on failure they
-// may write crash dumps or process.exit() — prefer the composable modules
-// above (Agent, ToolRegistry, ...) in long-lived host processes.
-export * from "./print-mode.js";
-export * from "./recover.js";
-export * from "./teammate.js";
-export * from "./version.js";
-
-// Anything Conflict?
+// may write crash dumps or process.exit() — prefer the composable namespaces
+// above (Agent, Bootstrap.ToolRegistry, ...) in long-lived host processes.
+export * as PrintMode from "./print-mode.js";
+export * as Recover from "./recover.js";
+export * as Teammate from "./teammate.js";
+export * as Version from "./version.js";

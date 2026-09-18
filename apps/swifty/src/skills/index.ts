@@ -43,3 +43,9 @@ export interface SkillForkHost extends SkillHost {
   runSubagent(prompt: string): Promise<string>;
   snapshotParentMessages(count: number): string;
 }
+
+// Submodule namespaces for library consumers (Skills.<Sub>.*).
+export * as Catalog from "./catalog.js";
+export * as Executor from "./executor.js";
+export * as InstallTool from "./install-tool.js";
+export * as LoadSkillTool from "./load-skill-tool.js";

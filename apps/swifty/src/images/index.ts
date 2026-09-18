@@ -27,6 +27,9 @@ import sharp from "sharp";
 
 import { createChildLogger } from "@/logger/index.js";
 
+// Submodule namespaces for library consumers (Images.<Sub>.*).
+export * as Clipboard from "./clipboard.js";
+
 const log = createChildLogger({ module: "images" });
 
 type ImageMediaType = "image/png" | "image/jpeg" | "image/gif" | "image/webp";

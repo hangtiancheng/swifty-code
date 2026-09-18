@@ -59,6 +59,10 @@ import type { ToolRegistry } from "@/tools/registry.js";
 import type { PermissionRequestHandler, ToolResult } from "@/tools/types.js";
 import { asErrorString, asRecord, strArg } from "@/utils/index.js";
 
+// Submodule namespaces for library consumers (Agent.<Sub>.*).
+export * as Events from "./events.js";
+export * as StreamingExecutor from "./streaming-executor.js";
+
 // When the model stops on max_tokens, escalate its output ceiling once to this
 // value, then attempt a bounded number of multi-turn recoveries.
 const MAX_TOKENS_CEILING = 64000;

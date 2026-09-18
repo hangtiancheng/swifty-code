@@ -22,6 +22,10 @@
 
 import { createChildLogger } from "@/logger/index.js";
 
+// Submodule namespaces for library consumers (Utils.<Sub>.*).
+export * as Paths from "./paths.js";
+export * as Verbs from "./verbs.js";
+
 const log = createChildLogger({ module: "utils" });
 
 /** Convert message or legacy-session blocks to a base64-free text fallback. */

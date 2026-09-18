@@ -23,6 +23,10 @@
 import type { ToolResultContentBlock } from "@/tools/types.js";
 import { contentToText } from "@/utils";
 
+// Submodule namespaces for library consumers (Conversation.<Sub>.*).
+export * as AtExpand from "./at-expand.js";
+export * as Pairing from "./pairing.js";
+
 export interface ToolUseBlock {
   toolUseId: string;
   toolName: string;

@@ -58,6 +58,20 @@ import type { SubagentProgressEvent } from "@/subagent/spawn.js";
 import { asErrorString } from "@/utils/index.js";
 import { randomVerb } from "@/utils/verbs.js";
 
+// Submodule namespaces for library consumers (Teams.<Sub>.*).
+export * as Backend from "./backend.js";
+export * as Coordinator from "./coordinator.js";
+export * as FileMailbox from "./file-mailbox.js";
+export * as Progress from "./progress.js";
+export * as Protocol from "./protocol.js";
+export * as Registry from "./registry.js";
+export * as SharedTask from "./shared-task.js";
+export * as TaskStop from "./task-stop.js";
+export * as TaskTools from "./task-tools.js";
+export * as TeamFile from "./team-file.js";
+export * as Tools from "./tools.js";
+export * as Transcript from "./transcript.js";
+
 const log = createChildLogger({ module: "teams" });
 export type TeamMode = "in-process" | "tmux" | "iterm";
 
