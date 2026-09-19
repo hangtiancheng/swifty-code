@@ -128,13 +128,19 @@ export function readOutputFile(
   }
   try {
     const size = fstatSync(fd).size;
-    const readLen = Math.min(size, maxBytes);
+    // One lookahead byte lets sliceUtf8Safe detect a cut inside a code point.
+    const readLen = Math.min(size, maxBytes + 1);
     const buf = Buffer.alloc(readLen);
-    if (readLen > 0) {
-      readSync(fd, buf, 0, readLen, 0);
+    let bytesRead = 0;
+    while (bytesRead < readLen) {
+      const count = readSync(fd, buf, bytesRead, readLen - bytesRead, bytesRead);
+      if (count === 0) {
+        break;
+      }
+      bytesRead += count;
     }
     return {
-      text: sliceUtf8Safe(buf, maxBytes).toString("utf-8"),
+      text: sliceUtf8Safe(buf.subarray(0, bytesRead), maxBytes).toString("utf-8"),
       size,
       truncated: size > maxBytes,
     };

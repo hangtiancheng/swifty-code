@@ -6,6 +6,34 @@ const ok = (): Promise<string> => Promise.resolve("ok");
 const noop = (): void => undefined;
 
 describe("TaskManager", () => {
+  it("delivers cancelled output only after cleanup and waits on repeated stopAll", async () => {
+    const tasks = new TaskManager();
+    let reject!: (error: unknown) => void;
+    const task = tasks.create(
+      "shell",
+      () =>
+        new Promise<string>((_, fail) => {
+          reject = fail;
+        }),
+      noop,
+      { kind: "shell" },
+    );
+    await Promise.resolve();
+    tasks.stop(task.id);
+    expect(tasks.drainNotifications()).toEqual([]);
+    let stopped = false;
+    const stopping = tasks.stopAll().then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(stopped).toBe(false);
+    reject(new TaskFailure("captured before stop"));
+    await stopping;
+    expect(tasks.drainNotifications().map((item) => item.output)).toEqual(["captured before stop"]);
+    expect(tasks.drainNotifications()).toEqual([]);
+  });
+
   it("records the task kind from create options", async () => {
     const tasks = new TaskManager();
     const shell = tasks.create("s", ok, noop, { idPrefix: "bash", kind: "shell" });

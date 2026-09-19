@@ -56,8 +56,9 @@ export const JAVASCRIPT_DESCRIPTION = `Execute JavaScript in a fresh isolated V8
 /**
  * Appended to the JavaScript schema description only when background execution
  * is available. No timeout auto-background here: timeout_ms is the isolate's
- * hard safety cap — a V8-level kill, after which there is nothing left to
- * keep running.
+ * hard safety cap — V8 kills a synchronous script at the cap, and a wall-clock
+ * deadline disposes the isolate when an evaluation is suspended on a promise —
+ * so there is nothing left to keep running.
  */
 export const JAVASCRIPT_BACKGROUND_DESCRIPTION = `- Set run_in_background to true to evaluate in the background. The call returns a task ID immediately and the result arrives later as a task notification; do not poll. timeout_ms still caps the evaluation (max 10000). Use TaskStop with the task_id to abort it early.`;
 

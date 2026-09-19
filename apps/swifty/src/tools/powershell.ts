@@ -458,9 +458,11 @@ export class PowerShellTool implements Tool {
         return task.id;
       };
 
-      this.foreground.set(foregroundKey, {
-        background: () => backgroundExecution("user") !== null,
-      });
+      if (backgroundAvailableHere) {
+        this.foreground.set(foregroundKey, {
+          background: () => backgroundExecution("user") !== null,
+        });
+      }
 
       // The process is gone for good on error/close: stop the size watchdog
       // and any pending kill escalation so no timer outlives the command.

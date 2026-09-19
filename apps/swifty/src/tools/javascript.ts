@@ -91,22 +91,26 @@ async function runJavaScript(
 
   abortSignal?.throwIfAborted();
   const module = await import("isolated-vm");
+  abortSignal?.throwIfAborted();
   const ivm = module.default;
   const isolate = new ivm.Isolate({ memoryLimit: memoryLimitMb });
   const context = await isolate.createContext();
   const onAbort = () => {
-    isolate.dispose();
+    if (!isolate.isDisposed) {
+      isolate.dispose();
+    }
   };
   abortSignal?.addEventListener("abort", onAbort, { once: true });
-  if (abortSignal?.aborted) {
-    // An abort that landed during isolate startup never fires the listener
-    // (addEventListener on an already-aborted signal is a no-op): dispose
-    // now and surface the interruption instead of running to the V8 cap.
-    onAbort();
-    abortSignal.throwIfAborted();
-  }
-
+  let wallTimer: ReturnType<typeof setTimeout> | undefined;
   try {
+    if (abortSignal?.aborted) {
+      // An abort that landed during isolate startup never fires the listener
+      // (addEventListener on an already-aborted signal is a no-op): dispose
+      // now and surface the interruption instead of running to the V8 cap.
+      onAbort();
+      abortSignal.throwIfAborted();
+    }
+
     await context.global.set("input", input ?? null, { copy: true });
     const source = `
 (async () => {
@@ -151,12 +155,19 @@ ${code}
   return __payload;
 })()
 `;
-    const raw: unknown = await context.eval(source, {
+    const evaluation = context.eval(source, {
       timeout: timeoutMs,
       promise: true,
       copy: true,
       filename: "swifty-sandbox.js",
     });
+    const deadline = new Promise<never>((_, reject) => {
+      wallTimer = setTimeout(() => {
+        reject(new Error(`JavaScript evaluation timed out after ${String(timeoutMs)}ms`));
+        onAbort();
+      }, timeoutMs);
+    });
+    const raw: unknown = await Promise.race([evaluation, deadline]);
     if (typeof raw !== "string") {
       throw new Error("JavaScript sandbox returned an invalid result");
     }
@@ -166,6 +177,7 @@ ${code}
     const decoded: unknown = JSON.parse(raw);
     return JavaScriptEvaluationSchema.parse(decoded);
   } finally {
+    clearTimeout(wallTimer);
     abortSignal?.removeEventListener("abort", onAbort);
     try {
       context.release();
@@ -204,8 +216,10 @@ export class JavaScriptTool implements Tool {
   /**
    * Background task registry, injected by the host — same contract as
    * BashTool.taskManager. Unlike the shell tools there is no timeout
-   * auto-background: timeout_ms is the isolate's hard safety cap (a V8-level
-   * kill), after which nothing is left to keep running.
+   * auto-background: timeout_ms is the isolate's hard safety cap — V8 kills a
+   * synchronous script at the cap, and a wall-clock deadline disposes the
+   * isolate when an evaluation is suspended on a promise — so nothing is left
+   * to keep running.
    */
   taskManager: TaskManager | null = null;
 
@@ -360,7 +374,13 @@ export class JavaScriptTool implements Tool {
       };
 
       const backgroundExecution = (reason: BackgroundReason): string | null => {
-        if (backgrounded || settled || !manager || !backgroundAvailable) {
+        if (
+          backgrounded ||
+          settled ||
+          controller.signal.aborted ||
+          !manager ||
+          !backgroundAvailable
+        ) {
           return null;
         }
         backgrounded = true;
@@ -403,9 +423,11 @@ export class JavaScriptTool implements Tool {
           },
           () => {
             // Request isolate disposal. Note: dispose() cannot interrupt a
-            // synchronous script already running — V8's timeout_ms cap is the
-            // only hard kill. The task is reported cancelled immediately and
-            // the runner's late result is discarded by the task manager.
+            // synchronous script already running — only the timeout_ms cap
+            // (V8's script timeout, or runJavaScript's wall-clock deadline for
+            // an evaluation suspended on a promise) is a hard kill. The task
+            // is reported cancelled immediately and the runner's late result
+            // is discarded by the task manager.
             controller.abort();
           },
           { originToolCallId: ctx.toolCallId, idPrefix: "js", kind: "js" },
@@ -417,9 +439,11 @@ export class JavaScriptTool implements Tool {
         return task.id;
       };
 
-      this.foreground.set(foregroundKey, {
-        background: () => backgroundExecution("user") !== null,
-      });
+      if (backgroundAvailable) {
+        this.foreground.set(foregroundKey, {
+          background: () => backgroundExecution("user") !== null,
+        });
+      }
 
       evalPromise.then(
         (evaluation) => {

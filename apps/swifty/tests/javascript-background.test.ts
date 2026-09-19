@@ -33,6 +33,30 @@ function taskIdFrom(output: string): string {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describeIsolatedVm("JavaScript background execution", () => {
+  it("times out an unresolved async evaluation and completes its background task", async () => {
+    const { js, tasks } = makeTool();
+    const result = await js.execute(makeContext(), {
+      code: "await new Promise(() => {});",
+      timeout_ms: 50,
+      run_in_background: true,
+    });
+    const task = tasks.get(taskIdFrom(result.output));
+    await task?.done;
+    expect(task?.status).toBe("failed");
+    expect(task?.output).toMatch(/timed out/);
+  }, 2000);
+
+  it("does not background an evaluation after foreground cancellation", async () => {
+    const { js, tasks } = makeTool();
+    const controller = new AbortController();
+    const pending = js.execute(makeContext({ abortSignal: controller.signal }), {
+      code: "return 42;",
+    });
+    controller.abort();
+    expect(js.backgroundForegroundTasks()).toBe(0);
+    expect((await pending).isError).toBe(true);
+    expect(tasks.list()).toEqual([]);
+  });
   it("gates run_in_background on the task manager", () => {
     const bare = new JavaScriptTool();
     expect(bare.backgroundEnabled()).toBe(false);

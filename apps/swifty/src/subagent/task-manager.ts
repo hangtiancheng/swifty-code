@@ -68,6 +68,7 @@ export class TaskManager {
   private notifiedTaskIds = new Set<string>();
   private listeners = new Set<(tasks: AgentTask[]) => void>();
   private nextId = 1;
+  private pendingTaskIds = new Set<string>();
 
   create(
     name: string,
@@ -87,7 +88,7 @@ export class TaskManager {
       done: Promise.resolve(),
     };
     this.tasks.set(id, task);
-    this.emitChange();
+    this.pendingTaskIds.add(id);
 
     task.done = Promise.resolve()
       .then(() => runner(task))
@@ -118,8 +119,13 @@ export class TaskManager {
           task.output = error.output;
           this.emitChange();
         }
+      })
+      .finally(() => {
+        this.pendingTaskIds.delete(id);
+        this.emitChange();
       });
 
+    this.emitChange();
     return task;
   }
 
@@ -164,15 +170,16 @@ export class TaskManager {
 
   async stopAndWait(id: string): Promise<boolean> {
     const task = this.tasks.get(id);
-    if (!task || !this.stop(id)) {
+    if (!task) {
       return false;
     }
+    const stopped = this.stop(id);
     await task.done;
-    return true;
+    return stopped;
   }
 
   async stopAll(): Promise<void> {
-    const running = this.list().filter((task) => task.status === "running");
+    const running = this.list().filter((task) => this.pendingTaskIds.has(task.id));
     for (const task of running) {
       this.stop(task.id);
     }
@@ -191,7 +198,10 @@ export class TaskManager {
 
   drainNotifications(): AgentTask[] {
     const completed = this.list().filter(
-      (task) => task.status !== "running" && !this.notifiedTaskIds.has(task.id),
+      (task) =>
+        task.status !== "running" &&
+        !this.pendingTaskIds.has(task.id) &&
+        !this.notifiedTaskIds.has(task.id),
     );
     for (const task of completed) {
       this.notifiedTaskIds.add(task.id);
