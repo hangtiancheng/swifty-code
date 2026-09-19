@@ -114,11 +114,6 @@ export class ToolRegistry {
       if (deferred && !native) {
         continue;
       }
-      const providerSchema = protocol ? tool.providerSchema?.(resolvedProtocol) : undefined;
-      if (providerSchema) {
-        schemas.push(providerSchema);
-        continue;
-      }
       const s = tool.schema();
       if (resolvedProtocol === "openai") {
         schemas.push({

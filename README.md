@@ -85,7 +85,7 @@ providers:
   - name: anthropic
     protocol: anthropic
     base_url: https://api.anthropic.com
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-4
     # api_key defaults to $ANTHROPIC_API_KEY
 ```
 

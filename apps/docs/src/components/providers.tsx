@@ -61,7 +61,7 @@ const YAML: Array<
     { text: "    base_url: " },
     { text: "https://api.anthropic.com", tone: "str" },
   ],
-  [{ text: "    model: " }, { text: "claude-sonnet-4-20250514", tone: "str" }],
+  [{ text: "    model: " }, { text: "claude-sonnet-4", tone: "str" }],
   [{ text: "    thinking: " }, { text: "high", tone: "str" }],
   [{ text: "    # api_key falls back to $ANTHROPIC_API_KEY", tone: "comment" }],
   [],

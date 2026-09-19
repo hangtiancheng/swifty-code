@@ -112,9 +112,6 @@ function computerCallArguments(
 }
 
 function toOpenAIResponsesTool(schema: ProviderToolSchema): OpenAI.Responses.Tool {
-  if ("type" in schema && schema.type === "computer") {
-    return { ...schema };
-  }
   if ("input_schema" in schema) {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const tool = schema as ToolSchema;

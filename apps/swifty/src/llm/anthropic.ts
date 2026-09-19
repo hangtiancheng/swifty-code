@@ -99,9 +99,6 @@ function toAnthropicToolSchema(
   schema: ProviderToolSchema,
   useExplicitCustomType: boolean,
 ): AnthropicToolSchema {
-  if ("type" in schema && schema.type === "computer_20251124") {
-    return { ...schema };
-  }
   if ("input_schema" in schema) {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const tool = schema as ToolSchema;
