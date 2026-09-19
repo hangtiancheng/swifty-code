@@ -169,6 +169,50 @@ describe("TaskStop", () => {
     expect(task.status).toBe("cancelled");
   });
 
+  it("resolves task_id against the calling loop's manager before the shared one", async () => {
+    const mgr = new TeamManager(workDir());
+    const shared = new TaskManager();
+    const perRun = new TaskManager();
+    const resolvers: ((output: string) => void)[] = [];
+    const makePending = (manager: TaskManager, name: string) =>
+      manager.create(
+        name,
+        () =>
+          new Promise<string>((resolve) => {
+            resolvers.push(resolve);
+          }),
+        () => {
+          resolvers.pop()?.("stopped");
+        },
+      );
+    const sharedTask = makePending(shared, "shared-work");
+    const perRunTask = makePending(perRun, "fork-work");
+    await Promise.resolve();
+    // Task IDs are per-manager counters: both loops' first tasks collide.
+    expect(sharedTask.id).toBe(perRunTask.id);
+
+    const stop = new TaskStopTool(mgr, shared);
+    const res = await stop.execute({ ...ctx, taskManager: perRun }, { task_id: perRunTask.id });
+    expect(res.isError).toBe(false);
+    // The calling loop's own task stopped; the shared manager's namesake — a
+    // different task — is untouched.
+    expect(perRunTask.status).toBe("cancelled");
+    expect(sharedTask.status).toBe("running");
+
+    // An ID the calling loop's manager doesn't know falls back to the shared
+    // manager (a fork can still stop tasks it saw in its pre-fork snapshot).
+    const sharedOnly = makePending(shared, "shared-only");
+    await Promise.resolve();
+    const res2 = await stop.execute({ ...ctx, taskManager: perRun }, { task_id: sharedOnly.id });
+    expect(res2.isError).toBe(false);
+    expect(sharedOnly.status).toBe("cancelled");
+    expect(perRunTask.status).toBe("cancelled");
+
+    for (const resolve of resolvers.splice(0)) {
+      resolve("done");
+    }
+  });
+
   it("errors on an unknown teammate", async () => {
     const mgr = new TeamManager(workDir());
     mgr.create("squad");

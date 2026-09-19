@@ -45,7 +45,7 @@ interface FooterProps {
 }
 
 const MODE_DISPLAY: Record<string, string> = {
-  default: "default",
+  default: "Default",
   acceptEdits: "Accept Edits",
   plan: "Plan",
   bypassPermissions: "YOLO",

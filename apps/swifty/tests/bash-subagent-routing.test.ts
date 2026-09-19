@@ -28,10 +28,12 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentEvent } from "@/agent/events.js";
 import { Agent } from "@/agent/index.js";
+import type { ProviderConfig } from "@/config/index.js";
 import { ConversationManager } from "@/conversation/index.js";
 import type { LLMClient } from "@/llm/client.js";
 import type { StreamEvent, UsageInfo } from "@/llm/events.js";
 import { PermissionChecker } from "@/permissions/index.js";
+import { spawnSubagent } from "@/subagent/spawn.js";
 import { formatAgentTaskNotification, TaskManager } from "@/subagent/task-manager.js";
 import { BashTool } from "@/tools/bash.js";
 import { ToolRegistry } from "@/tools/registry.js";
@@ -94,7 +96,7 @@ describe("background bash routing for subagent loops", () => {
   });
 
   it("Agent injects its taskManager into every tool context", async () => {
-    let seen: TaskManager | undefined;
+    let seen: TaskManager | null | undefined;
     const probe: Tool = {
       name: "Probe",
       description: "probe",
@@ -203,4 +205,75 @@ describe("background bash routing for subagent loops", () => {
     // Nothing left undrained for whoever might ask later.
     expect(subManager.drainNotifications()).toHaveLength(0);
   }, 15_000);
+
+  it("spawnSubagent backgroundTasks:false disables backgrounding despite a host-wired manager", async () => {
+    // In-process teammate turns are one spawnSubagent run per task turn: the
+    // turn-end stopAll() would kill anything backgrounded and the drain
+    // disappears before any notification could be delivered, so those runs
+    // opt out — the explicit ctx.taskManager null must also block the tools'
+    // fallback to the host-wired instance manager.
+    const instanceManager = new TaskManager();
+    const bash = new BashTool();
+    bash.taskManager = instanceManager;
+
+    let seen: TaskManager | null | undefined;
+    const probe: Tool = {
+      name: "Probe",
+      description: "probe",
+      category: "read",
+      schema: () => ({
+        name: "Probe",
+        description: "probe",
+        input_schema: { type: "object", properties: {} },
+      }),
+      execute: (ctx: ToolContext) => {
+        seen = ctx.taskManager;
+        return Promise.resolve({ output: "ok", isError: false });
+      },
+    };
+
+    const registry = new ToolRegistry();
+    registry.register(bash);
+    registry.register(probe);
+
+    const client = new MockClient([
+      [
+        { type: "tool_call_complete", toolId: "p1", toolName: "Probe", arguments: {} },
+        {
+          type: "tool_call_complete",
+          toolId: "b1",
+          toolName: "Bash",
+          arguments: { command: "printf teammate-fg", run_in_background: true },
+        },
+        end("tool_use"),
+      ],
+      [end()],
+    ]);
+
+    await spawnSubagent(
+      { name: "teammate", description: "foreground only" },
+      "run it",
+      client,
+      registry,
+      {
+        name: "test",
+        protocol: "openai",
+        base_url: "http://127.0.0.1:1/v1",
+        api_key: "test-only",
+        model: "parent-model",
+        thinking: "high",
+      } satisfies ProviderConfig,
+      makeWorkDir(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { backgroundTasks: false, permissionMode: "bypassPermissions" },
+    );
+
+    expect(seen).toBeNull();
+    // The run_in_background request fell back to a foreground execution:
+    // nothing registered anywhere.
+    expect(instanceManager.list()).toHaveLength(0);
+  }, 20_000);
 });

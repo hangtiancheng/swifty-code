@@ -190,7 +190,10 @@ export class BashTool implements Tool {
       timeout = MAX_TIMEOUT;
     }
 
-    const manager = ctx.taskManager ?? this.taskManager;
+    // `ctx.taskManager === null` explicitly disables backgrounding for this
+    // call (in-process teammate turns) and must not fall back to the instance
+    // manager; only `undefined` (no loop-level decision) falls back.
+    const manager = ctx.taskManager !== undefined ? ctx.taskManager : this.taskManager;
     const backgroundAvailable =
       manager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
     const runInBackground = boolArg(args, "run_in_background") && backgroundAvailable;
@@ -269,7 +272,10 @@ export class BashTool implements Tool {
     if (runInBackground) {
       const taskId = handle.background("explicit");
       if (taskId !== null) {
-        return { output: backgroundMessage("explicit", taskId, timeout), isError: false };
+        return {
+          output: backgroundMessage("explicit", taskId, timeout),
+          isError: false,
+        };
       }
       // The command ended before it could be backgrounded; report its actual result.
     }
@@ -479,8 +485,8 @@ export class BashTool implements Tool {
         settled = true;
         // The command now outlives both its foreground timeout and the
         // caller's abort signal: only TaskStop or session shutdown can kill
-        // it. The escalate timer (if a termination was already underway) is
-        // deliberately left armed so an in-flight kill still completes.
+        // it. (A termination already underway is excluded by the
+        // `terminating` guard above, so no escalate timer can be pending here.)
         clearTimeout(timeoutTimer);
         ctx.abortSignal?.removeEventListener("abort", onAbort);
         this.foreground.delete(foregroundKey);
@@ -494,7 +500,19 @@ export class BashTool implements Tool {
             } catch {
               // Sandbox teardown trouble must not swallow the command result.
             }
-            const body = buildBackgroundBody("$ ", command, exit, outputFile.path, timeout);
+            // Wrap the method: passing prepared.annotateStderr directly would
+            // unbind it from `prepared` (and trip unbound-method).
+            const annotate = prepared.annotateStderr
+              ? (text: string): string => prepared.annotateStderr?.(text) ?? text
+              : undefined;
+            const body = buildBackgroundBody(
+              "$ ",
+              command,
+              exit,
+              outputFile.path,
+              timeout,
+              annotate,
+            );
             if (body.isError) {
               throw new TaskFailure(body.output);
             }
@@ -506,9 +524,12 @@ export class BashTool implements Tool {
             // outlive the session.
             killTree("SIGKILL");
           },
-          { originToolCallId: ctx.toolCallId, idPrefix: "bash" },
+          { originToolCallId: ctx.toolCallId, idPrefix: "bash", kind: "shell" },
         );
-        resolve({ output: backgroundMessage(reason, task.id, timeout), isError: false });
+        resolve({
+          output: backgroundMessage(reason, task.id, timeout),
+          isError: false,
+        });
         return task.id;
       };
 

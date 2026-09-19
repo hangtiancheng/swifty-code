@@ -769,7 +769,7 @@ describe("footer priorities", () => {
   });
 
   it.each([
-    ["default", "default"],
+    ["default", "Default"],
     ["acceptEdits", "Accept Edits"],
     ["plan", "Plan"],
     ["bypassPermissions", "YOLO"],

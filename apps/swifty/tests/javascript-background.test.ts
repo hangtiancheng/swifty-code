@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -148,4 +148,34 @@ describeIsolatedVm("JavaScript background execution", () => {
     expect(result.output).toContain("Result:");
     expect(result.output).toContain("fg");
   });
+
+  it("spills concurrent same-ID background results to distinct files", async () => {
+    // Task IDs are per-manager counters: two concurrent loops both produce
+    // "js-1", and runs without a sessionId share the "default" session spill
+    // dir. The random filename suffix must keep the second task's notification
+    // from pointing at the first task's content (writeSpill's wx flag would
+    // otherwise silently reuse the existing file).
+    const workDir = mkdtempSync(join(tmpdir(), "swifty-js-spill-"));
+    const first = makeTool();
+    const second = makeTool();
+    const spillPath = async (tool: ReturnType<typeof makeTool>, letter: string) => {
+      const result = await tool.js.execute(
+        { workDir },
+        { code: `return '${letter}'.repeat(40000);`, run_in_background: true },
+      );
+      const task = tool.tasks.get(taskIdFrom(result.output));
+      await task?.done;
+      expect(task?.status).toBe("completed");
+      const match = /Full content saved to:\n(\S+)/.exec(task?.output ?? "");
+      expect(
+        match,
+        `expected a persisted path in: ${task?.output.slice(0, 200) ?? ""}`,
+      ).not.toBeNull();
+      return match?.[1] ?? "";
+    };
+    const [pathA, pathB] = await Promise.all([spillPath(first, "a"), spillPath(second, "b")]);
+    expect(pathA).not.toBe(pathB);
+    expect(readFileSync(pathA, "utf-8")).toContain("a".repeat(1000));
+    expect(readFileSync(pathB, "utf-8")).toContain("b".repeat(1000));
+  }, 20_000);
 });

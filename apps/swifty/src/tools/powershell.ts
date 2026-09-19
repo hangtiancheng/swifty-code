@@ -155,7 +155,10 @@ export class PowerShellTool implements Tool {
       timeout = MAX_TIMEOUT;
     }
 
-    const manager = ctx.taskManager ?? this.taskManager;
+    // `ctx.taskManager === null` explicitly disables backgrounding for this
+    // call (in-process teammate turns) and must not fall back to the instance
+    // manager; only `undefined` (no loop-level decision) falls back.
+    const manager = ctx.taskManager !== undefined ? ctx.taskManager : this.taskManager;
     const backgroundAvailable =
       manager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
     const runInBackground = boolArg(args, "run_in_background") && backgroundAvailable;
@@ -188,7 +191,10 @@ export class PowerShellTool implements Tool {
     if (runInBackground) {
       const taskId = handle.background("explicit");
       if (taskId !== null) {
-        return { output: backgroundMessage("explicit", taskId, timeout), isError: false };
+        return {
+          output: backgroundMessage("explicit", taskId, timeout),
+          isError: false,
+        };
       }
       // The command ended before it could be backgrounded; report its actual result.
     }
@@ -443,9 +449,12 @@ export class PowerShellTool implements Tool {
             // CLI shutdown, and the process tree must not outlive the session.
             killTree("SIGKILL");
           },
-          { originToolCallId: ctx.toolCallId, idPrefix: "ps" },
+          { originToolCallId: ctx.toolCallId, idPrefix: "ps", kind: "shell" },
         );
-        resolve({ output: backgroundMessage(reason, task.id, timeout), isError: false });
+        resolve({
+          output: backgroundMessage(reason, task.id, timeout),
+          isError: false,
+        });
         return task.id;
       };
 

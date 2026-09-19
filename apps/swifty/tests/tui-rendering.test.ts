@@ -552,7 +552,7 @@ describe.each(["dark", "light"] satisfies ("dark" | "light")[])(
         for (const colorLevel of [0, 3] satisfies (0 | 3)[]) {
           chalk.level = colorLevel;
           for (const [permissionMode, label] of [
-            ["default", "default"],
+            ["default", "Default"],
             ["acceptEdits", "Accept Edits"],
             ["plan", "Plan"],
             ["bypassPermissions", "YOLO"],

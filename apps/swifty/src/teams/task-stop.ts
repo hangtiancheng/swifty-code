@@ -59,7 +59,7 @@ export class TaskStopTool implements Tool {
     };
   }
 
-  async execute(_ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
+  async execute(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult> {
     const name = strArg(args, "teammate", "");
     const taskId = strArg(args, "task_id", "");
     if ((!name && !taskId) || (name && taskId)) {
@@ -67,7 +67,14 @@ export class TaskStopTool implements Tool {
     }
 
     if (taskId) {
-      const task = this.taskManager?.get(taskId);
+      // The task registry of the loop running this call takes precedence: a
+      // fork's background tasks live in its per-run manager, and task IDs are
+      // per-manager counters, so the same ID in the constructor-injected
+      // (host-level) manager may be a different task. Fall back to that
+      // injected manager so a fork can still stop tasks it saw in its
+      // pre-fork conversation snapshot.
+      const manager = ctx.taskManager?.get(taskId) ? ctx.taskManager : this.taskManager;
+      const task = manager?.get(taskId);
       if (!task) {
         return { output: `Error: background task '${taskId}' not found`, isError: true };
       }
@@ -77,7 +84,7 @@ export class TaskStopTool implements Tool {
           isError: false,
         };
       }
-      await this.taskManager?.stopAndWait(taskId);
+      await manager?.stopAndWait(taskId);
       return { output: `Background task '${taskId}' stopped.`, isError: false };
     }
 

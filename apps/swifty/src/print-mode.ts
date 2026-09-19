@@ -141,9 +141,10 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
   // tasks within a single non-interactive execution
   const teamManager = new TeamManager(workDir);
   const backgroundTaskManager = new TaskManager();
-  // Share the background task registry with Bash/PowerShell/JavaScript so
-  // run_in_background and timeout auto-background deliver results through the
-  // same notification drain as background agents.
+  // Share the background task registry with the command tools registered here
+  // (Bash/PowerShell; JavaScriptTool is TUI-only) so run_in_background and
+  // timeout auto-background deliver results through the same notification
+  // drain as background agents.
   attachBackgroundTaskManager(registry, backgroundTaskManager);
   registry.register(new TeamCreateTool(teamManager));
   registry.register(new SendMessageTool(teamManager));
@@ -213,7 +214,8 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
           onEvent,
           undefined,
           teamChecker,
-          { abortSignal },
+          // Teammates stay purely foreground: see SubagentRunOptions.backgroundTasks.
+          { abortSignal, backgroundTasks: false },
         ),
     provider.base_url,
   );
@@ -315,7 +317,11 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
       }
     }
 
-    await backgroundTaskManager.waitAll();
+    // Wait only for background Agent tasks: their results feed the final
+    // answer. Shell/JS tasks can run indefinitely (dev servers, auto-backgrounded
+    // timeouts) and would hang -p mode forever — whatever finished by now is
+    // drained below, and the finally block's stopAll() kills the rest.
+    await backgroundTaskManager.waitAll((task) => (task.kind ?? "agent") === "agent");
     const backgroundNotifications = backgroundTaskManager.drainNotifications();
     const durationMs = Date.now() - startTime;
 

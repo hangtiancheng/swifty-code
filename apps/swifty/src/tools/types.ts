@@ -213,9 +213,12 @@ export interface ToolContext {
    * Background task registry of the loop running this call. Subagent loops
    * inject their own manager so backgrounded Bash commands notify that loop
    * instead of the main thread; tools fall back to their host-wired default
-   * when absent.
+   * when absent. Explicit `null` disables backgrounding for this call even
+   * when the tool instance carries a host-wired manager (in-process teammate
+   * turns use this: their per-turn drain disappears at turn end, so commands
+   * backgrounded there could never deliver a notification).
    */
-  taskManager?: TaskManager;
+  taskManager?: TaskManager | null;
   abortSignal?: AbortSignal;
   fileHistory?: FileHistory | undefined;
   fileStateCache?: FileStateCache | undefined;

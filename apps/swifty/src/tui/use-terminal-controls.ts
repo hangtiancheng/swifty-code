@@ -31,7 +31,7 @@ interface Options {
   onExit: () => void;
   teamsDialogOpen: boolean;
   onToggleTeams: () => void;
-  /** Move every running foreground Bash command to the background (Ctrl+B). */
+  /** Move every running foreground Bash/PowerShell/JavaScript task to the background (Ctrl+B). */
   onBackgroundShells?: () => void;
 }
 
@@ -135,8 +135,11 @@ export function useTerminalControls({
     }
   });
 
-  // Ctrl+B moves running foreground Bash commands to the background. Under
-  // tmux the first press is swallowed as the tmux prefix, so users press twice.
+  // Ctrl+B moves running foreground shell/JavaScript tasks to the background.
+  // Under tmux the first press is swallowed as the tmux prefix, so users press
+  // twice. The callback is a no-op unless a foreground task is actually
+  // running, which keeps the keypress out of unrelated contexts (e.g. the
+  // provider-login form also binds Ctrl+B to cursor-back).
   useInput((input, key) => {
     if (key.ctrl && input === "b") {
       onBackgroundShells?.();

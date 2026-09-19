@@ -473,6 +473,14 @@ export async function createRemoteAgent(
       const subConv = new ConversationManager();
       subConv.addUserMessage(prompt);
 
+      // Per-run background task registry (parity with subagent/spawn.ts): the
+      // forked registry shares tool instances with the host, so without this
+      // the fork's backgrounded commands would register in the host-level
+      // manager — the fork would never see their notifications, the main
+      // thread would be notified for commands it never issued, and nothing
+      // would kill the fork's shells when it exits.
+      const taskManager = new TaskManager();
+
       const subAgent = new AgentClass({
         client,
         registry: filterToolsForAgent(registry, undefined, undefined, false),
@@ -480,21 +488,27 @@ export async function createRemoteAgent(
         conversation: subConv,
         workDir,
         maxIterations: 200,
+        taskManager,
+        notificationFn: () => taskManager.drainNotifications().map(formatAgentTaskNotification),
       });
 
       let output = "";
-      for await (const event of subAgent.run()) {
-        switch (event.type) {
-          case "stream_text":
-            output += event.text;
-            break;
-          case "loop_complete":
-            return output || "[No output]";
-          case "error":
-            throw event.error;
+      try {
+        for await (const event of subAgent.run()) {
+          switch (event.type) {
+            case "stream_text":
+              output += event.text;
+              break;
+            case "loop_complete":
+              return output || "[No output]";
+            case "error":
+              throw event.error;
+          }
         }
+        return output || "[No output]";
+      } finally {
+        await taskManager.stopAll();
       }
-      return output || "[No output]";
     },
   };
 
@@ -523,14 +537,16 @@ export async function createRemoteAgent(
         onEvent,
         undefined,
         teamChecker,
-        { abortSignal },
+        // Teammates stay purely foreground: see SubagentRunOptions.backgroundTasks.
+        { abortSignal, backgroundTasks: false },
       );
   // 14. Register Team tools
   const teamManager = new TeamManager(workDir);
   const backgroundTaskManager = new TaskManager();
-  // Share the background task registry with Bash/PowerShell/JavaScript so
-  // run_in_background and timeout auto-background deliver results through the
-  // same notification drain as background agents.
+  // Share the background task registry with the command tools registered here
+  // (Bash/PowerShell; JavaScriptTool is TUI-only) so run_in_background and
+  // timeout auto-background deliver results through the same notification
+  // drain as background agents.
   attachBackgroundTaskManager(registry, backgroundTaskManager);
   registry.register(new TeamCreateTool(teamManager));
   registry.register(new SendMessageTool(teamManager));
@@ -580,6 +596,13 @@ export async function createRemoteAgent(
         context?.permissionChecker ?? new PermissionChecker(forkWorkDir, "acceptEdits");
       forkConv.addUserMessage(prompt);
 
+      // Per-run background task registry (parity with subagent/spawn.ts): the
+      // fork registry shares tool instances with the host, so without this the
+      // fork's backgrounded commands would register in the host-level manager
+      // — the fork would never see their notifications and nothing would kill
+      // its shells when it exits.
+      const forkTaskManager = new TaskManager();
+
       const agent = new Agent({
         client: forkClient,
         registry: forkRegistry,
@@ -592,23 +615,29 @@ export async function createRemoteAgent(
         fileStateCache: new FileStateCache(),
         instructions,
         memoryContent: memReminder,
+        taskManager: forkTaskManager,
+        notificationFn: () => forkTaskManager.drainNotifications().map(formatAgentTaskNotification),
       });
 
       let output = "";
-      for await (const event of agent.run()) {
-        switch (event.type) {
-          case "stream_text":
-            output += event.text;
-            break;
-          case "loop_complete":
-            return output || "[No output]";
-          case "error":
-            return output
-              ? `${output}\n\n[Error: ${event.error.message}]`
-              : `Error: ${event.error.message}`;
+      try {
+        for await (const event of agent.run()) {
+          switch (event.type) {
+            case "stream_text":
+              output += event.text;
+              break;
+            case "loop_complete":
+              return output || "[No output]";
+            case "error":
+              return output
+                ? `${output}\n\n[Error: ${event.error.message}]`
+                : `Error: ${event.error.message}`;
+          }
         }
+        return output || "[No output]";
+      } finally {
+        await forkTaskManager.stopAll();
       }
-      return output || "[No output]";
     },
     backgroundTaskManager,
   );

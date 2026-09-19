@@ -20,12 +20,13 @@
  * SOFTWARE.
  */
 
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { Sandbox, SandboxConfig } from "@/sandbox/index.js";
 import { formatAgentTaskNotification, TaskManager } from "@/subagent/task-manager.js";
 import { BashTool } from "@/tools/bash.js";
 import type { ToolContext } from "@/tools/types.js";
@@ -218,4 +219,120 @@ describe("bash background execution", () => {
     expect(result.output).toContain("plain-fg");
     expect(result.output).not.toContain("background");
   }, 10_000);
+
+  it("preserves the captured output when a background task is stopped", async () => {
+    const { bash, tasks } = makeTool();
+    const result = await bash.execute(makeContext(), {
+      command: "printf partial-out; sleep 30",
+      run_in_background: true,
+    });
+    const taskId = taskIdFrom(result.output);
+    const task = tasks.get(taskId);
+    // Let the partial output reach the file, then stop the task.
+    await sleep(500);
+    expect(tasks.stop(taskId)).toBe(true);
+    await task?.done;
+    expect(task?.status).toBe("cancelled");
+    // The killed command's formatted output survives the stop (TaskFailure
+    // preservation) instead of being replaced by "Stopped by user".
+    expect(task?.output).toContain("partial-out");
+    expect(task?.output).toContain("Process terminated");
+  }, 10_000);
+
+  it("treats ctx.taskManager null as background-disabled despite an instance manager", async () => {
+    const { bash, tasks } = makeTool();
+    const result = await bash.execute(makeContext({ taskManager: null }), {
+      command: "printf teammate-fg",
+      run_in_background: true,
+    });
+    // In-process teammate turns inject null: the command must run (and report)
+    // in the foreground, never falling back to the host-wired instance manager.
+    expect(result.isError).toBe(false);
+    expect(result.output).toContain("teammate-fg");
+    expect(result.output).not.toContain("task_id");
+    expect(tasks.list()).toHaveLength(0);
+  }, 10_000);
+
+  it("grants the sandbox write access to the output file and annotates background output", async () => {
+    const { bash, tasks } = makeTool();
+    // Object holder: a bare `let captured` would be narrowed to `null` by TS
+    // because the assignment happens inside the prepare() closure.
+    const seen: { config: SandboxConfig | null } = { config: null };
+    const sandbox: Sandbox = {
+      implementation: "seatbelt",
+      available: () => true,
+      prepare: (command, config) => {
+        seen.config = config;
+        return {
+          executable: "bash",
+          args: ["-c", command],
+          annotateStderr: (text) => `${text}\n[sandbox-violation]`,
+        };
+      },
+    };
+    bash.sandbox = sandbox;
+
+    const result = await bash.execute(makeContext({ sessionId: "sbx" }), {
+      command: "printf sbx-out",
+      run_in_background: true,
+    });
+    const taskId = taskIdFrom(result.output);
+
+    // The actual output-file path (not just the session dir) is writable under
+    // a deny-default profile, and the file exists before prepare (bwrap --bind).
+    expect(seen.config).not.toBeNull();
+    const granted = seen.config?.allowWrite ?? [];
+    const outputPath = granted.find((p) => /shell-[0-9a-f]{16}\.output$/.test(p));
+    expect(outputPath).toBeDefined();
+    expect(existsSync(outputPath ?? "")).toBe(true);
+
+    const task = tasks.get(taskId);
+    await task?.done;
+    expect(task?.status).toBe("completed");
+    // The sandbox's stderr annotation reaches the background notification too
+    // (the foreground path applies it in settleExit).
+    expect(task?.output).toContain("sbx-out");
+    expect(task?.output).toContain("[sandbox-violation]");
+  }, 10_000);
+
+  it("cleans up the output file when the sandboxed spawn fails", async () => {
+    const { bash } = makeTool();
+    const sandbox: Sandbox = {
+      implementation: "seatbelt",
+      available: () => true,
+      prepare: () => ({ executable: "/nonexistent/swifty-shell", args: [] }),
+    };
+    bash.sandbox = sandbox;
+
+    const ctx = makeContext({ sessionId: "spawn-err" });
+    const result = await bash.execute(ctx, { command: "printf never" });
+    expect(result.isError).toBe(true);
+    expect(result.output).toContain("Error executing command");
+
+    const dir = join(ctx.workDir, ".swifty", "sessions", "spawn-err", "tool-results");
+    const leftovers = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".output")) : [];
+    expect(leftovers).toHaveLength(0);
+  }, 10_000);
+
+  // Root bypasses directory permissions, so the unwritable-dir setup cannot
+  // be arranged there.
+  const itNonRoot = typeof process.getuid === "function" && process.getuid() === 0 ? it.skip : it;
+  itNonRoot(
+    "falls back to the OS temp dir when the session dir is unwritable",
+    async () => {
+      const { bash } = makeTool();
+      const ctx = makeContext();
+      chmodSync(ctx.workDir, 0o500);
+      try {
+        const result = await bash.execute(ctx, {
+          command: "printf fallback-ok",
+        });
+        expect(result.isError).toBe(false);
+        expect(result.output).toContain("fallback-ok");
+      } finally {
+        chmodSync(ctx.workDir, 0o700);
+      }
+    },
+    10_000,
+  );
 });

@@ -262,7 +262,9 @@ export function formatFinalResult(
  * output file. Small outputs are inlined and the file is deleted; large
  * outputs keep the file on disk and the notification carries its path with a
  * 2KB preview, so the full text stays readable via ReadFile without ever
- * loading it into JS here.
+ * loading it into JS here. `annotate` is the sandbox's stderr annotator
+ * (sandbox-runtime violation notes); the foreground path applies it in
+ * settleExit, and background notifications must report identically.
  */
 export function buildBackgroundBody(
   prompt: string,
@@ -270,6 +272,7 @@ export function buildBackgroundBody(
   exit: ShellExit,
   outputPath: string,
   timeout: number,
+  annotate?: (text: string) => string,
 ): ToolResult {
   let size = 0;
   try {
@@ -281,13 +284,14 @@ export function buildBackgroundBody(
   let result: ToolResult;
   if (size <= BACKGROUND_NOTIFICATION_CHARS) {
     const read = readOutputFile(outputPath, MAX_SHELL_OUTPUT_BYTES);
-    result = formatFinalResult(prompt, command, exit, read.text, read.truncated, timeout);
+    const merged = annotate ? annotate(read.text) : read.text;
+    result = formatFinalResult(prompt, command, exit, merged, read.truncated, timeout);
     unlinkQuiet(outputPath);
   } else {
     const header = formatFinalResult(prompt, command, exit, "", false, timeout);
     const preview = readOutputFile(outputPath, TOOL_RESULT_PREVIEW_CHARS).text;
     result = {
-      output: `${header.output}\n${buildPersistedOutputPreview(size, preview, outputPath)}`,
+      output: `${header.output}\n${buildPersistedOutputPreview(size, annotate ? annotate(preview) : preview, outputPath)}`,
       isError: header.isError,
     };
   }
@@ -335,6 +339,22 @@ export function attachBackgroundTaskManager(registry: ToolRegistry, manager: Tas
       tool.taskManager = manager;
     }
   }
+}
+
+/**
+ * Whether any backgroundable tool has a running foreground task. Gates the
+ * Ctrl+B handler: the keypress must stay inert when nothing is running, so
+ * other components that also bind Ctrl+B (e.g. the provider-login form's
+ * cursor-back) don't double-fire.
+ */
+export function hasAnyForegroundTasks(registry: ToolRegistry): boolean {
+  for (const name of BACKGROUNDABLE_TOOL_NAMES) {
+    const tool = asBackgroundable(registry.get(name));
+    if (tool?.hasForegroundTasks()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

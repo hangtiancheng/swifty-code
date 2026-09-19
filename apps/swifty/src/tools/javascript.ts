@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { z } from "zod";
 
 import { JAVASCRIPT_BACKGROUND_DESCRIPTION, JAVASCRIPT_DESCRIPTION } from "./descriptions.js";
@@ -96,6 +98,13 @@ async function runJavaScript(
     isolate.dispose();
   };
   abortSignal?.addEventListener("abort", onAbort, { once: true });
+  if (abortSignal?.aborted) {
+    // An abort that landed during isolate startup never fires the listener
+    // (addEventListener on an already-aborted signal is a no-op): dispose
+    // now and surface the interruption instead of running to the V8 cap.
+    onAbort();
+    abortSignal.throwIfAborted();
+  }
 
   try {
     await context.global.set("input", input ?? null, { copy: true });
@@ -275,7 +284,10 @@ export class JavaScriptTool implements Tool {
       return { output: `Error: ${parsed.error.message}`, isError: true };
     }
 
-    const manager = ctx.taskManager ?? this.taskManager;
+    // `ctx.taskManager === null` explicitly disables backgrounding for this
+    // call (in-process teammate turns) and must not fall back to the instance
+    // manager; only `undefined` (no loop-level decision) falls back.
+    const manager = ctx.taskManager !== undefined ? ctx.taskManager : this.taskManager;
     const backgroundAvailable =
       manager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
     const runInBackground = parsed.data.run_in_background === true && backgroundAvailable;
@@ -284,7 +296,10 @@ export class JavaScriptTool implements Tool {
     if (runInBackground) {
       const taskId = handle.background("explicit");
       if (taskId !== null) {
-        return { output: jsBackgroundMessage("explicit", taskId), isError: false };
+        return {
+          output: jsBackgroundMessage("explicit", taskId),
+          isError: false,
+        };
       }
       // The evaluation ended before it could be backgrounded; report its actual result.
     }
@@ -358,14 +373,31 @@ export class JavaScriptTool implements Tool {
           async (backgroundTask) => {
             // Evaluation results can reach the 1MB sandbox ceiling; spill
             // anything past the notification budget like the shell tools do.
+            // The random suffix keeps filenames unique across concurrent
+            // TaskManagers: task IDs are per-manager counters, and subagent
+            // runs share the "default" session spill dir, so a bare
+            // `<taskId>.txt` would collide (writeSpill's wx flag silently
+            // reuses the first writer's content).
             const cap = (text: string): string =>
               text.length > BACKGROUND_NOTIFICATION_CHARS
-                ? persistLargeResult(ctx.workDir, ctx.sessionId ?? "", backgroundTask.id, text)
+                ? persistLargeResult(
+                    ctx.workDir,
+                    ctx.sessionId ?? "",
+                    `${backgroundTask.id}-${randomBytes(4).toString("hex")}`,
+                    text,
+                  )
                 : text;
             try {
               const evaluation = await evalPromise;
               return cap(formatEvaluation(evaluation));
             } catch (error) {
+              // A stop's own fallout (dispose/timeout errors arriving after
+              // cancel) is not a result worth surfacing: rethrow plainly so
+              // the task keeps "Stopped by user". Genuine failures carry
+              // their formatted text via TaskFailure.
+              if (backgroundTask.status === "cancelled") {
+                throw error;
+              }
               throw new TaskFailure(cap(`Error executing JavaScript: ${asErrorString(error)}`));
             }
           },
@@ -376,9 +408,12 @@ export class JavaScriptTool implements Tool {
             // the runner's late result is discarded by the task manager.
             controller.abort();
           },
-          { originToolCallId: ctx.toolCallId, idPrefix: "js" },
+          { originToolCallId: ctx.toolCallId, idPrefix: "js", kind: "js" },
         );
-        resolve({ output: jsBackgroundMessage(reason, task.id), isError: false });
+        resolve({
+          output: jsBackgroundMessage(reason, task.id),
+          isError: false,
+        });
         return task.id;
       };
 

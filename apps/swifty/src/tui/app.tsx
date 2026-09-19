@@ -133,6 +133,7 @@ import type { ToolRegistry } from "@/tools/registry.js";
 import {
   attachBackgroundTaskManager,
   backgroundAllForegroundTasks,
+  hasAnyForegroundTasks,
 } from "@/tools/shell-background.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { activityStatusColor, THEME, thinkingLevelColor } from "@/ui/styles.js";
@@ -448,6 +449,13 @@ export function App({
       setTeamsDialogOpen((open) => !open);
     },
     onBackgroundShells: () => {
+      // Gate the keypress: keep Ctrl+B inert when nothing is backgroundable,
+      // and yield the key to the provider-login form while it is open (that
+      // form binds Ctrl+B to cursor-back — ink dispatches to every mounted
+      // useInput handler, so an ungated handler would double-fire).
+      if (loginActive || !hasAnyForegroundTasks(registryRef.current)) {
+        return;
+      }
       backgroundAllForegroundTasks(registryRef.current);
     },
   });
@@ -671,6 +679,9 @@ export function App({
 
         // Register team coordination tools. Teammates run as background
         // general-purpose subagents whose results return via the team channel.
+        // backgroundTasks:false — a teammate loop is one spawnSubagent run per
+        // task turn, so a per-run manager's turn-end stopAll() would kill
+        // anything the teammate backgrounded; teammates stay purely foreground.
         const teamRunAgent: RunAgent = (task, onEvent, abortSignal) =>
           spawnSubagent(
             BUILTIN_AGENTS[0],
@@ -683,7 +694,7 @@ export function App({
             onEvent,
             undefined,
             undefined,
-            { abortSignal },
+            { abortSignal, backgroundTasks: false },
           );
         // Teammate-scoped registry factory: injects shared task-board tools, then runs the teammate agent main loop
         const teamRunAgentFactory =
@@ -704,7 +715,7 @@ export function App({
               onEvent,
               undefined,
               teamChecker,
-              { abortSignal },
+              { abortSignal, backgroundTasks: false },
             );
         registryRef.current.register(new TeamCreateTool(teamManagerRef.current));
         registryRef.current.register(

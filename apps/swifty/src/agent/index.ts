@@ -103,9 +103,11 @@ export interface AgentConfig {
   /**
    * Background task registry owned by this loop. Injected into every tool
    * context so backgrounded Bash commands register — and later notify — here
-   * instead of on the host-level default. Subagent runs pass their own.
+   * instead of on the host-level default. Subagent runs pass their own;
+   * explicit `null` disables backgrounding for the whole loop (in-process
+   * teammate turns) even when tools carry a host-wired manager.
    */
-  taskManager?: TaskManager;
+  taskManager?: TaskManager | null;
   onLoopComplete?: (conversation: ConversationManager) => void;
   activeSkills?: Map<string, string>;
   toolFilter?: (name: string) => boolean;
@@ -151,7 +153,7 @@ export class Agent {
   private recoveryState: RecoveryState;
   private maxIterations: number;
   private notificationFn?: () => string[];
-  private taskManager?: TaskManager;
+  private taskManager?: TaskManager | null;
   private onLoopComplete?: (conversation: ConversationManager) => void;
   private compactTracking = new AutoCompactTrackingState();
 

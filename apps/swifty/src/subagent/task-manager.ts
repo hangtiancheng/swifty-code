@@ -24,10 +24,19 @@ import { asErrorString } from "@/utils/index.js";
 
 export type AgentTaskStatus = "running" | "completed" | "failed" | "cancelled";
 
+/**
+ * What a task wraps. Hosts use this to wait selectively: print-mode blocks on
+ * agent tasks (their results feed the final answer) but must not block on
+ * shell/js tasks, which can run indefinitely (dev servers) and are killed at
+ * exit instead. Absent kind means "agent" (the original TaskManager use).
+ */
+export type TaskKind = "agent" | "shell" | "js";
+
 export interface AgentTask {
   id: string;
   name: string;
   originToolCallId?: string;
+  kind?: TaskKind;
   status: AgentTaskStatus;
   output: string;
   cancel: () => void;
@@ -38,6 +47,8 @@ interface CreateTaskOptions {
   originToolCallId?: string;
   /** ID prefix; defaults to "agent" (background subagents). Bash background tasks use "bash". */
   idPrefix?: string;
+  /** Task category; defaults to "agent". */
+  kind?: TaskKind;
 }
 
 /**
@@ -69,6 +80,7 @@ export class TaskManager {
       id,
       name,
       ...(options.originToolCallId ? { originToolCallId: options.originToolCallId } : {}),
+      ...(options.kind ? { kind: options.kind } : {}),
       status: "running",
       output: "",
       cancel,
@@ -85,12 +97,25 @@ export class TaskManager {
           task.output = output;
           this.emitChange();
         }
+        // A late result after cancellation is discarded: the task stays
+        // cancelled with its "Stopped by user" output (pinned contract for
+        // background agents; shell kills always surface through TaskFailure
+        // in the catch branch instead).
       })
       .catch((error: unknown) => {
         if (task.status === "running") {
           task.status = "failed";
           task.output =
             error instanceof TaskFailure ? error.output : `Error: ${asErrorString(error)}`;
+          this.emitChange();
+        } else if (task.status === "cancelled" && error instanceof TaskFailure) {
+          // A stopped task whose runner still produced deliberately formatted
+          // output (e.g. a killed background shell command's captured output
+          // and exit facts): keep it instead of the generic "Stopped by user"
+          // placeholder — the status attribute already says "cancelled".
+          // Plain Errors (an aborted background agent's rejection, a stopped
+          // JS evaluation's dispose fallout rethrown plainly) stay discarded.
+          task.output = error.output;
           this.emitChange();
         }
       });
@@ -154,8 +179,14 @@ export class TaskManager {
     await Promise.allSettled(running.map((task) => task.done));
   }
 
-  async waitAll(): Promise<void> {
-    await Promise.allSettled(this.list().map((task) => task.done));
+  /**
+   * Wait for tasks to settle. An optional filter selects which tasks to wait
+   * for (e.g. print-mode waits only for agent-kind tasks: shell/js tasks may
+   * run indefinitely and are stopped, not awaited, at exit).
+   */
+  async waitAll(filter?: (task: AgentTask) => boolean): Promise<void> {
+    const tasks = filter ? this.list().filter(filter) : this.list();
+    await Promise.allSettled(tasks.map((task) => task.done));
   }
 
   drainNotifications(): AgentTask[] {

@@ -94,9 +94,13 @@ function decorateTool(
     tool.toolName === "PowerShell" ||
     tool.toolName === "JavaScript"
   ) {
-    // A running foreground command/evaluation can be moved to the background with Ctrl+B.
-    return tool.loading && !tool.progress
-      ? { ...tool, progress: "(ctrl+b to run in background)" }
+    // A running foreground command/evaluation can be moved to the background
+    // with Ctrl+B — but only while the background subsystem is on: the TUI
+    // always wires a task manager, so the env switch is the only runtime
+    // disable, and advertising a no-op keypress would be misleading.
+    const backgroundAvailable = process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
+    return tool.loading && !tool.progress && backgroundAvailable
+      ? { ...tool, progress: "(Ctrl+B to run in background)" }
       : tool;
   }
 

@@ -63,6 +63,15 @@ export interface SubagentRunOptions {
   onPermissionRequest?: AgentConfig["onPermissionRequest"];
   permissionMode?: PermissionChecker["mode"];
   conversation?: ConversationManager;
+  /**
+   * Whether this run gets a per-run background task manager (default true).
+   * In-process teammate turns pass false: a teammate loop is one run per task
+   * turn, so the turn-end stopAll() would immediately kill anything the
+   * teammate backgrounded, and the drain disappears before any notification
+   * could be delivered. Teammates stay purely foreground (matching the
+   * subprocess teammate path); subagents they spawn themselves are unaffected.
+   */
+  backgroundTasks?: boolean;
 }
 
 export async function spawnSubagent(
@@ -119,8 +128,10 @@ export async function spawnSubagent(
 
   // Per-run background task registry: Bash commands backgrounded inside this
   // subagent register here and notify this subagent's own loop (via
-  // notificationFn below), not the main thread.
-  const taskManager = new TaskManager();
+  // notificationFn below), not the main thread. Null when the caller opted out
+  // (in-process teammate turns) — the explicit null also blocks the tools'
+  // fallback to their host-wired instance manager.
+  const taskManager = options.backgroundTasks === false ? null : new TaskManager();
 
   const agent = new Agent({
     client,
@@ -136,7 +147,9 @@ export async function spawnSubagent(
     contextWindow: getContextWindow(provider),
     maxOutput: getMaxOutputTokens(provider),
     taskManager,
-    notificationFn: () => taskManager.drainNotifications().map(formatAgentTaskNotification),
+    notificationFn: taskManager
+      ? () => taskManager.drainNotifications().map(formatAgentTaskNotification)
+      : undefined,
   });
 
   let output = "";
@@ -189,7 +202,10 @@ export async function spawnSubagent(
   } finally {
     // Kill background shells still running now that this loop (and its
     // notification drain) is going away — nobody would ever see their
-    // completion, so they must not outlive the subagent.
-    void taskManager.stopAll();
+    // completion, so they must not outlive the subagent. Awaited: the kill
+    // itself is synchronous, but the runners' post-kill cleanup (sandbox
+    // teardown, output-file unlink) and Windows' async taskkill would
+    // otherwise race a prompt process exit.
+    await taskManager?.stopAll();
   }
 }
