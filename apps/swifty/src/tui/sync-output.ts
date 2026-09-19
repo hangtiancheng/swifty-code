@@ -23,57 +23,45 @@
 const BSU = "\x1b[?2026h"; // Begin Synchronized Update
 const ESU = "\x1b[?2026l"; // End Synchronized Update
 
+/** Terminal programs whose emulator implements synchronized output. */
+const SYNC_OUTPUT_TERM_PROGRAMS = new Set([
+  "alacritty",
+  "contour",
+  "ghostty",
+  "iTerm.app",
+  "vscode",
+  "WarpTerminal",
+  "WezTerm",
+]);
+
 /**
  * Detects whether the current terminal supports DEC 2026 synchronized output.
+ *
+ * Detection reads environment variables instead of sending a DECRQM query
+ * (`CSI ? 2026 $ p`), which several terminals do not implement. Terminals that
+ * are not recognized count as unsupported: emitting the sequences at a
+ * terminal that ignores them can leave garbage on screen.
  */
 function isSyncOutputSupported(): boolean {
-  if (process.env.TMUX) {
+  const env = process.env;
+  if (env.TMUX) {
     return false;
   }
 
-  const termProgram = process.env.TERM_PROGRAM;
-  const term = process.env.TERM;
+  const term = env.TERM ?? "";
+  const vteVersion = Number.parseInt(env.VTE_VERSION ?? "", 10);
 
-  if (
-    termProgram === "iTerm.app" ||
-    termProgram === "WezTerm" ||
-    termProgram === "WarpTerminal" ||
-    termProgram === "ghostty" ||
-    termProgram === "contour" ||
-    termProgram === "vscode" ||
-    termProgram === "alacritty"
-  ) {
-    return true;
-  }
-
-  if (term?.includes("kitty") || process.env.KITTY_WINDOW_ID) {
-    return true;
-  }
-  if (term === "xterm-ghostty") {
-    return true;
-  }
-  if (term?.startsWith("foot")) {
-    return true;
-  }
-  if (term?.includes("alacritty")) {
-    return true;
-  }
-  if (process.env.ZED_TERM) {
-    return true;
-  }
-  if (process.env.WT_SESSION) {
-    return true;
-  }
-
-  const vteVersion = process.env.VTE_VERSION;
-  if (vteVersion) {
-    const version = parseInt(vteVersion, 10);
-    if (version >= 6800) {
-      return true;
-    }
-  }
-
-  return false;
+  return Boolean(
+    SYNC_OUTPUT_TERM_PROGRAMS.has(env.TERM_PROGRAM ?? "") ||
+    term.includes("kitty") ||
+    term === "xterm-ghostty" ||
+    term.startsWith("foot") ||
+    term.includes("alacritty") ||
+    env.KITTY_WINDOW_ID ||
+    env.ZED_TERM ||
+    env.WT_SESSION ||
+    vteVersion >= 6800,
+  );
 }
 
 /**
