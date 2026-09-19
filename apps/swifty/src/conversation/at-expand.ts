@@ -108,8 +108,9 @@ export function expandAtRefs(text: string, workDir: string): string {
 // Like expandAtRefs, but @references to image files (png/jpg/gif/webp) are
 // loaded as inline image content blocks instead of being inlined as (garbled)
 // utf-8 text. The appendix gets an <image> placeholder so the model
-// can pair each block with its @token. Image load failures degrade to an
-// inline error note; non-image refs behave exactly like expandAtRefs.
+// can pair each block with its @token. Image load failures are logged and
+// skipped (only exceeding the per-message image limit appends an error note);
+// non-image refs behave exactly like expandAtRefs.
 // Returns a plain string when no image is referenced.
 export async function expandAtRefsWithImages(
   text: string,

@@ -90,9 +90,9 @@ describe("MemoryConsolidator", () => {
       const memDir = join(dir, ".swifty", "memory");
       mkdirSync(memDir, { recursive: true });
 
-      // Access internal lock functions via dynamic import workaround
-      // Since they're not exported, test via maybeRun behavior
-      // Lock is implicitly tested through maybeRun gate logic
+      // Placeholder: the internal lock functions are not exported and this
+      // test body currently asserts nothing. Lock behavior is exercised
+      // indirectly by the maybeRun gate tests below.
     });
   });
 

@@ -21,13 +21,16 @@
  */
 
 /**
- * Unified call entry point for MCP tools.
+ * Unified call entry point for MCP tools (dispatch mode only — see
+ * mcp/strategy.ts for the eager/native modes, where MCP tools ship in tools[]
+ * directly or stay there flagged with defer_loading).
  *
- * MCP tools never enter tools[]. The model first reads the schema via ToolSearch,
- * then passes the tool name and arguments through McpCall. This keeps the tools
- * array byte-identical throughout the whole session, so the prompt cache prefix is
- * never broken — tools render after system and before messages, so any change to
- * the array forces the entire trailing history to be recomputed.
+ * In dispatch mode MCP tools never enter tools[]. The model first reads the
+ * schema via ToolSearch, then passes the tool name and arguments through
+ * McpCall. This keeps the tools array byte-identical throughout the whole
+ * session, so the prompt cache prefix is never broken — tools render after
+ * system and before messages, so any change to the array forces the entire
+ * trailing history to be recomputed.
  *
  * The trade-off is that arguments are generated freely by the model with no schema
  * constraint at the interface level, so the JSON type is occasionally wrong.

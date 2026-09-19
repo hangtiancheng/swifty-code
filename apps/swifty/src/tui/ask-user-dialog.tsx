@@ -128,7 +128,7 @@ function NavigationBar({
   );
 }
 
-// ── Question view: compact vertical single-select ──
+// ── Question view: compact vertical single/multi-select ──
 function QuestionContent({
   question,
   state,

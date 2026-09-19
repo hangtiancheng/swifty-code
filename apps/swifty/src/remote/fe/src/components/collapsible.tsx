@@ -25,7 +25,7 @@ import { type ReactNode, useState } from "react";
 interface CollapsibleProps {
   header: ReactNode;
   children: ReactNode;
-  /** Controlled open state; when omitted the component manages its own state. */
+  /** Initial open state (uncontrolled); the component manages its own state afterwards. */
   defaultOpen?: boolean;
 }
 

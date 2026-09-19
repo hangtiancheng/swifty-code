@@ -320,9 +320,10 @@ export interface Tool {
    * judged by actual arguments rather than just the tool category.
    *
    * When not implemented, falls back to category: read-only tools may run
-   * concurrently, write and command tools may not. Currently only Bash
-   * implements this — whether a command is read-only depends on the command
-   * itself (ls vs rm are both Bash but have very different safety profiles).
+   * concurrently, write and command tools may not. Currently Bash
+   * (argument-dependent: ls vs rm are both Bash but have very different safety
+   * profiles) and ComputerUse (always false — it drives a single physical
+   * screen/mouse/keyboard) implement this.
    */
   isConcurrencySafe?(args: Record<string, unknown>): boolean;
 

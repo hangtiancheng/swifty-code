@@ -32,7 +32,7 @@ import { createChildLogger } from "@/logger/index.js";
 
 const log = createChildLogger({ module: "config" });
 
-export * as ProviderLogin from "./provider-login.js";
+// export * as ProviderLogin from "./provider-login.js";
 
 const ENV_KEY_MAP = {
   anthropic: "ANTHROPIC_API_KEY",

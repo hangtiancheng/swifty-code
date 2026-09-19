@@ -22,7 +22,7 @@
 
 /**
  Memory freshness calculation and expiration reminders. Appends a prompt text 
- to memories older than 1 day, instructing the model that the memory may be 
+ to memories at least 2 days old, instructing the model that the memory may be 
  stale and should be verified before use.
  */
 export function memoryAgeDays(mtimeMs: number): number {

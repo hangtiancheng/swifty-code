@@ -40,10 +40,9 @@ import type { ProviderToolSchema, ToolResultContentBlock } from "@/tools/types.j
 import { asErrorString, contentToText, strArg } from "@/utils/index.js";
 
 // Structured outcome of a compaction. When `compacted` is true, `boundary`
-// carries the summary plus the verbatim kept tail (inlined as role+text) so the
-// caller that owns the sessionId can persist a compact_boundary record. The
-// kept tail is flattened to text here — the same text-only shape the session
-// .jsonl already uses — which is exactly what resume needs to replay.
+// carries the summary plus the verbatim kept tail (including tool blocks) so
+// the caller that owns the sessionId can persist a compact_boundary record —
+// exactly what resume needs to replay.
 export interface CompactResult {
   compacted: boolean;
   message: string;
@@ -75,7 +74,7 @@ const KEEP_MAX_TOKENS = 40000;
 
 // If fewer than this many messages would be summarized (everything else is in
 // the kept tail), skip compaction entirely — the savings aren't worth the
-// summary round-trip and the lost cache. Degenerate-case guard for step 5.
+// summary round-trip and the lost cache. Degenerate-case guard.
 const MIN_COMPACT_PREFIX = 2;
 
 const SUMMARY_OUTPUT_RESERVE = 20000;
@@ -111,9 +110,10 @@ export interface UsageAnchor {
   anchorCount: number;
 }
 
-// Each image block counts as a fixed char-equivalent (~1750 tokens, the order
-// of magnitude of Anthropic's per-image token cost). Without this, image-heavy
-// conversations systematically under-estimate and compaction fires too late.
+// Each image block counts as a fixed char-equivalent (~2000 tokens at
+// CHARS_PER_TOKEN, the order of magnitude of Anthropic's per-image token
+// cost). Without this, image-heavy conversations systematically
+// under-estimate and compaction fires too late.
 const IMAGE_CHAR_EQUIV = 7000;
 
 function contentChars(content: string | Record<string, unknown>[]): number {
@@ -318,9 +318,8 @@ export async function manageContext(
   sessionFilePath = "",
   abortSignal?: AbortSignal,
 ): Promise<CompactResult> {
-  // Apply tool-result budget first, then auto-compact, ensuring in-budget results
-  // are not mistakenly compressed. When the caller provides a budget-applied message
-  // list, estimate tokens against it so compact decisions reflect the reduced size.
+  // Tool results are already budget-processed at the time they enter history,
+  // so tokens can be estimated directly from the conversation messages.
   const tokens = currentContextTokens(conv);
   const autoThreshold = computeCompactThreshold(contextWindow, maxOutput);
   const hardBlock = computeCompactThreshold(contextWindow, maxOutput, true);
@@ -639,15 +638,12 @@ async function doCompact(
   }
   conv.replaceWithCompacted(summaryContent, toKeep);
 
-  // Build the boundary payload the session owner will persist. We inline the
-  // kept tail as role+text only (the session .jsonl never stores tool blocks),
-  // dropping messages whose flattened text is empty (e.g. pure tool_result
-  // user messages) — those carry no replayable text, matching how resume
-  // already skips empty-content lines. The summary here is the bare summary
+  // Build the boundary payload the session owner will persist. The kept tail
+  // must be persisted together with its tool blocks so that the full call
+  // chain is available when the session is restored; messages with neither
+  // text nor tool blocks are dropped. The summary here is the bare summary
   // (no recovery attachment): recovery context is rebuilt fresh per process, so
   // baking it into the persisted boundary would be stale on the next resume.
-  // The kept tail must be persisted together with its tool blocks so that the
-  // full call chain is available when the session is restored.
   const keep = toKeep
     .filter(
       (m) =>

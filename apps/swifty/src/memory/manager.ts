@@ -110,8 +110,6 @@ export interface MemoryHeader {
   type: string;
 }
 
-/** One memory selected for surfacing into the main conversation. */
-
 /**
  * The output of a single recall: the rendered system-reminder body and the
  * selected memory file paths. Paths are only recorded as surfaced once the
@@ -122,6 +120,7 @@ export interface RecallResult {
   paths: string[];
 }
 
+/** One memory selected for surfacing into the main conversation. */
 export interface RelevantMemory {
   path: string;
   mtimeMs: number;
@@ -209,7 +208,9 @@ export class MemoryManager {
   }
 
   /**
-   * Builds the memory index injected into the system prompt.
+   * Builds the memory index injected into the conversation as a
+   * system-reminder message (not the system prompt, which stays
+   * project-independent to preserve prompt caching).
    *
    * This content is re-sent to the model on every conversation turn, so each additional index line
    * is a recurring cost. We therefore enforce both a line-count and a byte-size cap at the output
@@ -318,8 +319,9 @@ export class MemoryManager {
 
   /**
    * Scans all memory headers from both dirs, asks the LLM to select the
-   * top 5 most relevant ones for the query, and returns the full content
-   * of those files. Best-effort: selector failures return an empty array.
+   * top 5 most relevant ones for the query, and returns their paths (with
+   * mtimes); the file contents are read later by renderReminder.
+   * Best-effort: selector failures return an empty array.
    */
   async findRelevantMemories(
     query: string,

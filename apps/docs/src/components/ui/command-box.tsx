@@ -56,8 +56,8 @@ export class CopyButtonElement extends LitElement {
         el.style.opacity = "0";
         document.body.appendChild(el);
         el.select();
-        // TODO: Avoid using this feature in new projects. The execCommand() method is "not implemented consistently or fully by user agents, and it is not expected that this will change in the foreseeable future." This feature may be a candidate for removal from web standards or browsers.
-        // Consider using the following features instead: Async clipboard或contenteditable.
+        // Deprecated execCommand() fallback — only reached when the async
+        // Clipboard API is unavailable (handled above).
         document.execCommand("copy");
         document.body.removeChild(el);
       }

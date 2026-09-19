@@ -340,8 +340,9 @@ export class PathSandbox {
   }
 }
 
-// Glob match following filepath.Match semantics: `*` matches a run of non-separator
-// characters, `?` matches a single non-separator character.
+// Glob match where `*` matches any run of characters (including /) and `?`
+// matches any single character — suited to matching shell commands rather
+// than paths, so it deliberately deviates from filepath.Match semantics.
 function globMatch(pattern: string, content: string): boolean {
   const re =
     "^" +
@@ -735,7 +736,7 @@ export class PermissionChecker {
 
   /**
    * Generate a human-readable description of the tool action for display in HITL confirmation dialogs.
-   * Prioritizes extracting fields defined in contentFields (e.g., command, file_path);
+   * Prioritizes extracting fields defined in CONTENT_FIELDS (e.g., command, file_path);
    * falls back to a key:value summary of parameters if no match is found.
    */
   describeToolAction(toolName: string, args: Record<string, unknown>): string {

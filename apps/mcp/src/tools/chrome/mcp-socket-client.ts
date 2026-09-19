@@ -406,7 +406,7 @@ class McpSocketClient {
     }
     try {
       // Validate the parent directory permissions if it's the socket directory
-      // (not /tmp itself, which has mode 1777 for legacy single-socket paths)
+      // (not the tmp root itself, which hosts the legacy single-socket path)
       const dirPath = dirname(socketPath);
       const dirBasename = dirPath.split("/").pop() || "";
       const isSocketDir = dirBasename.startsWith("claude-mcp-browser-bridge-");

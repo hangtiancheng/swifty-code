@@ -476,16 +476,7 @@ export class Team {
     };
   }
 
-  /**
-   * Sends the teammate's completed plan to the Lead, blocks until approval is received,
-   * and returns the prompt to feed the model on the next turn.
-   *
-   * The teammate holds read-only permissions at this point, so no matter how long the
-   * wait, no damage can occur — hence no timeout is set here. Rather than timing out and
-   * autonomously modifying files, it is better to wait indefinitely and let the user
-   * drive progress from the Lead side. Returns null when the teammate has been
-   * deactivated; the caller should exit the main loop.
-   */
+  /** Reads the teammate's plan file for review; returns a fallback note when empty or unreadable. */
   private readPlanForReview(): string {
     try {
       const text = readFileSync(getOrCreatePlanPath(this.workDir), "utf-8");
@@ -498,6 +489,16 @@ export class Team {
     return "(Plan file is empty — the teammate may not have written the plan as expected)";
   }
 
+  /**
+   * Sends the teammate's completed plan to the Lead, blocks until approval is received,
+   * and returns the prompt to feed the model on the next turn.
+   *
+   * The teammate holds read-only permissions at this point, so no matter how long the
+   * wait, no damage can occur — hence no timeout is set here. Rather than timing out and
+   * autonomously modifying files, it is better to wait indefinitely and let the user
+   * drive progress from the Lead side. Returns null when the teammate has been
+   * deactivated; the caller should exit the main loop.
+   */
   private async runPlanApproval(member: Member, plan: string): Promise<string | null> {
     const req = planApprovalRequest(member.name, plan);
     await this.leadMailbox.send(member.name, req.text, req);

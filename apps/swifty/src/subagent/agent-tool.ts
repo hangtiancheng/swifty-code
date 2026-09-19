@@ -446,9 +446,11 @@ ${prompt}`;
     teammateRegistry.register(new TeamTaskUpdateTool(this.teamManager, teamName));
     // The plan-mode teammate requires the checker to be created here: after team-level approval
     // passes, the mode must be switched back to default in place. If the checker were created
-    // only inside spawnSubAgent, no one would have a handle to modify it.
+    // only inside spawnSubagent, no one would have a handle to modify it.
 
-    // Worktree isolation: the teammate works on its own branch; changes are merged back during convergence
+    // Worktree isolation: the teammate works on its own branch; changes are NOT
+    // merged automatically — the worktree path is recorded in member metadata
+    // (setMemberMeta below) for the Lead/user to merge manually.
     let teammatePrompt = prompt;
     let memberWorkDir = this.workDir;
     if (worktreeIsolation) {

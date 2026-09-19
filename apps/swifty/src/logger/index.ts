@@ -207,7 +207,7 @@ const silentFallback = pino({ level: "silent" });
 /**
  * Global logger export. Modules can import and use it at file top level:
  * ```ts
- * import { logger } from "@/logger/logger.js";
+ * import { logger } from "@/logger/index.js";
  * logger.warn({ module: "app" }, "something looks off");
  * ```
  * Before initLogger(), calls fall back to the silent target (pre-init logs
@@ -276,7 +276,7 @@ export function createChildLogger(bindings: { module: string }): Logger {
   });
 }
 
-// Expired log cleanup. Mirrors session.ts cleanExpiredSessions:
+// Expired log cleanup. Mirrors session/index.ts cleanExpiredSessions:
 // same directory iteration, 30-day mtime check, silent unlink failure.
 // Scans <workDir>/.swifty/logs/ and ~/.swifty/teams/<team>/logs/.
 // All fs operations are async to avoid blocking the event loop.

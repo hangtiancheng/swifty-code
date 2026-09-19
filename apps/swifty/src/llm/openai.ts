@@ -728,8 +728,7 @@ function containsContextLengthError(msg: string): boolean {
   );
 }
 
-// Convert Swifty's conversation into Chat Completions messages,
-// preserving assistant tool_calls and tool-result (role: "tool") turns so multi-turn tool use works over the openai-compat (Chat Completions) endpoint.
+// LLM client for openai-compat (Chat Completions) endpoints.
 export class OpenAICompatClient implements LLMClient {
   readonly protocol = "openai-compat" as const;
 

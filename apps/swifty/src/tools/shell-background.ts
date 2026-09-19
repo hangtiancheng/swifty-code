@@ -24,9 +24,10 @@ import {
   TOOL_RESULT_PREVIEW_CHARS,
 } from "@/tool-result/index.js";
 
-// Shared background-execution plumbing for the shell-style tools (Bash,
-// PowerShell): ccb's file-descriptor output mode, the size watchdog constants,
-// result/notification formatting, and the host wiring helpers.
+// Shared background-execution plumbing for the backgroundable tools (Bash,
+// PowerShell, JavaScript): ccb's file-descriptor output mode, the size
+// watchdog constants, result/notification formatting, and the host wiring
+// helpers.
 
 /** Notification body budget: larger outputs stay on disk and only a preview travels in the notification. */
 export const BACKGROUND_NOTIFICATION_CHARS = 30_000;
@@ -267,7 +268,7 @@ export function formatFinalResult(
  * Build the notification body for a finished background command from the
  * output file. Small outputs are inlined and the file is deleted; large
  * outputs keep the file on disk and the notification carries its path with a
- * 2KB preview, so the full text stays readable via ReadFile without ever
+ * 2000-char preview, so the full text stays readable via ReadFile without ever
  * loading it into JS here. `annotate` is the sandbox's stderr annotator
  * (sandbox-runtime violation notes); the foreground path applies it in
  * settleExit, and background notifications must report identically.

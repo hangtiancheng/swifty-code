@@ -86,9 +86,9 @@ describe("coordinator tool set", () => {
     }
   });
 
-  // TeamDelete is the only entry point for tearing down a Team, and coordinator
-  // mode is triggered by "whether a Team exists". Blocking it would leave the
-  // Lead unable to exit coordinator mode once a Team has been created.
+  // TeamDelete is the only entry point for tearing down a Team and stopping
+  // its members, so the Lead must keep it for cleanup. (Coordinator mode
+  // itself is decided by config alone, not by whether a team exists.)
   it("keeps TeamDelete so the Lead can leave coordinator mode", () => {
     expect(isCoordinatorTool("TeamDelete")).toBe(true);
   });

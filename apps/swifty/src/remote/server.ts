@@ -389,7 +389,6 @@ export interface CreateRemoteAgentOptions {
 /**
  * Initializes the full agent stack: tools, LLM client, conversation, session,
  * skills, hooks, MCP servers, team management, and memory.
- * Replicates ALL logic from server-old.ts initAgent() + initMCPServers().
  */
 export async function createRemoteAgent(
   opts: CreateRemoteAgentOptions,
@@ -717,7 +716,7 @@ export async function createRemoteAgent(
 
 // -- Helper functions for agent initialization ---------------------------------
 
-/** Creates the tool registry and registers all 15 built-in tools. */
+/** Creates the tool registry and registers all 17 built-in tools. */
 function buildToolRegistry(workDir: string, sessionId: string): ToolRegistry {
   const store = new TaskStore(workDir, sessionId);
   const taskList = new TaskList(store);

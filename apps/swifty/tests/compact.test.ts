@@ -251,7 +251,7 @@ describe("doCompact via forceCompact (keep recent verbatim)", () => {
     const keepJoined = boundary?.keep.map((k) => contentToText(k.content)).join("\n");
     expect(keepJoined).toContain("marker-recent-q");
     expect(keepJoined).toContain("marker-recent-f");
-    // The boundary summary is bare (no recovery attachment / no Chinese framing
+    // The boundary summary is bare (no recovery attachment / no framing
     // wrapper — those are added at replay time, not persisted).
     expect(boundary?.summary).not.toContain(
       "The conversation history before this point was compacted",
@@ -264,7 +264,7 @@ describe("doCompact via forceCompact (keep recent verbatim)", () => {
     expect(joined).toContain("marker-recent-q");
     expect(joined).toContain("marker-recent-a");
     expect(joined).toContain("marker-recent-f");
-    // The summary is present with the Chinese framing...
+    // The summary is present with the framing wrapper...
     expect(joined).toContain("THE SUMMARY BODY");
     expect(joined).toContain("The conversation history before this point was compacted");
     expect(joined).toContain("Recent messages have been preserved verbatim");

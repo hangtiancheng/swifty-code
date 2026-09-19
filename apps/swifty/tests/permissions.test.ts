@@ -252,7 +252,10 @@ describe("memory background agent sandbox", () => {
       expect(captured.length).toBe(1);
       const checker = captured[0];
 
-      // The background agent runs in bypass mode, which skips the path sandbox; switch back to default to observe the sandbox verdict itself
+      // The sub-agent runs with a MemoryPermissionChecker (mode is already
+      // "default" and its check() override never reads mode, so this
+      // assignment is a no-op); the verdicts below come from that override's
+      // memory-root scoping, not the path sandbox.
       checker.mode = "default";
 
       const userMemFile = join(homedir(), ".swifty", "memory", "MEMORY.md");

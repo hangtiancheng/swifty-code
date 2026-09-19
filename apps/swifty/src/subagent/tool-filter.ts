@@ -90,7 +90,8 @@ export const SUBAGENT_DISALLOWED_TOOLS = new Set<AllTools>([
 export const TEAMMATE_DISALLOWED_TOOLS = new Set<AllTools>(["TeamCreate", "TeamDelete"]);
 
 // Additional tools disallowed for custom Agents (loaded from .swifty/agents/);
-// Currently identical to the global list, but maintained separately for future extensibility
+// currently a subset of the global list (same except ComputerUse, which Layer 2
+// already strips), but maintained separately for future extensibility
 export const CUSTOM_AGENT_DISALLOWED_TOOLS = new Set<AllTools>([
   "ExitPlanMode",
   "Agent",
@@ -125,8 +126,9 @@ function isMCPTool(name: string): boolean {
 
 /**
  * Multi-layer tool filtering, applied in order:
- * 1. MCP tools (mcp__*) — Always allowed
- * 2. ALL_AGENT_DISALLOWED_TOOLS — Globally disallowed (prevents recursion)
+ * 1. MCP tools (mcp__*) — exempt from layers 2-4, but still subject to
+ *    definition-level disallowedTools/tools (layers 5-6)
+ * 2. SUBAGENT_DISALLOWED_TOOLS — Globally disallowed (prevents recursion)
  * 3. CUSTOM_AGENT_DISALLOWED_TOOLS — Additional restrictions for custom Agents
  * 4. ASYNC_AGENT_ALLOWED_TOOLS — Whitelist for background Agents
  * 5. Definition-level disallowedTools — Blacklist
@@ -150,7 +152,7 @@ export function filterToolsForAgent(
   for (const tool of registry.listTools()) {
     const name = tool.name;
 
-    // Layer 1: MCP tools are always allowed
+    // Layer 1: MCP tools skip layers 2-4; definition-level lists still apply
     if (isMCPTool(name)) {
       if (!disallowed.has(name) && (!hasWhitelist || allowed.has(name))) {
         filtered.register(tool);

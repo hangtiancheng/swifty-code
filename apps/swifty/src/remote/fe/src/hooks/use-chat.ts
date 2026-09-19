@@ -106,8 +106,9 @@ function finalizeAssistant(state: ChatState): ChatState {
 function applyMessage(state: ChatState, msg: ServerMessage): ChatState {
   switch (msg.type) {
     case "connected": {
-      // The server may connect before the agent is initialized (empty
-      // session); don't consume the one-shot greeting for that.
+      // Defensive: the server now defers "connected" until the agent exists,
+      // so session is always non-empty; guard anyway and don't consume the
+      // one-shot greeting for an empty session.
       if (!msg.data.session) {
         return { ...state, cwd: msg.data.cwd || state.cwd };
       }

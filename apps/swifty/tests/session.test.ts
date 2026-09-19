@@ -345,7 +345,7 @@ describe("rebuildFromSession (compacted-state resume)", () => {
     const rebuilt = rebuildFromSession(saved);
     const joined = rebuilt.map((m) => `${m.role}:${contentToText(m.content)}`).join("\n");
 
-    // Summary is present with Chinese framing, replayed as a synthetic user message.
+    // Summary is present with the English framing wrapper, replayed as a synthetic user message.
     expect(rebuilt[0].role).toBe("user");
     expect(rebuilt[0].content).toContain(
       "The conversation history before this point was compacted",

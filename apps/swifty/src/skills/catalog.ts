@@ -43,7 +43,7 @@ interface CatalogEntry {
   /** Absolute path to SKILL.md, used for re-reading during hot reloading */
   filePath: string;
 
-  /** File modification time (ms) when last loaded. 0 indicates a built-in skill that requires no reloading */
+  /** File modification time (ms) when last loaded. 0 means the mtime could not be read, so hot reloading is skipped */
   loadedMtimeMs: number;
 }
 
@@ -57,8 +57,8 @@ export class SkillCatalog {
     this.entries.clear();
     this.dirModTimes.clear();
 
-    // Tier 2: User-global ~/.agents/skills/
-    // Tier 3: Project-level $workDir/.agents/skills/ (highest priority)
+    // User-global ~/.agents/skills/, then project-level
+    // $workDir/.agents/skills/ (highest priority)
     for (const dir of this.skillDirPaths()) {
       if (!existsSync(dir)) {
         continue;

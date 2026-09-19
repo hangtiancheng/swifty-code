@@ -32,10 +32,11 @@ const log = createChildLogger({ module: "teams" });
  * Auto-detect the best backend for running teammates.
  *
  * Auto-detection logic:
- *   - Default to **in-process** so progress tracking works (agent events
- *     flow in the same process and can update the Spinner Tree in real time).
- *   - Only use tmux/iTerm panes when the user explicitly requests it via
- *     config `teammateMode: "tmux"`.
+ *   - Windows: always **in-process**.
+ *   - Otherwise: tmux/iTerm panes when the corresponding environment is
+ *     detected (TMUX / ITERM_SESSION_ID), else **in-process** so progress
+ *     tracking works (agent events flow in the same process and can update
+ *     the Spinner Tree in real time).
  *
  * In-process teammates share the Node.js event loop but are context-isolated.
  * They communicate via the same file-based mailbox as external teammates.
@@ -48,8 +49,9 @@ export function detectBackend(): TeamMode {
 }
 
 /**
- * Detect available pane backend (for explicit tmux mode).
- * Used when the user overrides teammateMode to "tmux".
+ * Detect available pane backend from the environment (TMUX /
+ * ITERM_SESSION_ID); falls back to in-process. Called unconditionally by
+ * detectBackend on non-Windows platforms.
  */
 export function detectBackendFromEnv(): TeamMode {
   if (process.env.TMUX) {

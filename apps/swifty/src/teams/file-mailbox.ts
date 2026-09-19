@@ -63,9 +63,10 @@ export type FileMailMessage = z.infer<typeof FileMailMessageSchema>;
 // ---------------------------------------------------------------------------
 // File-based lock
 //
-// Uses exclusive-create (wx flag) on a .lock file.  Retries up to maxAttempts
-// times with a small random back-off.  Stale locks (older than staleLockMs)
-// are automatically removed so a crashed process cannot block others forever.
+// Uses exclusive-create (wx flag) on a .lock file.  Retries with a small
+// random back-off until the LOCK_ACQUIRE_TIMEOUT_MS deadline.  Stale locks
+// (older than LOCK_STALE_MS) are automatically removed so a crashed process
+// cannot block others forever.
 // ---------------------------------------------------------------------------
 
 // Total timeout for acquiring the file lock. Throws on expiry so the caller can

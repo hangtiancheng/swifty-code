@@ -64,8 +64,8 @@ const EnvSchema = z.object({
   REDIS_INDEX_NAME: z.string().default("idx:swifty"),
   REDIS_KEY_PREFIX: z.string().default("swifty:"),
   SWIFTY_DOCS_DIR: z.string().default(path.resolve(homedir(), ".swifty", "docs")),
-  // .catch: a malformed HOST/PORT in the environment must degrade to the
-  // default instead of crashing the stdio server at startup.
+  // .catch: a malformed PORT in the environment must degrade to the default
+  // instead of crashing the stdio server at startup.
   HOST: z.string().default("127.0.0.1"),
   PORT: z.coerce.number().int().positive().default(3300).catch(3300),
 });

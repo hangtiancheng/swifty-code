@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-// prettier.config.js
+// prettier.config.mjs
 
 /** @type {import('prettier').Config & import('prettier-plugin-tailwindcss').PluginOptions} */
 export default {

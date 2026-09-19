@@ -31,7 +31,7 @@ export interface UsageInfo {
   cacheCreationInputTokens: number;
 }
 
-/** Tool use delta: Input partial JSON */
+/** Events emitted by an LLM stream: text/thinking deltas, tool-call lifecycle, and stream end. */
 export type StreamEvent =
   | { type: "text_delta"; text: string }
   | { type: "thinking_delta"; text: string }

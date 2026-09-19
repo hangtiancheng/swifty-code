@@ -182,7 +182,9 @@ describe("permission path boundaries", () => {
   it("checks symlink targets including not-yet-created descendants", () => {
     const { config } = fixture();
     const outside = mkdtempSync(join(tmpdir(), "swifty-outside-"));
-    // tmpdir is an allowed root, so use a checker rooted elsewhere to test deny-write aliases instead.
+    // Symlink aliases resolve to their real target: a write through the
+    // in-project skill-alias stays allowed, and a read through the external
+    // symlink reaches the allowed tmpdir root.
     mkdirSync(join(config.workDir, ".agents", "skills"), { recursive: true });
     symlinkSync(join(config.workDir, ".agents", "skills"), join(config.workDir, "skill-alias"));
     expect(

@@ -285,7 +285,7 @@ export class Agent {
           this.conversation.addSystemReminder(coordinatorReminder(iteration));
         }
 
-        // Deferred-load tools are not in tools[], so the model cannot see their existence; the name list has to be repeated.
+        // Deferred-load tools are hidden from the model (omitted from tools[] in dispatch mode; present but flagged defer_loading in native mode), so the name list has to be repeated.
         // In dispatch mode these tools never make it into tools[] at all, so we also have to explain that invocation goes through McpCall —
         // otherwise the model reads the schema with no idea where to call it from.
         // Only inject when necessary instead of every turn. The reminder is pushed into

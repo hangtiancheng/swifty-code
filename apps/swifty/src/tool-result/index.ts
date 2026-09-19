@@ -107,7 +107,7 @@ export function buildPersistedOutputPreview(
   return msg;
 }
 
-// Build the on-disk replacement text, including a 2KB preview. Identical
+// Build the on-disk replacement text, including a 2000-char preview. Identical
 // input yields a byte-for-byte identical string; once the replacement enters
 // the conversation history it is never modified again.
 function buildSpillPreview(content: string, spillPath: string): string {
@@ -196,8 +196,9 @@ export function applyBudget(
 
 /**
  * Spill an oversized tool output to disk and return the preview text. On
- * write failure the content is returned unchanged. Called from agent.ts when
- * tool results enter the conversation history, in place of direct truncation.
+ * write failure the content is returned unchanged. Called from agent/index.ts
+ * (and tools/javascript.ts) when tool results enter the conversation history,
+ * in place of direct truncation.
  */
 export function persistLargeResult(
   workDir: string,

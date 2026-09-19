@@ -301,7 +301,7 @@ export class BashTool implements Tool {
     // froze (spinner animation, elapsed timers, keyboard input) for the whole
     // command duration.
     //
-    // Timeout and abort are handled manually instead of via execFile's
+    // Timeout and abort are handled manually instead of via spawn's built-in
     // timeout/signal options: those only SIGTERM the direct child, so a
     // command that spawns children (dev servers, npm scripts) or traps
     // SIGTERM keeps running and the callback never fires, wedging the agent
@@ -395,7 +395,6 @@ export class BashTool implements Tool {
       }, SIZE_WATCHDOG_INTERVAL_MS);
       watchdog.unref();
 
-      // `exit` can precede `close` while a descendant still holds inherited fds.
       const onAbort = () => {
         aborted = true;
         terminate();

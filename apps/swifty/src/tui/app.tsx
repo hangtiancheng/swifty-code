@@ -217,7 +217,6 @@ export function App({
   const [error, setError] = useState<string | null>(null);
   const [planApprovalActive, setPlanApprovalActive] = useState(false);
   const [prePlanMode, setPrePlanMode] = useState<PermissionMode>("default");
-  // Tracks whether plan mode has been exited
   // Recently invoked tool names, deduplicated and kept in call order. Passed to the
   // memory recall selector so it skips usage-guide memories for these tools, while
   // still surfacing pitfall and warning memories
@@ -225,6 +224,7 @@ export function App({
   // Memory paths already injected this session; pre-filtered before recall to avoid
   // the same memory occupying a slot every turn
   const surfacedMemoriesRef = useRef<Set<string>>(new Set());
+  // Tracks whether plan mode has been exited
   const hasExitedPlanModeRef = useRef(false);
   const permModeRef = useRef(permMode);
   useEffect(() => {
@@ -241,8 +241,8 @@ export function App({
   const historyDir = `${workDir}/.swifty`;
 
   const clientRef = useRef<LLMClient | null>(null);
-  // Resolved context window for the active provider. Seeded synchronously
-  // (layers 1/3/4) and upgraded in initClient via the async auto-fetch (layer 2).
+  // Resolved context window for the active provider: the configured
+  // context_window value, or DEFAULT_CONTEXT_WINDOW when unset.
   const contextWindowRef = useRef(
     providers[0] ? getContextWindow(providers[0]) : DEFAULT_CONTEXT_WINDOW,
   );
@@ -306,8 +306,9 @@ export function App({
   const announcedSkillsRef = useRef<Set<string>>(new Set());
   // MCP servers whose instructions the conversation has already been told about.
   // Announcements are deltas — servers connect, disconnect and get reconfigured
-  // while a session runs — and the caller of syncMcpInstructions rebuilds this set
-  // from history whenever the announcement is no longer there.
+  // while a session runs — and syncMcpInstructions clears this set when the
+  // announcement marker is gone from history, then rebuilds it from the
+  // currently connected servers as it re-announces.
   const announcedMcpServersRef = useRef<Set<string>>(new Set());
 
   // Returns the skills not yet announced to the model and records them in
@@ -696,7 +697,9 @@ export function App({
             undefined,
             { abortSignal, backgroundTasks: false },
           );
-        // Teammate-scoped registry factory: injects shared task-board tools, then runs the teammate agent main loop
+        // RunAgent factory for teammates: runs the teammate agent main loop
+        // against the teammate-scoped registry (shared task-board tools are
+        // already injected by AgentTool before this factory is called).
         const teamRunAgentFactory =
           (
             registry: ToolRegistry,

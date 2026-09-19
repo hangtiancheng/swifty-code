@@ -338,7 +338,7 @@ export function rebuildFromSession(saved: SessionMessage[]): RestoredMessage[] {
       const m = saved[i];
       if (m.type === COMPACT_BOUNDARY) {
         continue;
-      } // defensive; last() already found
+      } // defensive; the backward scan above already located the last boundary
       const restored = toRestored(m);
       if (restored) {
         out.push(restored);
@@ -436,7 +436,8 @@ export function listSessions(workDir: string): SessionInfo[] {
 
 /**
  * Cleans up expired sessions: deletes .jsonl files whose last modified time exceeds SESSION_EXPIRY_DAYS.
- * Called during listSessions or on startup to prevent the session directory from growing indefinitely.
+ * Not currently invoked anywhere; intended to run during listSessions or on
+ * startup to prevent the session directory from growing indefinitely.
  * Silently skips failures (best-effort).
  */
 export function cleanExpiredSessions(workDir: string): number {

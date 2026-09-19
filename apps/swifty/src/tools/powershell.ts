@@ -216,7 +216,7 @@ export class PowerShellTool implements Tool {
   ): CommandHandle {
     // Async execution keeps the Node event loop free (see BashTool for details).
     //
-    // Timeout and abort are handled manually instead of via execFile's
+    // Timeout and abort are handled manually instead of via spawn's built-in
     // timeout/signal options: those only signal the direct child, so a
     // command that spawns children or ignores the signal keeps running and
     // the callback never fires, wedging the agent loop and making Esc appear
@@ -347,7 +347,6 @@ export class PowerShellTool implements Tool {
       }, SIZE_WATCHDOG_INTERVAL_MS);
       watchdog.unref();
 
-      // `exit` can precede `close` while a descendant still holds inherited fds.
       const onAbort = () => {
         aborted = true;
         terminate();
