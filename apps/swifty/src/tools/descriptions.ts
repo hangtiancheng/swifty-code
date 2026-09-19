@@ -28,16 +28,38 @@ export const BASH_DESCRIPTION = `Execute command in Bash; return stdout and stde
 - Prefer dedicated file/search tools over cat, head, tail, sed, awk, echo, or find. Scope searches to a directory, never the filesystem root. Diagnose failures rather than retrying in sleep loops.
 ${GIT_GUIDANCE}`;
 
+/**
+ * Appended to the Bash schema description only when background execution is
+ * available (a TaskManager is wired and not disabled via env), so the
+ * run_in_background parameter and its guidance never advertise a capability
+ * the current host cannot deliver.
+ */
+export const BASH_BACKGROUND_DESCRIPTION = `- Set run_in_background to true to run the command in the background. The call returns a task ID immediately and the result arrives later as a task notification; do not poll or sleep waiting for it. Use this for long-running commands you do not need the result of right away. Use TaskStop with the task_id to kill a background command early. A foreground command that exceeds its timeout is moved to the background automatically instead of being killed, unless it is a bare sleep.`;
+
 export const POWERSHELL_DESCRIPTION = `Execute command in PowerShell; return stdout and stderr. Recommended on Windows (powershell.exe); uses pwsh elsewhere.
 - timeout is in seconds: default 120, maximum 600. Each call starts a fresh, independent shell in the Agent's working directory; location, variables, and options do not persist.
 - Quote paths with spaces; use Set-Location -LiteralPath "path" in the same call. Separate independent commands. For dependencies, check $LASTEXITCODE for native commands and use -ErrorAction Stop for cmdlets; ; does not stop on failure. Do not assume PowerShell 7 syntax.
 - Prefer dedicated file/search tools over Get-Content, Select-String, or Write-Output. Scope recursion to a directory, not a drive root. Diagnose failures rather than retrying in Start-Sleep loops.
 ${GIT_GUIDANCE}`;
 
+/**
+ * Appended to the PowerShell schema description only when background execution
+ * is available; mirrors BASH_BACKGROUND_DESCRIPTION with PS-flavored wording.
+ */
+export const POWERSHELL_BACKGROUND_DESCRIPTION = `- Set run_in_background to true to run the command in the background. The call returns a task ID immediately and the result arrives later as a task notification; do not poll or Start-Sleep waiting for it. Use this for long-running commands you do not need the result of right away. Use TaskStop with the task_id to kill a background command early. A foreground command that exceeds its timeout is moved to the background automatically instead of being killed, unless it is a bare Start-Sleep.`;
+
 export const JAVASCRIPT_DESCRIPTION = `Execute JavaScript in a fresh isolated V8 context for pure computation.
 - Provide a function body and use return to produce a JSON-compatible result. Optional input is available as globalThis.input.
 - No filesystem, network, process, require, imports, timers, or host callbacks are available. Use Bash for Node.js or system operations.
 - timeout_ms defaults to 1000 (max 10000); memory_limit_mb defaults to 64 (max 256). Requires Node.js 24 or newer.`;
+
+/**
+ * Appended to the JavaScript schema description only when background execution
+ * is available. No timeout auto-background here: timeout_ms is the isolate's
+ * hard safety cap — a V8-level kill, after which there is nothing left to
+ * keep running.
+ */
+export const JAVASCRIPT_BACKGROUND_DESCRIPTION = `- Set run_in_background to true to evaluate in the background. The call returns a task ID immediately and the result arrives later as a task notification; do not poll. timeout_ms still caps the evaluation (max 10000). Use TaskStop with the task_id to abort it early.`;
 
 export const READ_FILE_DESCRIPTION = `Read text with 1-based display line numbers, or images (png, jpg, jpeg, gif, webp) as visual content; not directories.
 - file_path is absolute or relative to the Agent's working directory. offset skips lines (0-based, default 0); limit defaults to 2000 lines, with a 50KB text output cap. Displayed line 101 starts at offset=100. Follow continuation/readback instructions for partial output.

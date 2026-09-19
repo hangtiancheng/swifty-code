@@ -89,6 +89,17 @@ function decorateTool(
   backgroundTasks: Map<string, AgentTask>,
   teammates: Map<string, TeammateUIState>,
 ): ToolBlockInfo {
+  if (
+    tool.toolName === "Bash" ||
+    tool.toolName === "PowerShell" ||
+    tool.toolName === "JavaScript"
+  ) {
+    // A running foreground command/evaluation can be moved to the background with Ctrl+B.
+    return tool.loading && !tool.progress
+      ? { ...tool, progress: "(ctrl+b to run in background)" }
+      : tool;
+  }
+
   if (tool.toolName !== "Agent") {
     return tool;
   }

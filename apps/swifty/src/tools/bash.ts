@@ -21,15 +21,26 @@
  */
 
 import { spawn } from "node:child_process";
+import { statSync } from "node:fs";
 
-import { BASH_DESCRIPTION } from "./descriptions.js";
-import { exitCodeHint } from "./exit-code-hints.js";
+import { BASH_BACKGROUND_DESCRIPTION, BASH_DESCRIPTION } from "./descriptions.js";
 import {
-  formatShellOutput,
-  MAX_SHELL_OUTPUT_BYTES,
-  takeUtf8Prefix,
-  utf8ByteLength,
-} from "./shell-output.js";
+  BACKGROUND_MAX_OUTPUT_BYTES,
+  SIZE_WATCHDOG_INTERVAL_MS,
+  backgroundMessage,
+  backgroundTaskName,
+  buildBackgroundBody,
+  createShellOutputFile,
+  discardFd,
+  formatFinalResult,
+  isAutobackgroundingAllowed,
+  readOutputFile,
+  unlinkQuiet,
+  type BackgroundReason,
+  type CommandHandle,
+  type ShellExit,
+} from "./shell-background.js";
+import { MAX_SHELL_OUTPUT_BYTES } from "./shell-output.js";
 import {
   type Tool,
   type ToolCategory,
@@ -40,11 +51,15 @@ import {
 
 import { isSafeCommand } from "@/permissions/index.js";
 import type { PreparedSandboxCommand, Sandbox, SandboxConfig } from "@/sandbox/index.js";
-import { asErrorString, intArg, strArg } from "@/utils/index.js";
+import { TaskFailure, type TaskManager } from "@/subagent/task-manager.js";
+import { asErrorString, boolArg, intArg, strArg } from "@/utils/index.js";
 
 const MAX_TIMEOUT = 600;
 // Grace period between SIGTERM and the SIGKILL escalation when terminating a command.
 const KILL_GRACE_MS = 3000;
+// Bare sleeps are killed on timeout instead of auto-backgrounded: backgrounding one
+// would just hold a task slot until session end.
+const DISALLOWED_AUTO_BACKGROUND_COMMANDS = new Set(["sleep"]);
 
 export class BashTool implements Tool {
   // Use a hardcoded string instead of BashTool.name.replace("Tool", "")
@@ -65,6 +80,20 @@ export class BashTool implements Tool {
   };
 
   /**
+   * Background task registry, injected by the host (TUI / print mode / remote
+   * server) — the same instance the Agent tool uses, so completion
+   * notifications share one drain and TaskStop covers both. When null, Bash is
+   * foreground-only: run_in_background disappears from the schema, timeouts
+   * kill, and Ctrl+B is a no-op. Calls running inside a subagent loop carry
+   * that loop's own manager in ctx.taskManager, which takes precedence.
+   */
+  taskManager: TaskManager | null = null;
+
+  /** Running foreground executions eligible for manual backgrounding (Ctrl+B). */
+  private foreground = new Map<string, { background: () => boolean }>();
+  private nextForegroundId = 1;
+
+  /**
    * Read-only commands can run concurrently with other read-only tools;
    * mutating commands must run exclusively.
    *
@@ -79,27 +108,65 @@ export class BashTool implements Tool {
     return typeof command === "string" && isSafeCommand(command);
   }
 
-  schema(): ToolSchema {
-    const inputSchema = {
-      type: "object" as const,
-      properties: {
-        command: {
-          type: "string" as const,
-          description: "Shell command to execute",
-        },
-        timeout: {
-          type: "integer" as const,
-          description: "Timeout in seconds (max 600)",
-          default: 120,
-        },
-      },
-      required: ["command"],
-    };
+  /**
+   * The background subsystem needs a task manager and can be disabled
+   * wholesale with SWIFTY_DISABLE_BACKGROUND_TASKS=1 (schema parameter
+   * removed, timeouts kill, Ctrl+B becomes a no-op). Instance-level gate used
+   * by the schema; execute() re-checks with the ctx-resolved manager.
+   */
+  backgroundEnabled(): boolean {
+    return this.taskManager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
+  }
 
+  /** True while at least one foreground Bash command runs (gates the Ctrl+B handler). */
+  hasForegroundTasks(): boolean {
+    return this.foreground.size > 0;
+  }
+
+  /**
+   * Move every running foreground Bash command to the background (Ctrl+B).
+   * Returns how many commands were actually backgrounded.
+   */
+  backgroundForegroundTasks(): number {
+    let count = 0;
+    for (const entry of [...this.foreground.values()]) {
+      if (entry.background()) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  schema(): ToolSchema {
+    const properties: Record<string, object> = {
+      command: {
+        type: "string",
+        description: "Shell command to execute",
+      },
+      timeout: {
+        type: "integer",
+        description: "Timeout in seconds (max 600)",
+        default: 120,
+      },
+    };
+    let description = this.description;
+    if (this.backgroundEnabled()) {
+      properties.run_in_background = {
+        type: "boolean",
+        description:
+          "Run the command in the background. Returns a task ID immediately; the result arrives later as a task notification.",
+        default: false,
+      };
+      description = `${this.description}\n${BASH_BACKGROUND_DESCRIPTION}`;
+    }
     return {
       name: this.name,
-      description: this.description,
-      input_schema: inputSchema,
+      description,
+      input_schema: {
+        type: "object" as const,
+        properties,
+        required: ["command"],
+      },
     };
   }
 
@@ -123,12 +190,32 @@ export class BashTool implements Tool {
       timeout = MAX_TIMEOUT;
     }
 
+    const manager = ctx.taskManager ?? this.taskManager;
+    const backgroundAvailable =
+      manager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
+    const runInBackground = boolArg(args, "run_in_background") && backgroundAvailable;
+
+    let outputFile: { path: string; fd: number };
+    try {
+      outputFile = createShellOutputFile(ctx.workDir, ctx.sessionId ?? "");
+    } catch (error) {
+      return {
+        output: `Error creating output file: ${asErrorString(error)}`,
+        isError: true,
+      };
+    }
+    const discardOutputFile = () => {
+      discardFd(outputFile.fd);
+      unlinkQuiet(outputFile.path);
+    };
+
     let prepared: PreparedSandboxCommand = {
       executable: "bash",
       args: ["-c", command],
     };
     if (this.sandboxRequired || this.sandbox) {
       if (!this.sandbox) {
+        discardOutputFile();
         return {
           output: "Error: sandbox is enabled but unavailable; command was not executed",
           isError: true,
@@ -136,17 +223,28 @@ export class BashTool implements Tool {
       }
       try {
         if (!(await this.sandbox.available())) {
+          discardOutputFile();
           return {
             output: `Error: ${this.sandbox.implementation} sandbox is unavailable; command was not executed`,
             isError: true,
           };
         }
-        prepared = await this.sandbox.prepare(command, this.sandboxConfig, {
-          cwd: ctx.workDir,
-          abortSignal: ctx.abortSignal,
-          commandId: ctx.toolCallId,
-        });
+        prepared = await this.sandbox.prepare(
+          command,
+          {
+            ...this.sandboxConfig,
+            // The child writes its output file directly; grant write access to
+            // that path even under a strict allowWrite config.
+            allowWrite: [...this.sandboxConfig.allowWrite, outputFile.path],
+          },
+          {
+            cwd: ctx.workDir,
+            abortSignal: ctx.abortSignal,
+            commandId: ctx.toolCallId,
+          },
+        );
       } catch (error) {
+        discardOutputFile();
         return {
           output: `Error preparing sandbox: ${asErrorString(error)}`,
           isError: true,
@@ -155,6 +253,7 @@ export class BashTool implements Tool {
     }
 
     if (ctx.abortSignal?.aborted) {
+      discardOutputFile();
       try {
         await prepared.cleanup?.();
       } catch {
@@ -166,6 +265,32 @@ export class BashTool implements Tool {
       };
     }
 
+    const handle = this.startCommand(ctx, prepared, command, timeout, outputFile, manager);
+    if (runInBackground) {
+      const taskId = handle.background("explicit");
+      if (taskId !== null) {
+        return { output: backgroundMessage("explicit", taskId, timeout), isError: false };
+      }
+      // The command ended before it could be backgrounded; report its actual result.
+    }
+    return handle.result;
+  }
+
+  /**
+   * Spawn the command with stdout+stderr writing directly into the output
+   * file (ccb's file-descriptor mode): output never flows through JS, so
+   * backgrounding is a bookkeeping switch — no re-spawn, no buffer handover.
+   * The returned handle exposes the tool-call promise plus a background()
+   * trigger that transitions the running command into a TaskManager task.
+   */
+  private startCommand(
+    ctx: ToolContext,
+    prepared: PreparedSandboxCommand,
+    command: string,
+    timeout: number,
+    outputFile: { path: string; fd: number },
+    manager: TaskManager | null,
+  ): CommandHandle {
     // Async execution keeps the Node event loop free: with spawnSync the TUI
     // froze (spinner animation, elapsed timers, keyboard input) for the whole
     // command duration.
@@ -177,26 +302,44 @@ export class BashTool implements Tool {
     // loop and making Esc appear dead. `detached` puts the child in its own
     // process group so the whole tree can be killed, with SIGKILL escalation
     // for processes that ignore SIGTERM.
-    return new Promise<ToolResult>((resolve) => {
-      let timedOut = false;
+    let backgroundFn: ((reason: BackgroundReason) => string | null) | undefined;
+    const result = new Promise<ToolResult>((resolve) => {
       let aborted = false;
       let terminating = false;
       let settled = false;
+      let backgrounded = false;
+      let sizeKilled = false;
       let escalateTimer: NodeJS.Timeout | null = null;
 
-      const child = spawn(prepared.executable, prepared.args, {
-        cwd: ctx.workDir,
-        detached: true,
-        env: prepared.env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      let child: ReturnType<typeof spawn>;
+      try {
+        child = spawn(prepared.executable, prepared.args, {
+          cwd: ctx.workDir,
+          detached: true,
+          env: prepared.env,
+          // stdout and stderr share one O_APPEND fd: each write lands on disk
+          // atomically and the streams interleave chronologically.
+          stdio: ["ignore", outputFile.fd, outputFile.fd],
+        });
+      } catch (error) {
+        discardFd(outputFile.fd);
+        unlinkQuiet(outputFile.path);
+        resolve({
+          output: `Error executing command: ${asErrorString(error)}`,
+          isError: true,
+        });
+        return;
+      }
+      // The child holds a dup of the descriptor; drop our handle so the file
+      // can be unlinked independently of the process lifetime.
+      discardFd(outputFile.fd);
 
-      // Same 10MB cap as execFile's maxBuffer: on overflow the child is
-      // killed and the truncated output is still returned.
-      let stdout = "";
-      let stderr = "";
-      let total = 0;
-      let outputTruncated = false;
+      // Resolved with the exit facts when the process ends; the background
+      // task runner consumes them to build the completion notification.
+      let doneResolve: ((exit: ShellExit) => void) | undefined;
+      const done = new Promise<ShellExit>((resolveDone) => {
+        doneResolve = resolveDone;
+      });
 
       // Kill the child's whole process group; fall back to the direct child
       // when the group is already gone (or group kill is unsupported).
@@ -223,49 +366,49 @@ export class BashTool implements Tool {
         killTree("SIGTERM");
         escalateTimer = setTimeout(() => {
           killTree("SIGKILL");
-          // A daemonized grandchild can inherit the pipes and hold `close`
-          // hostage; dropping our ends lets the callback fire once the
-          // direct child is gone.
-          child.stdout.destroy();
-          child.stderr.destroy();
         }, KILL_GRACE_MS);
         escalateTimer.unref();
       };
 
-      const appendChunk = (chunk: string, target: "stdout" | "stderr") => {
-        if (outputTruncated) {
+      // The child writes directly to the output file with no JS in the write
+      // path, so size is enforced by polling stat(): foreground keeps the
+      // historical 10MB cap, backgrounded commands get the 5GB ceiling.
+      const watchdog = setInterval(() => {
+        let size = 0;
+        try {
+          size = statSync(outputFile.path).size;
+        } catch {
           return;
         }
-        const remaining = MAX_SHELL_OUTPUT_BYTES - total;
-        const piece = takeUtf8Prefix(chunk, remaining);
-        total += utf8ByteLength(piece);
-        if (piece.length < chunk.length) {
-          outputTruncated = true;
+        const cap = backgrounded ? BACKGROUND_MAX_OUTPUT_BYTES : MAX_SHELL_OUTPUT_BYTES;
+        if (size > cap) {
+          sizeKilled = backgrounded;
+          clearInterval(watchdog);
           terminate();
         }
-        if (target === "stdout") {
-          stdout += piece;
-        } else {
-          stderr += piece;
-        }
-      };
+      }, SIZE_WATCHDOG_INTERVAL_MS);
+      watchdog.unref();
 
-      child.stdout.setEncoding("utf-8");
-      child.stdout.on("data", (chunk: string) => {
-        appendChunk(chunk, "stdout");
-      });
-      child.stderr.setEncoding("utf-8");
-      child.stderr.on("data", (chunk: string) => {
-        appendChunk(chunk, "stderr");
-      });
-
-      // `exit` can precede `close` while a descendant still holds inherited pipes.
+      // `exit` can precede `close` while a descendant still holds inherited fds.
       const onAbort = () => {
         aborted = true;
         terminate();
       };
 
+      const backgroundAvailableHere =
+        manager !== null && process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";
+      // The sleep blocklist gates *automatic* backgrounding only; explicit
+      // run_in_background and manual Ctrl+B are always honored.
+      const autoBackgroundAllowed =
+        backgroundAvailableHere &&
+        isAutobackgroundingAllowed(command, DISALLOWED_AUTO_BACKGROUND_COMMANDS);
+
+      let timedOut = false;
       const timeoutTimer = setTimeout(() => {
+        // Auto-background on timeout when allowed; otherwise hard-kill.
+        if (autoBackgroundAllowed && backgroundExecution("timeout") !== null) {
+          return;
+        }
         timedOut = true;
         terminate();
       }, timeout * 1000);
@@ -276,16 +419,22 @@ export class BashTool implements Tool {
         onAbort();
       }
 
+      const foregroundKey = `bash-${String(this.nextForegroundId++)}`;
+
       const cleanup = () => {
         clearTimeout(timeoutTimer);
+        clearInterval(watchdog);
         if (escalateTimer) {
           clearTimeout(escalateTimer);
         }
         ctx.abortSignal?.removeEventListener("abort", onAbort);
+        this.foreground.delete(foregroundKey);
       };
 
-      const settle = (result: ToolResult) => {
+      const settle = (finalResult: ToolResult) => {
         if (settled) {
+          // Already resolved: backgroundExecution moved the command to the
+          // background (its task runner owns sandbox cleanup from here).
           return;
         }
         settled = true;
@@ -295,64 +444,119 @@ export class BashTool implements Tool {
         };
         void finalize().then(
           () => {
-            resolve(result);
+            resolve(finalResult);
           },
           (error: unknown) => {
             resolve({
-              output: `${result.output}\nError cleaning up sandbox: ${asErrorString(error)}`,
+              output: `${finalResult.output}\nError cleaning up sandbox: ${asErrorString(error)}`,
               isError: true,
             });
           },
         );
       };
 
+      // Foreground completion: read the output back (capped), inline it, and
+      // delete the now-redundant file.
+      const settleExit = (exit: ShellExit) => {
+        if (backgrounded) {
+          return;
+        }
+        const read = readOutputFile(outputFile.path, MAX_SHELL_OUTPUT_BYTES);
+        const merged = prepared.annotateStderr?.(read.text) ?? read.text;
+        const finalResult = formatFinalResult("$ ", command, exit, merged, read.truncated, timeout);
+        unlinkQuiet(outputFile.path);
+        settle(finalResult);
+      };
+
+      const backgroundExecution = (reason: BackgroundReason): string | null => {
+        // `terminating` means a kill is already underway (abort, hard timeout,
+        // output cap): such a command must report its terminal result inline,
+        // not slip into the background between terminate() and close.
+        if (backgrounded || settled || terminating || !manager || !backgroundAvailableHere) {
+          return null;
+        }
+        backgrounded = true;
+        settled = true;
+        // The command now outlives both its foreground timeout and the
+        // caller's abort signal: only TaskStop or session shutdown can kill
+        // it. The escalate timer (if a termination was already underway) is
+        // deliberately left armed so an in-flight kill still completes.
+        clearTimeout(timeoutTimer);
+        ctx.abortSignal?.removeEventListener("abort", onAbort);
+        this.foreground.delete(foregroundKey);
+
+        const task = manager.create(
+          backgroundTaskName(command),
+          async () => {
+            const exit = await done;
+            try {
+              await prepared.cleanup?.();
+            } catch {
+              // Sandbox teardown trouble must not swallow the command result.
+            }
+            const body = buildBackgroundBody("$ ", command, exit, outputFile.path, timeout);
+            if (body.isError) {
+              throw new TaskFailure(body.output);
+            }
+            return body.output;
+          },
+          () => {
+            // Immediate SIGKILL, no SIGTERM grace: the stop must land even
+            // during CLI shutdown, and the detached process group must not
+            // outlive the session.
+            killTree("SIGKILL");
+          },
+          { originToolCallId: ctx.toolCallId, idPrefix: "bash" },
+        );
+        resolve({ output: backgroundMessage(reason, task.id, timeout), isError: false });
+        return task.id;
+      };
+
+      this.foreground.set(foregroundKey, {
+        background: () => backgroundExecution("user") !== null,
+      });
+
+      // The process is gone for good on error/close: stop the size watchdog
+      // and any pending kill escalation so no timer outlives the command
+      // (the foreground settle path clears them again, harmlessly).
+      const stopTimers = () => {
+        clearInterval(watchdog);
+        if (escalateTimer) {
+          clearTimeout(escalateTimer);
+        }
+      };
+
       // Spawn-level failure (e.g. bash not found): no close event guaranteed.
       child.on("error", (error) => {
-        settle({
-          output: `Error executing command: ${error.message}`,
-          isError: true,
-        });
+        stopTimers();
+        const exit: ShellExit = {
+          code: null,
+          signal: null,
+          aborted,
+          timedOut,
+          sizeKilled,
+          spawnError: error.message,
+        };
+        doneResolve?.(exit);
+        settleExit(exit);
       });
 
+      // With fd-mode stdio there are no parent-side pipes, so close fires when
+      // the shell itself exits; grandchildren that inherit the output fd (e.g.
+      // `cmd &`) no longer hold the result hostage.
       child.on("close", (code, signal) => {
-        stderr = prepared.annotateStderr?.(stderr) ?? stderr;
-
-        if (aborted || timedOut) {
-          const captured =
-            stdout || stderr || outputTruncated
-              ? formatShellOutput("$ ", command, stdout, stderr, outputTruncated)
-              : "";
-          const error = aborted
-            ? "Error: command interrupted"
-            : `Error: command timed out after ${String(timeout)}s`;
-          settle({
-            output: captured ? `${captured}\n${error}` : error,
-            isError: true,
-          });
-          return;
-        }
-
-        const exitCode = code ?? 0;
-        let output = formatShellOutput("$ ", command, stdout, stderr, outputTruncated);
-
-        if (outputTruncated) {
-          settle({ output, isError: true });
-          return;
-        }
-
-        if (exitCode !== 0) {
-          const hint = exitCodeHint(command, exitCode);
-          output += hint
-            ? `\nExit code ${String(exitCode)} (${hint})`
-            : `\nExit code ${String(exitCode)}`;
-        }
-
-        if (code === null) {
-          output += `\nProcess terminated${signal ? ` by ${signal}` : " unexpectedly"}`;
-        }
-
-        settle({ output, isError: exitCode !== 0 || code === null });
+        stopTimers();
+        const exit: ShellExit = { code, signal, aborted, timedOut, sizeKilled };
+        doneResolve?.(exit);
+        settleExit(exit);
       });
+
+      backgroundFn = backgroundExecution;
     });
+
+    return {
+      result,
+      background: (reason) => backgroundFn?.(reason) ?? null,
+    };
   }
 }

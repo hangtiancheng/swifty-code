@@ -21,6 +21,7 @@
  */
 
 import type { AgentDefinition } from "./definition.js";
+import { formatAgentTaskNotification, TaskManager } from "./task-manager.js";
 import { filterToolsForAgent } from "./tool-filter.js";
 
 import { Agent, type AgentConfig } from "@/agent/index.js";
@@ -116,6 +117,11 @@ export async function spawnSubagent(
   conversation.addSystemReminder(buildSubagentInstructions(definition));
   conversation.addUserMessage(prompt);
 
+  // Per-run background task registry: Bash commands backgrounded inside this
+  // subagent register here and notify this subagent's own loop (via
+  // notificationFn below), not the main thread.
+  const taskManager = new TaskManager();
+
   const agent = new Agent({
     client,
     registry,
@@ -129,52 +135,61 @@ export async function spawnSubagent(
     instructions: loadInstructions(workDir),
     contextWindow: getContextWindow(provider),
     maxOutput: getMaxOutputTokens(provider),
+    taskManager,
+    notificationFn: () => taskManager.drainNotifications().map(formatAgentTaskNotification),
   });
 
   let output = "";
   let turn = 0;
-  for await (const event of agent.run()) {
-    switch (event.type) {
-      case "stream_text":
-        output += event.text;
-        break;
-      case "tool_use":
-        onProgress?.({ lastTool: event.toolName });
-        onEvent?.({
-          type: "tool_use",
-          toolId: event.toolId,
-          toolName: event.toolName,
-          args: event.args,
-        });
-        break;
-      case "tool_result":
-        onEvent?.({
-          type: "tool_result",
-          toolId: event.toolId,
-        });
-        break;
-      case "usage":
-        onEvent?.({
-          type: "usage",
-          usage: {
-            inputTokens: event.usage.inputTokens,
-            outputTokens: event.usage.outputTokens,
-          },
-        });
-        break;
-      case "turn_complete":
-        onProgress?.({ turn: ++turn });
-        onEvent?.({ type: "turn_complete" });
-        break;
-      case "loop_complete":
-        if (event.stopReason === "interrupted") {
-          return `${output}${output ? "\n\n" : ""}${SUBAGENT_INTERRUPTED_MARKER}`;
-        }
-        return output || "[No output]";
-      case "error":
-        throw event.error;
+  try {
+    for await (const event of agent.run()) {
+      switch (event.type) {
+        case "stream_text":
+          output += event.text;
+          break;
+        case "tool_use":
+          onProgress?.({ lastTool: event.toolName });
+          onEvent?.({
+            type: "tool_use",
+            toolId: event.toolId,
+            toolName: event.toolName,
+            args: event.args,
+          });
+          break;
+        case "tool_result":
+          onEvent?.({
+            type: "tool_result",
+            toolId: event.toolId,
+          });
+          break;
+        case "usage":
+          onEvent?.({
+            type: "usage",
+            usage: {
+              inputTokens: event.usage.inputTokens,
+              outputTokens: event.usage.outputTokens,
+            },
+          });
+          break;
+        case "turn_complete":
+          onProgress?.({ turn: ++turn });
+          onEvent?.({ type: "turn_complete" });
+          break;
+        case "loop_complete":
+          if (event.stopReason === "interrupted") {
+            return `${output}${output ? "\n\n" : ""}${SUBAGENT_INTERRUPTED_MARKER}`;
+          }
+          return output || "[No output]";
+        case "error":
+          throw event.error;
+      }
     }
-  }
 
-  return output || "[No output]";
+    return output || "[No output]";
+  } finally {
+    // Kill background shells still running now that this loop (and its
+    // notification drain) is going away — nobody would ever see their
+    // completion, so they must not outlive the subagent.
+    void taskManager.stopAll();
+  }
 }

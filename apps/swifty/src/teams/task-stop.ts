@@ -26,11 +26,11 @@ import type { TaskManager } from "@/subagent/task-manager.js";
 import type { Tool, ToolCategory, ToolContext, ToolResult, ToolSchema } from "@/tools/types.js";
 import { strArg } from "@/utils/index.js";
 
-/** Abort a running teammate or one-shot background Agent task. */
+/** Abort a running teammate or one-shot background Agent/Bash/PowerShell/JavaScript task. */
 export class TaskStopTool implements Tool {
   name = "TaskStop";
   description =
-    "Stop a running teammate or background Agent task. Pass exactly one of teammate or task_id.";
+    "Stop a running teammate or background task (Agent, Bash, PowerShell or JavaScript). Pass exactly one of teammate or task_id.";
   category: ToolCategory = "command";
 
   constructor(
@@ -52,7 +52,7 @@ export class TaskStopTool implements Tool {
           },
           task_id: {
             type: "string",
-            description: "ID of a background Agent task",
+            description: "ID of a background task (Agent, Bash, PowerShell or JavaScript)",
           },
         },
       },

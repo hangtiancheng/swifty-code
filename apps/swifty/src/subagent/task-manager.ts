@@ -36,6 +36,20 @@ export interface AgentTask {
 
 interface CreateTaskOptions {
   originToolCallId?: string;
+  /** ID prefix; defaults to "agent" (background subagents). Bash background tasks use "bash". */
+  idPrefix?: string;
+}
+
+/**
+ * A runner failure that carries its own pre-formatted output. TaskManager
+ * stores `output` verbatim on the failed task instead of the generic
+ * `Error: <message>` wrapper, so tool-level results (e.g. a background Bash
+ * command's captured output and exit code) reach the notification intact.
+ */
+export class TaskFailure extends Error {
+  constructor(readonly output: string) {
+    super("task failed");
+  }
 }
 
 export class TaskManager {
@@ -50,7 +64,7 @@ export class TaskManager {
     cancel: () => void,
     options: CreateTaskOptions = {},
   ): AgentTask {
-    const id = `agent-${String(this.nextId++)}`;
+    const id = `${options.idPrefix ?? "agent"}-${String(this.nextId++)}`;
     const task: AgentTask = {
       id,
       name,
@@ -75,7 +89,8 @@ export class TaskManager {
       .catch((error: unknown) => {
         if (task.status === "running") {
           task.status = "failed";
-          task.output = `Error: ${asErrorString(error)}`;
+          task.output =
+            error instanceof TaskFailure ? error.output : `Error: ${asErrorString(error)}`;
           this.emitChange();
         }
       });

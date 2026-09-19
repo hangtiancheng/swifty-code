@@ -31,6 +31,8 @@ interface Options {
   onExit: () => void;
   teamsDialogOpen: boolean;
   onToggleTeams: () => void;
+  /** Move every running foreground Bash command to the background (Ctrl+B). */
+  onBackgroundShells?: () => void;
 }
 
 export function useTerminalControls({
@@ -41,6 +43,7 @@ export function useTerminalControls({
   onExit,
   teamsDialogOpen,
   onToggleTeams,
+  onBackgroundShells,
 }: Options) {
   const { stdout } = useStdout();
   const termWidthRef = useRef(stdout.columns || 80);
@@ -129,6 +132,14 @@ export function useTerminalControls({
       // Static content must be remounted to reflect expanded tool output.
       stdout.write("\x1b[2J\x1b[H");
       setToolsExpanded((expanded) => !expanded);
+    }
+  });
+
+  // Ctrl+B moves running foreground Bash commands to the background. Under
+  // tmux the first press is swallowed as the tmux prefix, so users press twice.
+  useInput((input, key) => {
+    if (key.ctrl && input === "b") {
+      onBackgroundShells?.();
     }
   });
 

@@ -130,6 +130,10 @@ import type { BashTool } from "@/tools/bash.js";
 import type { ExitPlanModeTool } from "@/tools/exit-plan-mode.js";
 import { FileStateCache } from "@/tools/file-state-cache.js";
 import type { ToolRegistry } from "@/tools/registry.js";
+import {
+  attachBackgroundTaskManager,
+  backgroundAllForegroundTasks,
+} from "@/tools/shell-background.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { activityStatusColor, THEME, thinkingLevelColor } from "@/ui/styles.js";
 import { useFollowUpQueue } from "@/ui/use-follow-up-queue.js";
@@ -443,6 +447,9 @@ export function App({
     onToggleTeams: () => {
       setTeamsDialogOpen((open) => !open);
     },
+    onBackgroundShells: () => {
+      backgroundAllForegroundTasks(registryRef.current);
+    },
   });
 
   const activityStatus = error
@@ -714,6 +721,12 @@ export function App({
           new TaskStopTool(teamManagerRef.current, backgroundTaskManagerRef.current),
         );
         registryRef.current.register(new SyntheticOutputTool());
+
+        // Share the background task registry with Bash/PowerShell/JavaScript so
+        // run_in_background, Ctrl+B backgrounding and timeout auto-background
+        // deliver results through the same task-notification drain as
+        // background agents.
+        attachBackgroundTaskManager(registryRef.current, backgroundTaskManagerRef.current);
 
         // Load user-defined slash commands from .swifty/commands/*.md.
         for (const cmd of loadUserCommands(workDir)) {

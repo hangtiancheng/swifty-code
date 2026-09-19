@@ -28,6 +28,7 @@ import type { FileStateCache } from "./file-state-cache.js";
 
 import type { FileHistory } from "@/file-history/index.js";
 import type { Decision, PermissionChecker } from "@/permissions/index.js";
+import type { TaskManager } from "@/subagent/task-manager.js";
 
 export type ToolCategory = "read" | "write" | "command";
 
@@ -202,6 +203,19 @@ export interface ToolContext {
   workDir: string;
   toolCallId?: string;
   backgroundTaskId?: string;
+  /**
+   * Owning session, when the call runs on the main thread. Lets tools persist
+   * auxiliary artifacts (e.g. a backgrounded Bash command's output) into the
+   * session's tool-results spill directory so the model can Read them back.
+   */
+  sessionId?: string;
+  /**
+   * Background task registry of the loop running this call. Subagent loops
+   * inject their own manager so backgrounded Bash commands notify that loop
+   * instead of the main thread; tools fall back to their host-wired default
+   * when absent.
+   */
+  taskManager?: TaskManager;
   abortSignal?: AbortSignal;
   fileHistory?: FileHistory | undefined;
   fileStateCache?: FileStateCache | undefined;

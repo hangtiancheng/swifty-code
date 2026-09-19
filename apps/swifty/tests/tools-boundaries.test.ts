@@ -270,25 +270,22 @@ describe("shell tool boundaries", () => {
     expect(result.output).toContain("command interrupted");
   }, 5_000);
 
-  it("cancels Bash after the shell exits with inherited pipes still open", async () => {
-    const context = makeContext();
-    const controller = new AbortController();
-    const pending = new BashTool().execute(
-      { ...context, abortSignal: controller.signal },
-      { command: "printf before; sleep 2 &" },
-    );
-    setTimeout(() => {
-      controller.abort();
-    }, 100);
-    const result = await pending;
-    expect(result.isError).toBe(true);
-    expect(result.output).toContain("before");
-    expect(result.output).toContain("command interrupted");
-  }, 1_000);
-
-  it("times out Bash after the shell exits with inherited pipes still open", async () => {
+  it("returns promptly when the shell exits with a daemonized grandchild still running", async () => {
+    // fd-mode stdio: the child writes straight to the output file, so a
+    // grandchild that inherits the fd (`sleep 2 &`) no longer holds the tool
+    // result hostage — the call resolves as soon as the shell itself exits.
+    const started = Date.now();
     const result = await new BashTool().execute(makeContext(), {
-      command: "sleep 2 &",
+      command: "printf before; sleep 2 &",
+    });
+    expect(Date.now() - started).toBeLessThan(1_800);
+    expect(result.isError).toBe(false);
+    expect(result.output).toContain("before");
+  }, 5_000);
+
+  it("times out a still-running command at its deadline", async () => {
+    const result = await new BashTool().execute(makeContext(), {
+      command: "sleep 5",
       timeout: 1,
     });
     expect(result.isError).toBe(true);

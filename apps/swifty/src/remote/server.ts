@@ -110,6 +110,7 @@ import { McpCallTool } from "@/tools/mcp-call.js";
 import { PowerShellTool } from "@/tools/powershell.js";
 import { ReadFileTool } from "@/tools/read-file.js";
 import { ToolRegistry } from "@/tools/registry.js";
+import { attachBackgroundTaskManager } from "@/tools/shell-background.js";
 import { SyntheticOutputTool } from "@/tools/synthetic-output.js";
 import { ToolSearchTool } from "@/tools/tool-search.js";
 import type { PermissionRequestHandler } from "@/tools/types.js";
@@ -527,6 +528,10 @@ export async function createRemoteAgent(
   // 14. Register Team tools
   const teamManager = new TeamManager(workDir);
   const backgroundTaskManager = new TaskManager();
+  // Share the background task registry with Bash/PowerShell/JavaScript so
+  // run_in_background and timeout auto-background deliver results through the
+  // same notification drain as background agents.
+  attachBackgroundTaskManager(registry, backgroundTaskManager);
   registry.register(new TeamCreateTool(teamManager));
   registry.register(new SendMessageTool(teamManager));
   registry.register(new TeamDeleteTool(teamManager));

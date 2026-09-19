@@ -41,6 +41,7 @@ import { coordinatorReminder } from "@/prompt/coordinator.js";
 import { buildPlanModeReminder } from "@/prompt/plan-mode.js";
 import { saveMessage, toolUsesToRecords, toolResultsToRecords } from "@/session/index.js";
 import { getSessionFilePath } from "@/session/index.js";
+import type { TaskManager } from "@/subagent/task-manager.js";
 import {
   endAgentTelemetry,
   observeLlmStream,
@@ -99,6 +100,12 @@ export interface AgentConfig {
   recoveryState?: RecoveryState;
   maxIterations?: number;
   notificationFn?: () => string[];
+  /**
+   * Background task registry owned by this loop. Injected into every tool
+   * context so backgrounded Bash commands register — and later notify — here
+   * instead of on the host-level default. Subagent runs pass their own.
+   */
+  taskManager?: TaskManager;
   onLoopComplete?: (conversation: ConversationManager) => void;
   activeSkills?: Map<string, string>;
   toolFilter?: (name: string) => boolean;
@@ -144,6 +151,7 @@ export class Agent {
   private recoveryState: RecoveryState;
   private maxIterations: number;
   private notificationFn?: () => string[];
+  private taskManager?: TaskManager;
   private onLoopComplete?: (conversation: ConversationManager) => void;
   private compactTracking = new AutoCompactTrackingState();
 
@@ -182,6 +190,7 @@ export class Agent {
     this.recoveryState = config.recoveryState ?? new RecoveryState();
     this.maxIterations = config.maxIterations ?? 0;
     this.notificationFn = config.notificationFn;
+    this.taskManager = config.taskManager;
     this.onLoopComplete = config.onLoopComplete;
     this.onPermissionRequest = config.onPermissionRequest;
     this.activeSkills = config.activeSkills ?? new Map<string, string>();
@@ -787,6 +796,8 @@ export class Agent {
       this.registry,
       {
         workDir: this.workDir,
+        sessionId: this.sessionId,
+        taskManager: this.taskManager,
         abortSignal: this.abortSignal,
         fileHistory: this.fileHistory,
         fileStateCache: this.fileStateCache,

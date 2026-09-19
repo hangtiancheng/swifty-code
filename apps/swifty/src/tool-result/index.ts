@@ -37,7 +37,7 @@ const log = createChildLogger({ module: "tool-result" });
 const MESSAGE_AGGREGATE_LIMIT = 200000;
 export const TOOL_RESULT_PREVIEW_CHARS = 2000;
 
-function spillDir(workDir: string, sessionId: string): string {
+export function spillDir(workDir: string, sessionId: string): string {
   const id = sessionId || "default";
   return join(workDir, ".swifty", "sessions", id, "tool-results");
 }
@@ -85,21 +85,37 @@ export function replaceToolResultContent(result: ToolResultBlock, content: strin
   }
 }
 
-// Build the on-disk replacement text, including a 2KB preview. Identical
-// input yields a byte-for-byte identical string; once the replacement enters
-// the conversation history it is never modified again.
-function buildSpillPreview(content: string, spillPath: string): string {
-  const sizeKB = Math.floor(content.length / 1024);
-  const preview = content.slice(0, TOOL_RESULT_PREVIEW_CHARS);
-  const hasMore = content.length > TOOL_RESULT_PREVIEW_CHARS;
+/**
+ * The `<persisted-output>` wrapper text. buildSpillPreview derives the inputs
+ * from an in-memory string; tool-level producers (e.g. a backgrounded Bash
+ * command's live output file) build the same wrapper from a stat + partial
+ * read without ever loading the full content into JS.
+ */
+export function buildPersistedOutputPreview(
+  totalChars: number,
+  preview: string,
+  spillPath: string,
+): string {
+  const sizeKB = Math.floor(totalChars / 1024);
   let msg = `<persisted-output>\n`;
   msg += `Output too large (${String(sizeKB)}KB). Full content saved to:\n${spillPath}\n\n`;
   msg += `Preview (first 2KB):\n${preview}`;
-  if (hasMore) {
+  if (totalChars > TOOL_RESULT_PREVIEW_CHARS) {
     msg += "\n...";
   }
   msg += "\n</persisted-output>";
   return msg;
+}
+
+// Build the on-disk replacement text, including a 2KB preview. Identical
+// input yields a byte-for-byte identical string; once the replacement enters
+// the conversation history it is never modified again.
+function buildSpillPreview(content: string, spillPath: string): string {
+  return buildPersistedOutputPreview(
+    content.length,
+    content.slice(0, TOOL_RESULT_PREVIEW_CHARS),
+    spillPath,
+  );
 }
 
 /**
