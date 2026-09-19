@@ -311,9 +311,9 @@ Besides the `swifty` CLI, the package ships a library entry for embedding Swifty
 | CLI (`swifty`) | `dist/main.js`                             | Fully bundled, minified single file with a shebang; only Node built-ins stay external.                        |
 | Library        | `dist/lib/index.js`, `dist/lib/index.d.ts` | The `src/index.ts` barrel; runtime dependencies stay external and resolve from the consumer's `node_modules`. |
 
-The library entry is terminal-independent by contract: it must never reach `src/ui/**` or a terminal-only dependency, so a host without a TTY (a server, an editor extension, a test harness) can import it. `pnpm build` enforces that contract:
+The library entry is terminal-independent by contract: it must never reach `src/ui/**` or a ui-only dependency, so a host without a TTY (a server, an editor extension, a test harness) can import it. `pnpm build` enforces that contract:
 
-- **Terminal-only dependency ban** — the `ban-terminal-only-deps` plugin in `tsup.config.ts` fails the build when a bundle-reachable module imports one of the terminal-only packages (`ink`, `chalk`, `ansi-escapes`, …) or a path inside `src/ui`. The list is declared once in `tsup.config.ts` and re-derived from the actual import sites by `tests/build-guards.test.ts`, which fails if the two drift apart.
+- **ui-only dependency ban** — the `ban-ui-only-deps` plugin in `tsup.config.ts` fails the build when a bundle-reachable module imports one of the ui-only packages (`ink`, `chalk`, `ansi-escapes`, …) or a path inside `src/ui`. The list is declared once in `tsup.config.ts` and re-derived from the actual import sites by `tests/build-guards.test.ts`, which fails if the two drift apart.
 - **`react` and `react-dom` are allowed** — the cross-platform hooks under `src/ui/**` are public API and depend on them.
 - **Ambiguous export scan** — once the bundle is written, the build runs the TypeScript ambiguous-export check (`TS2308`) over the library graph. A name exported by two `export *` sources is dropped by the bundler without any warning; the scan turns that into a build failure instead of a quietly smaller public API.
 

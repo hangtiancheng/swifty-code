@@ -120,10 +120,10 @@ const rawImportPlugin: EsbuildPlugin = {
 };
 
 // Library-build guard: the barrel entry (src/index.ts) must never reach the
-// terminal layer, neither through a bare terminal-only specifier nor through a
+// terminal layer, neither through a bare ui-only specifier nor through a
 // path resolving into src/ui. Failing the build is the point.
 //
-// The bare-specifier rule only fires because libConfig lists the terminal-only
+// The bare-specifier rule only fires because libConfig lists the ui-only
 // packages in `noExternal`: tsup registers its own resolver ahead of user
 // plugins and auto-externalizes every `dependencies` entry, so without
 // `noExternal` those requests are resolved as external before this plugin sees
@@ -273,8 +273,8 @@ const libConfig: Options = {
   dts: true,
   tsconfig: "tsconfig.build.json",
   define: { __SWIFTY_VERSION__: JSON.stringify(pkg.version) },
-  // Runtime dependencies stay external, except the terminal-only ones: those
-  // must reach banTerminalOnlyPlugin, so a reachable terminal-only package fails
+  // Runtime dependencies stay external, except the ui-only ones: those
+  // must reach banUIOnlyPlugin, so a reachable ui-only package fails
   // the build instead of being silently kept as an external import.
   external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !uiOnlySet.has(dep)),
   noExternal: [uiOnlyPattern],

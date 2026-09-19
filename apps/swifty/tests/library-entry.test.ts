@@ -49,7 +49,7 @@ describe("cli entry (dist/main.js)", () => {
 });
 
 describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
-  it("imports no terminal-only dependency or src/ui module", () => {
+  it("imports no ui-only dependency or src/ui module", () => {
     for (const file of readdirSync(libDir)) {
       if (!file.endsWith(".js") && !file.endsWith(".d.ts")) {
         continue;
@@ -58,7 +58,7 @@ describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
       for (const [, specifier] of code.matchAll(moduleSpecifier)) {
         expect(
           uiOnlyPattern.test(specifier),
-          `${file} must not import the terminal-only dependency "${specifier}"`,
+          `${file} must not import the ui-only dependency "${specifier}"`,
         ).toBe(false);
         expect(
           specifier.startsWith("@/ui"),

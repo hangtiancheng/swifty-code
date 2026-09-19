@@ -35,12 +35,12 @@ const srcRoot = join(appRoot, "src");
 const dependencyNames = Object.keys(pkg.dependencies);
 
 /**
- * Recompute the terminal-only set from the sources: a dependency is terminal-only
+ * Recompute the ui-only set from the sources: a dependency is ui-only
  * when every module importing it belongs to the terminal layer (src/main.tsx and
  * src/ui/**). Type-only imports are ignored — they are erased and cannot make a
  * package reachable at runtime.
  */
-const deriveTerminalOnlyDeps = (): string[] => {
+const deriveUIOnlyDeps = (): string[] => {
   const importSites = new Map<string, Set<string>>();
 
   const visit = (file: string): void => {
@@ -104,17 +104,17 @@ const deriveTerminalOnlyDeps = (): string[] => {
     .sort();
 };
 
-describe("library build terminal-only dependency guard", () => {
+describe("library build ui-only dependency guard", () => {
   it("declares every entry as a real dependency", () => {
     const undeclared = uiOnlyDeps.filter((dependency) => !dependencyNames.includes(dependency));
     expect(undeclared).toEqual([]);
   });
 
   it("matches the set derived from the actual import sites", () => {
-    expect(deriveTerminalOnlyDeps()).toEqual([...uiOnlyDeps].sort());
+    expect(deriveUIOnlyDeps()).toEqual([...uiOnlyDeps].sort());
   });
 
-  it("matches a terminal-only package and its subpaths only", () => {
+  it("matches a ui-only package and its subpaths only", () => {
     expect(uiOnlyPattern.test("ink")).toBe(true);
     expect(uiOnlyPattern.test("ink/build/devtools.js")).toBe(true);
     expect(uiOnlyPattern.test("chalk")).toBe(true);

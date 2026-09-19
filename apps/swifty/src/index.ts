@@ -25,8 +25,8 @@
 // (`export * as Group from "./group/index.js"`; each group barrel nests its
 // submodules the same way), so top-level export names cannot collide across
 // groups. The CLI entry (bin) is dist/main.js; nothing here may import from
-// src/ui or any terminal-only dependency (ink, chalk, ...). That is enforced
-// at build time by the ban-terminal-only-deps esbuild plugin in
+// src/ui or any ui-only dependency (ink, chalk, ...). That is enforced
+// at build time by the ban-ui-only-deps esbuild plugin in
 // tsup.config.ts: reaching one of them fails the build. react/react-dom are
 // not in that set — the cross-platform hooks under src/ui/** are public API.
 
