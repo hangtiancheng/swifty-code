@@ -35,11 +35,9 @@ import {
   WINDOWS_PWSH_INCLUDES_CSHARP_SNIPPET,
 } from "./snippets.js";
 import type {
-  ProviderNativeToolSchema,
   Tool,
   ToolCategory,
   ToolContext,
-  ToolProtocol,
   ToolResult,
   ToolResultContentBlock,
   ToolSchema,
@@ -537,23 +535,6 @@ export class ComputerUseTool implements Tool {
 
   isConcurrencySafe(_args: Record<string, unknown>): boolean {
     return false;
-  }
-
-  providerSchema(protocol: ToolProtocol): ProviderNativeToolSchema | undefined {
-    if (protocol === "anthropic") {
-      return {
-        type: "computer_20251124",
-        name: "computer",
-        display_width_px: this.displayWidthPx,
-        display_height_px: this.displayHeightPx,
-        ...(this.displayNumber !== undefined ? { display_number: this.displayNumber } : {}),
-        ...(this.enableZoom ? { enable_zoom: true } : {}),
-      };
-    }
-    if (protocol === "openai") {
-      return { type: "computer" };
-    }
-    return undefined;
   }
 
   schema(): ToolSchema {

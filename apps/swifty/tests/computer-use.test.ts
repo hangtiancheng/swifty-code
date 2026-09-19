@@ -126,20 +126,22 @@ describe("ComputerUseTool", () => {
     registry.register(new ComputerUseTool({ platform: "linux" }));
 
     expect(registry.getAllSchemas("anthropic")[0]).toMatchObject({
-      name: "computer",
-      type: "computer_20251124",
-      display_width_px: 1366,
-      display_height_px: 900,
-      enable_zoom: true,
+      name: "ComputerUse",
+      type: "custom",
+      input_schema: { type: "object" },
     });
-    expect(registry.getAllSchemas("openai")[0]).toEqual({ type: "computer" });
+    expect(registry.getAllSchemas("openai")[0]).toMatchObject({
+      type: "function",
+      name: "ComputerUse",
+      parameters: { type: "object" },
+    });
     expect(registry.getAllSchemas("openai-compat")[0]).toMatchObject({
       type: "function",
       function: { name: "ComputerUse" },
     });
   });
 
-  it("sends the native OpenAI computer declaration through the Responses SDK", async () => {
+  it("sends ComputerUse as a function through the Responses SDK", async () => {
     let request: Record<string, unknown> = {};
     vi.stubGlobal(
       "fetch",
@@ -181,10 +183,16 @@ describe("ComputerUseTool", () => {
       // drain
     }
 
-    expect(request.tools).toEqual([{ type: "computer" }]);
+    const tools = z.array(z.record(z.string(), z.unknown())).parse(request.tools);
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      type: "function",
+      name: "ComputerUse",
+      parameters: { type: "object" },
+    });
   });
 
-  it("sends the native Anthropic declaration and computer-use beta header", async () => {
+  it("sends ComputerUse as a custom tool to the official Anthropic endpoint", async () => {
     let request: Record<string, unknown> = {};
     let betaHeader = "";
     vi.stubGlobal(
@@ -231,7 +239,7 @@ describe("ComputerUseTool", () => {
       {
         name: "test",
         protocol: "anthropic",
-        base_url: "https://example.invalid",
+        base_url: "https://api.anthropic.com",
         api_key: "test",
         model: "test",
       },
@@ -243,15 +251,83 @@ describe("ComputerUseTool", () => {
       // drain
     }
 
-    expect(request.tools).toEqual([
-      expect.objectContaining({
-        type: "computer_20251124",
-        name: "computer",
-        display_width_px: 1366,
-        display_height_px: 900,
+    const tools = z.array(z.record(z.string(), z.unknown())).parse(request.tools);
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      type: "custom",
+      name: "ComputerUse",
+      input_schema: { type: "object" },
+    });
+    expect(betaHeader).toBe("");
+  });
+
+  it("uses legacy custom tools for third-party Anthropic-compatible endpoints", async () => {
+    let request: Record<string, unknown> = {};
+    let betaHeader = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init: RequestInit) => {
+        request = asRecord(JSON.parse(z.string().parse(init.body)));
+        betaHeader = new Headers(init.headers).get("anthropic-beta") ?? "";
+        const events = [
+          {
+            type: "message_start",
+            message: {
+              id: "msg_test",
+              type: "message",
+              role: "assistant",
+              model: "test",
+              content: [],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: 1, output_tokens: 0 },
+            },
+          },
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: 1 },
+          },
+          { type: "message_stop" },
+        ];
+        return Promise.resolve(
+          new Response(
+            events
+              .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+              .join(""),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
       }),
-    ]);
-    expect(betaHeader).toContain("computer-use-2025-11-24");
+    );
+    const registry = new ToolRegistry();
+    registry.register(new ComputerUseTool({ platform: "linux" }));
+    const conversation = new ConversationManager();
+    conversation.addUserMessage("take a screenshot");
+    const client = new AnthropicClient(
+      {
+        name: "deepseek",
+        protocol: "anthropic",
+        base_url: "https://api.deepseek.com/anthropic",
+        api_key: "test",
+        model: "deepseek-flash",
+      },
+      "system",
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _event of client.stream(conversation, registry.getAllSchemas("anthropic"))) {
+      // drain
+    }
+
+    const tools = z.array(z.record(z.string(), z.unknown())).parse(request.tools);
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      name: "ComputerUse",
+      input_schema: { type: "object" },
+    });
+    expect(tools[0]?.type).toBeUndefined();
+    expect(betaHeader).toBe("");
   });
 
   it("runs an OpenAI-style batch in order and returns the post-batch screenshot", async () => {

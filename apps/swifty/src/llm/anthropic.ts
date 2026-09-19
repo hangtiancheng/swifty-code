@@ -49,7 +49,7 @@ import {
 import type { ConversationManager, Message } from "@/conversation/index.js";
 import { ensureToolPairing } from "@/conversation/pairing.js";
 import { createChildLogger } from "@/logger/index.js";
-import { NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
+import { isOfficialAnthropicEndpoint, NATIVE_TOOL_USE_BETA } from "@/mcp/strategy.js";
 import { normalizeToolResultContentBlock } from "@/tools/types.js";
 import type { AnthropicToolSchema, ProviderToolSchema, ToolSchema } from "@/tools/types.js";
 import {
@@ -95,9 +95,10 @@ export function needsToolSearchBeta(toolSchemas: ProviderToolSchema[]): boolean 
   return toolSchemas.some((schema) => "defer_loading" in schema && schema.defer_loading === true);
 }
 
-const COMPUTER_USE_BETA = "computer-use-2025-11-24";
-
-function toAnthropicToolSchema(schema: ProviderToolSchema): AnthropicToolSchema {
+function toAnthropicToolSchema(
+  schema: ProviderToolSchema,
+  useExplicitCustomType: boolean,
+): AnthropicToolSchema {
   if ("type" in schema && schema.type === "computer_20251124") {
     return { ...schema };
   }
@@ -105,9 +106,12 @@ function toAnthropicToolSchema(schema: ProviderToolSchema): AnthropicToolSchema 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const tool = schema as ToolSchema;
     const { cache_control: cacheControl, ...rest } = tool;
+    if (!useExplicitCustomType) {
+      delete rest.type;
+    }
     return {
       ...rest,
-      type: "custom",
+      ...(useExplicitCustomType ? { type: "custom" as const } : {}),
       ...(tool.defer_loading !== true && cacheControl ? { cache_control: cacheControl } : {}),
     };
   }
@@ -326,6 +330,7 @@ export class AnthropicClient implements LLMClient {
   private systemPrompt: string;
   private maxOutputTokens: number;
   private config: ProviderConfig;
+  private useExplicitCustomToolType: boolean;
 
   constructor(config: ProviderConfig, systemPrompt: string) {
     const apiKey = resolveAPIKey(config);
@@ -339,6 +344,7 @@ export class AnthropicClient implements LLMClient {
       apiKey,
       baseURL: config.base_url,
     });
+    this.useExplicitCustomToolType = isOfficialAnthropicEndpoint(config.base_url);
     this.model = config.model;
     this.config = { ...config };
     this.thinkingLevel = getThinkingLevel(config);
@@ -376,9 +382,8 @@ export class AnthropicClient implements LLMClient {
     // Tools with defer_loading stay in tools[], but the server hides them from the model; the model must first
     // fetch a tool_reference via ToolSearch before it can call them. This field is only accepted with the beta header.
     const sendToolSearchBeta = needsToolSearchBeta(toolSchemas);
-    const antToolSchemas = toolSchemas.map(toAnthropicToolSchema);
-    const sendComputerUseBeta = antToolSchemas.some(
-      (schema) => "type" in schema && schema.type === "computer_20251124",
+    const antToolSchemas = toolSchemas.map((schema) =>
+      toAnthropicToolSchema(schema, this.useExplicitCustomToolType),
     );
 
     markToolsForCache(antToolSchemas);
@@ -443,10 +448,7 @@ export class AnthropicClient implements LLMClient {
     let inThinking = false;
 
     try {
-      const betas = [
-        ...(sendToolSearchBeta ? [NATIVE_TOOL_USE_BETA] : []),
-        ...(sendComputerUseBeta ? [COMPUTER_USE_BETA] : []),
-      ];
+      const betas = [...(sendToolSearchBeta ? [NATIVE_TOOL_USE_BETA] : [])];
       const response = this.client.messages.stream(params, {
         ...(abortSignal ? { signal: abortSignal } : {}),
         ...(betas.length > 0 ? { headers: { "anthropic-beta": betas.join(",") } } : {}),
