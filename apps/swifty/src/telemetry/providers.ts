@@ -52,8 +52,6 @@ import {
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import type * as Sentry from "@sentry/node";
 
-import { version } from "../version.js";
-
 import type {
   TelemetryAttributes,
   TelemetryMetricKind,
@@ -63,6 +61,8 @@ import type {
   TelemetryObservationUpdate,
   TelemetryRuntime,
 } from "./index.js";
+
+import { version } from "@/version.js";
 
 type OtlpProtocol = "grpc" | "http/json" | "http/protobuf";
 type SentryModule = typeof Sentry;

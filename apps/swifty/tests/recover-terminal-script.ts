@@ -25,7 +25,7 @@
 // than mocked. Spawned with cwd set to a temp directory that receives crash.log.
 //
 // Usage: tsx recover-terminal-script.ts <uncaught|stdio|other>
-import { recover } from "../src/recover.js";
+import { recover } from "@/recover.js";
 
 const mode = process.argv[2] ?? "uncaught";
 

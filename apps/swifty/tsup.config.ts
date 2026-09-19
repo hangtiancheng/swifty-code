@@ -44,8 +44,10 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 // a consumer embedding the library in a non-terminal host would get a
 // terminal-bound graph. `tests/build-guards.test.ts` recomputes this set from
 // the actual import sites and fails on drift, so it cannot go stale silently.
-// react/react-dom are deliberately absent: the cross-platform hooks under
-// src/ui/** are public API and depend on them.
+// react is included: the barrel no longer re-exports src/ui, so react is
+// reached exclusively from the terminal layer. react-dom is absent — only the
+// standalone browser bundle (src/remote/fe, own tsup build) imports it, which
+// never enters the CLI/library graph.
 const uiOnlyDeps = [
   "ink",
   "ansi-escapes",
@@ -54,6 +56,7 @@ const uiOnlyDeps = [
   "cli-highlight",
   "cli-table3",
   "fuse.js",
+  "marked",
   "node-emoji",
   "react",
   "slice-ansi",

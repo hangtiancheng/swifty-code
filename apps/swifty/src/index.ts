@@ -27,8 +27,9 @@
 // groups. The CLI entry (bin) is dist/main.js; nothing here may import from
 // src/ui or any ui-only dependency (ink, chalk, ...). That is enforced
 // at build time by the ban-ui-only-deps esbuild plugin in
-// tsup.config.ts: reaching one of them fails the build. react/react-dom are
-// not in that set — the cross-platform hooks under src/ui/** are public API.
+// tsup.config.ts: reaching one of them fails the build. react is in that set —
+// nothing outside the terminal layer may use it; react-dom is imported only by
+// the standalone browser bundle under src/remote/fe, outside this graph.
 
 // === acp ===
 export * as Acp from "./acp/index.js";

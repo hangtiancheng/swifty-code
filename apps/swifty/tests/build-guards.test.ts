@@ -86,8 +86,18 @@ const deriveUIOnlyDeps = (): string[] => {
     }
   };
 
+  // src/remote/fe is a standalone browser bundle with its own tsup build
+  // (`pnpm build:fe`), served as static assets by the remote server. It is
+  // never part of the CLI/library import graph, so its imports (react,
+  // react-dom, dompurify, marked) must not count as import sites here.
+  const fePrefix = "src/remote/fe/";
+
   const walk = (directory: string): void => {
     for (const entry of ts.sys.readDirectory(directory, [".ts", ".tsx"])) {
+      const relativeEntry = entry.slice(appRoot.length + 1).replaceAll("\\", "/");
+      if (relativeEntry.startsWith(fePrefix)) {
+        continue;
+      }
       visit(entry);
     }
   };
@@ -125,13 +135,20 @@ describe("library build ui-only dependency guard", () => {
     expect(uiOnlyPattern.test("chalkboard")).toBe(false);
   });
 
-  it("keeps react and other non-terminal dependencies out of the ban", () => {
+  it("bans react and keeps server-safe dependencies out of the ban", () => {
+    // The barrel does not re-export src/ui, so react and marked are reached
+    // exclusively from the terminal layer and are banned like the other
+    // ui-only deps.
+    for (const specifier of ["react", "react/jsx-runtime", "marked"]) {
+      expect(uiOnlyPattern.test(specifier)).toBe(true);
+    }
+    expect(uiOnlyDeps).toContain("react");
+    expect(uiOnlyDeps).toContain("marked");
+    // react-dom is imported only by the standalone browser bundle
+    // (src/remote/fe), never by the node graph — it is not part of the set.
     for (const specifier of [
-      "react",
-      "react/jsx-runtime",
       "react-dom",
       "react-dom/client",
-      "marked",
       "zod",
       "@anthropic-ai/sdk",
       "koa",
@@ -140,7 +157,6 @@ describe("library build ui-only dependency guard", () => {
     ]) {
       expect(uiOnlyPattern.test(specifier)).toBe(false);
     }
-    expect(uiOnlyDeps).not.toContain("react");
     expect(uiOnlyDeps).not.toContain("react-dom");
   });
 });
