@@ -47,7 +47,7 @@ export type Asker = (
 ) => Promise<Record<string /** question text */, string /** user chosen answer */>>;
 
 // Structured multiple-choices question tool
-// The actual prompting is delegated to an injected asker (the TUI dialog),
+// The actual prompting is delegated to an injected asker (the UI dialog),
 // the same pattern as onPermissionRequest
 export class AskUserQuestionTool implements Tool {
   // Use a hardcoded string instead of AskUserQuestionTool.name.replace("Tool", "")

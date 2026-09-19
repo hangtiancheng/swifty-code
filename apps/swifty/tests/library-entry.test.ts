@@ -28,7 +28,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { terminalOnlyPattern } from "../tsup.config.js";
+import { uiOnlyPattern } from "../tsup.config.js";
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const libDir = join(pkgRoot, "dist", "lib");
@@ -49,7 +49,7 @@ describe("cli entry (dist/main.js)", () => {
 });
 
 describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
-  it("imports no terminal-only dependency or src/tui module", () => {
+  it("imports no terminal-only dependency or src/ui module", () => {
     for (const file of readdirSync(libDir)) {
       if (!file.endsWith(".js") && !file.endsWith(".d.ts")) {
         continue;
@@ -57,12 +57,12 @@ describe.skipIf(!existsSync(libEntry))("library entry (dist/lib)", () => {
       const code = stripComments(readFileSync(join(libDir, file), "utf-8"));
       for (const [, specifier] of code.matchAll(moduleSpecifier)) {
         expect(
-          terminalOnlyPattern.test(specifier),
+          uiOnlyPattern.test(specifier),
           `${file} must not import the terminal-only dependency "${specifier}"`,
         ).toBe(false);
         expect(
-          specifier.startsWith("@/tui"),
-          `${file} must not import the TUI layer via "${specifier}"`,
+          specifier.startsWith("@/ui"),
+          `${file} must not import the UI layer via "${specifier}"`,
         ).toBe(false);
       }
     }

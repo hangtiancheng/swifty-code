@@ -29,15 +29,15 @@ import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runInline } from "@/skills/executor.js";
-import { AgentActivity } from "@/tui/agent-activity.js";
-import { CommittedMessage } from "@/tui/chat.js";
-import { Footer } from "@/tui/footer.js";
-import { renderMarkdown, renderStreamingMarkdown, type MarkdownCache } from "@/tui/markdown.js";
-import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
-import { ThinkingBlock } from "@/tui/thinking-block.js";
-import { ToolBlock } from "@/tui/tool-display.js";
-import { formatToolOutputPreview } from "@/tui/tool-preview.js";
+import { AgentActivity } from "@/ui/agent-activity.js";
+import { CommittedMessage } from "@/ui/chat.js";
+import { Footer } from "@/ui/footer.js";
+import { renderMarkdown, renderStreamingMarkdown, type MarkdownCache } from "@/ui/markdown.js";
 import { setThemeMode, THEME, thinkingLevelColor } from "@/ui/styles.js";
+import { truncateToWidth, visibleWidth, wrapToLines } from "@/ui/terminal-text.js";
+import { ThinkingBlock } from "@/ui/thinking-block.js";
+import { ToolBlock } from "@/ui/tool-display.js";
+import { formatToolOutputPreview } from "@/ui/tool-preview.js";
 
 // ToolCard and ThinkingBlock size themselves from useStdout().stdout.columns, which
 // renderToString never provides — Ink returns the process.stdout default (columns

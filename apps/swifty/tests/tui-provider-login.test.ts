@@ -30,7 +30,7 @@ import stringWidth from "string-width";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProviderConfig } from "@/config/index.js";
-import { ProviderLogin } from "@/tui/provider-login.js";
+import { ProviderLogin } from "@/ui/provider-login.js";
 
 vi.mock("ink", async (importOriginal) => ({
   ...(await importOriginal<typeof Ink>()),
@@ -273,7 +273,11 @@ describe("ProviderLogin", () => {
   });
 
   it("maps schema issues to fields and rejects invalid ranges", () => {
-    const { onSubmit } = mount({ ...validProvider, name: "", context_window: 999 });
+    const { onSubmit } = mount({
+      ...validProvider,
+      name: "",
+      context_window: 999,
+    });
 
     send("", { return: true });
 
@@ -362,7 +366,10 @@ describe("ProviderLogin model discovery", () => {
     await advance();
     send("-custom");
     await submit();
-    expect(onSubmit).toHaveBeenCalledWith({ ...validProvider, model: "model-a-custom" });
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...validProvider,
+      model: "model-a-custom",
+    });
   });
 
   it.each(["left", "right"])(
@@ -372,7 +379,10 @@ describe("ProviderLogin model discovery", () => {
       const { onSubmit } = mount({ ...validProvider, model: "manual-id" });
       nextFields(4);
       await advance();
-      const arrow = { leftArrow: direction === "left", rightArrow: direction === "right" };
+      const arrow = {
+        leftArrow: direction === "left",
+        rightArrow: direction === "right",
+      };
       send("", arrow);
       await submit();
       expect(onSubmit).toHaveBeenLastCalledWith({
@@ -405,7 +415,10 @@ describe("ProviderLogin model discovery", () => {
     send("", { end: true });
     send("-id");
     await submit();
-    expect(onSubmit).toHaveBeenCalledWith({ ...validProvider, model: "my-custoXmY-id" });
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...validProvider,
+      model: "my-custoXmY-id",
+    });
     expect(terminalOutput()).toContain("type/paste any ID");
     await advance(1_000);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -426,7 +439,10 @@ describe("ProviderLogin model discovery", () => {
       send("", { rightArrow: true });
       send("-id");
       await submit();
-      expect(onSubmit).toHaveBeenCalledWith({ ...validProvider, model: "manuaXl-id" });
+      expect(onSubmit).toHaveBeenCalledWith({
+        ...validProvider,
+        model: "manuaXl-id",
+      });
       expect(terminalOutput()).toContain(
         outcome === "failure" ? "Model discovery unavailable" : "No models returned",
       );
@@ -456,7 +472,10 @@ describe("ProviderLogin model discovery", () => {
         expect(onSubmit).not.toHaveBeenCalled();
         expect(terminalOutput()).toContain("Model is required");
       } else {
-        expect(onSubmit).toHaveBeenCalledWith({ ...validProvider, model: "in-progress" });
+        expect(onSubmit).toHaveBeenCalledWith({
+          ...validProvider,
+          model: "in-progress",
+        });
       }
     },
   );
@@ -558,7 +577,10 @@ describe("ProviderLogin model discovery", () => {
     nextFields(4);
     paste("manual-id");
     await submit();
-    expect(onSubmit).toHaveBeenCalledWith({ ...validProvider, model: "manual-id" });
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...validProvider,
+      model: "manual-id",
+    });
     await act(async () => {
       pending.resolve(Response.json({ data: [] }));
       await pending.promise;
@@ -595,7 +617,10 @@ describe("ProviderLogin model discovery", () => {
     "keeps discovery and manual-input hints readable at %s columns",
     async (columns) => {
       vi.mocked(useWindowSize).mockReturnValue({ columns, rows: 24 });
-      Object.defineProperty(process.stdout, "columns", { configurable: true, value: columns });
+      Object.defineProperty(process.stdout, "columns", {
+        configurable: true,
+        value: columns,
+      });
       mockModels("model-a", "model-b");
       mount();
       await advance();

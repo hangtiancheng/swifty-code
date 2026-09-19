@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-export type TelemetryMode = "print" | "remote" | "teammate" | "tui" | "unknown";
+export type TelemetryMode = "print" | "remote" | "teammate" | "terminal" | "unknown";
 export type TelemetryObservationKind = "agent" | "generation" | "tool";
 export type TelemetryMetricKind = "counter" | "histogram";
 export type TelemetryAttributes = Record<string, string | number | boolean>;

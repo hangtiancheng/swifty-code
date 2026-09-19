@@ -142,7 +142,7 @@ export async function runPrintMode(args: PrintArgs): Promise<void> {
   const teamManager = new TeamManager(workDir);
   const backgroundTaskManager = new TaskManager();
   // Share the background task registry with the command tools registered here
-  // (Bash/PowerShell; JavaScriptTool is TUI-only) so run_in_background and
+  // (Bash/PowerShell; JavaScriptTool is UI-only) so run_in_background and
   // timeout auto-background deliver results through the same notification
   // drain as background agents.
   attachBackgroundTaskManager(registry, backgroundTaskManager);

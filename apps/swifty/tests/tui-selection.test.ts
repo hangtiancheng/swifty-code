@@ -22,9 +22,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseResumeArgument } from "@/bootstrap/tui-selection.js";
+import { parseResumeArgument } from "@/ui/ui-selection.js";
 
-describe("TUI selection", () => {
+describe("UI selection", () => {
   it("parses interactive and direct resume requests", () => {
     expect(parseResumeArgument([])).toBeUndefined();
     expect(parseResumeArgument(["--resume"])).toBe(true);

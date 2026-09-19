@@ -28,9 +28,9 @@ import { render, type Instance } from "ink";
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TerminalInput } from "@/bootstrap/terminal-input.js";
-import { detectTerminalTheme } from "@/bootstrap/terminal-theme.js";
-import { ProviderSelect } from "@/tui/provider-select.js";
+import { ProviderSelect } from "@/ui/provider-select.js";
+import { TerminalInput } from "@/ui/terminal-input.js";
+import { detectTerminalTheme } from "@/ui/terminal-theme.js";
 
 function fakeTerminal() {
   const stream = new PassThrough();
@@ -66,7 +66,10 @@ beforeEach(() => {
   terminal = fakeTerminal();
   input = new TerminalInput(terminal.stdin);
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: true });
+  Object.defineProperty(process.stdout, "isTTY", {
+    configurable: true,
+    value: true,
+  });
   vi.stubEnv("SWIFTY_THEME", "");
   vi.stubEnv("COLORFGBG", "");
   vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -162,7 +165,12 @@ describe("terminal input report filtering", () => {
           ],
           onSelect,
         }),
-        { stdin: input.stdin, interactive: false, debug: true, patchConsole: false },
+        {
+          stdin: input.stdin,
+          interactive: false,
+          debug: true,
+          patchConsole: false,
+        },
       );
       await nextTick();
     });

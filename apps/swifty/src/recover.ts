@@ -87,7 +87,7 @@ let exitRecorded = false;
 /**
  * Writes the exit marker; subsequent calls are no-ops.
  *
- * The TUI runs in raw mode where the `exit` event may not fire on teardown,
+ * The UI runs in raw mode where the `exit` event may not fire on teardown,
  * so the main flow also calls this explicitly. Whichever path arrives first wins.
  */
 export function recordExit(code: number | string): void {

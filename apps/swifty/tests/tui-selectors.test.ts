@@ -32,16 +32,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProviderConfig } from "@/config/index.js";
 import type { SessionInfo } from "@/session/index.js";
-import { AskUserDialog } from "@/tui/ask-user-dialog.js";
-import { PermissionDialog } from "@/tui/permission-dialog.js";
-import { PlanApprovalDialog } from "@/tui/plan-approval.js";
-import { ProviderSelect } from "@/tui/provider-select.js";
-import { SelectorFrame } from "@/tui/selector-frame.js";
-import { SelectorListRow } from "@/tui/selector-list.js";
-import { updateSelectorQuery } from "@/tui/selector-search.js";
-import { SessionSelector } from "@/tui/session-selector.js";
-import { visibleWidth } from "@/tui/terminal-text.js";
+import { AskUserDialog } from "@/ui/ask-user-dialog.js";
+import { PermissionDialog } from "@/ui/permission-dialog.js";
+import { PlanApprovalDialog } from "@/ui/plan-approval.js";
+import { ProviderSelect } from "@/ui/provider-select.js";
+import { SelectorFrame } from "@/ui/selector-frame.js";
+import { SelectorListRow } from "@/ui/selector-list.js";
+import { updateSelectorQuery } from "@/ui/selector-search.js";
+import { SessionSelector } from "@/ui/session-selector.js";
 import { ICONS, setThemeMode, THEME } from "@/ui/styles.js";
+import { visibleWidth } from "@/ui/terminal-text.js";
 
 // Keep Ink's real layout and React hooks; invoke only the captured input callback.
 vi.mock("ink", async (importOriginal) => ({

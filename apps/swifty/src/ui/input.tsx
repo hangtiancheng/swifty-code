@@ -45,7 +45,7 @@ import type { PermissionMode } from "@/permissions/index.js";
 import { SKIP_DIRS } from "@/tools/types.js";
 import { ICONS, THEME } from "@/ui/styles.js";
 
-const log = createChildLogger({ module: "tui" });
+const log = createChildLogger({ module: "terminal" });
 
 // Suffix appended to skill-backed command descriptions (see wireSkillsToRegistry).
 const SKILL_TAG = "[skill]";
@@ -61,7 +61,7 @@ function scanWorkdirFiles(root: string, max = 2000): string[] {
     try {
       names = readdirSync(dir);
     } catch (err) {
-      log.error({ err }, "tui operation failed");
+      log.error({ err }, "terminal operation failed");
       return;
     }
     for (const name of names) {
@@ -77,7 +77,7 @@ function scanWorkdirFiles(root: string, max = 2000): string[] {
       try {
         isDir = statSync(full).isDirectory();
       } catch (err) {
-        log.error({ err }, "tui operation failed");
+        log.error({ err }, "terminal operation failed");
         continue;
       }
       if (isDir) {

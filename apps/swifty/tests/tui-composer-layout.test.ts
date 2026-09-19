@@ -33,13 +33,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Command } from "@/commands/commands.js";
 import { saveClipboardImage } from "@/images/clipboard.js";
-import { Footer } from "@/tui/footer.js";
-import { InputBox } from "@/tui/input.js";
-import type { InputDraft } from "@/tui/input.js";
-import { InteractionDock } from "@/tui/interaction-dock.js";
-import { StatusBorder } from "@/tui/status-border.js";
-import { truncateToWidth, visibleWidth, wrapToLines } from "@/tui/terminal-text.js";
+import { Footer } from "@/ui/footer.js";
+import { InputBox } from "@/ui/input.js";
+import type { InputDraft } from "@/ui/input.js";
+import { InteractionDock } from "@/ui/interaction-dock.js";
+import { StatusBorder } from "@/ui/status-border.js";
 import { ICONS, THEME } from "@/ui/styles.js";
+import { truncateToWidth, visibleWidth, wrapToLines } from "@/ui/terminal-text.js";
 
 const terminal = vi.hoisted(() => {
   const input: { current: ((text: string, key: Key) => void) | null } = {

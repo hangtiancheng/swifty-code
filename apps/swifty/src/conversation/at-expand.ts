@@ -26,7 +26,7 @@ import { isAbsolute, join } from "node:path";
 import { isImagePath, MAX_IMAGES_PER_MESSAGE, loadImageAttachment } from "@/images/index.js";
 import { createChildLogger } from "@/logger/index.js";
 
-const log = createChildLogger({ module: "tui" });
+const log = createChildLogger({ module: "terminal" });
 const MAX_INLINE_BYTES = 100_000;
 // Files larger than this are never read, even for a narrow line range.
 const MAX_RANGE_FILE_BYTES = 10_000_000;
@@ -98,7 +98,7 @@ export function expandAtRefs(text: string, workDir: string): string {
         appendix += `\n\n<file path="${ref}">\n${readFileSync(p, "utf-8")}\n</file>`;
       }
     } catch (err) {
-      log.error({ err }, "TUI operation failed");
+      log.error({ err }, "UI operation failed");
       // not a readable file → leave the @token as literal text
     }
   }
@@ -153,7 +153,7 @@ export async function expandAtRefsWithImages(
           });
           appendix += `\n\n<image type="base64" media_type="${attachment.mediaType}" path="${refPath}" />`;
         } catch (err) {
-          log.error({ err: err }, "TUI operation failed");
+          log.error({ err: err }, "UI operation failed");
         }
       } else if (lineStart !== undefined && lineEnd !== undefined) {
         if (st.size <= MAX_RANGE_FILE_BYTES) {
@@ -166,7 +166,7 @@ export async function expandAtRefsWithImages(
         appendix += `\n\n<file path="${ref}">\n${readFileSync(p, "utf-8")}\n</file>`;
       }
     } catch (err) {
-      log.error({ err }, "TUI operation failed");
+      log.error({ err }, "UI operation failed");
       // not a readable file → leave the @token as literal text
     }
   }

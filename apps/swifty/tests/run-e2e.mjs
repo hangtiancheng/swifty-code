@@ -24,7 +24,7 @@
 /**
  * Automated E2E test runner for Swifty via tmux.
  *
- * Ported from run-e2e.sh. Drives the TUI by shelling out to `tmux`, sends
+ * Ported from run-e2e.sh. Drives the UI by shelling out to `tmux`, sends
  * prompts parsed from markdown spec files, and checks assertions against the
  * captured pane output. Requires Node 18+ and `tmux` on PATH.
  */
@@ -124,7 +124,7 @@ function log(msg) {
 }
 
 /**
- * Start a fresh tmux session running the TUI, waiting for it to be ready.
+ * Start a fresh tmux session running the UI, waiting for it to be ready.
  * @returns {Promise<boolean>}
  */
 async function startSession() {

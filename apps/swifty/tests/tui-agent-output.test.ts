@@ -25,8 +25,8 @@ import { act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentEvent } from "@/agent/events.js";
-import type { ChatMessage } from "@/tui/chat.js";
-import { useAgentOutput, type AgentCardDecoration } from "@/tui/use-agent-output.js";
+import type { ChatMessage } from "@/ui/chat.js";
+import { useAgentOutput, type AgentCardDecoration } from "@/ui/use-agent-output.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isPromise = (obj: unknown): obj is Promise<unknown> =>
@@ -270,15 +270,28 @@ describe("agent output hook", () => {
         type: "tool_use",
         toolName: "Agent",
         toolId: "agent-stop",
-        args: { description: "fix bug", prompt: "fix it", subagent_type: "general-purpose" },
+        args: {
+          description: "fix bug",
+          prompt: "fix it",
+          subagent_type: "general-purpose",
+        },
       },
       {
         type: "tool_use",
         toolName: "Agent",
         toolId: "agent-done",
-        args: { description: "survey code", prompt: "survey", subagent_type: "explore" },
+        args: {
+          description: "survey code",
+          prompt: "survey",
+          subagent_type: "explore",
+        },
       },
-      { type: "tool_use", toolName: "Read", toolId: "read-1", args: { file_path: "a.ts" } },
+      {
+        type: "tool_use",
+        toolName: "Read",
+        toolId: "read-1",
+        args: { file_path: "a.ts" },
+      },
       {
         type: "tool_result",
         toolName: "Agent",
@@ -368,7 +381,12 @@ describe("agent output hook", () => {
     }
 
     send(
-      { type: "tool_use", toolName: "TeamDelete", toolId: "delete", args: { name: "alpha" } },
+      {
+        type: "tool_use",
+        toolName: "TeamDelete",
+        toolId: "delete",
+        args: { name: "alpha" },
+      },
       {
         type: "tool_result",
         toolName: "TeamDelete",
@@ -406,7 +424,12 @@ describe("agent output hook", () => {
 
     // TeamCreate deletes every existing team, so all pinned cards are stale.
     send(
-      { type: "tool_use", toolName: "TeamCreate", toolId: "create", args: { team_name: "beta" } },
+      {
+        type: "tool_use",
+        toolName: "TeamCreate",
+        toolId: "create",
+        args: { team_name: "beta" },
+      },
       {
         type: "tool_result",
         toolName: "TeamCreate",
@@ -518,7 +541,12 @@ describe("agent output hook", () => {
     send(
       { type: "thinking_text", text: "Investigating" },
       { type: "stream_text", text: "Partial response" },
-      { type: "tool_use", toolId: "read", toolName: "Read", args: { file_path: "a.ts" } },
+      {
+        type: "tool_use",
+        toolId: "read",
+        toolName: "Read",
+        args: { file_path: "a.ts" },
+      },
       {
         type: "tool_result",
         toolId: "read",

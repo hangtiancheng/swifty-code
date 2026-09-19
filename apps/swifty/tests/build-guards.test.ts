@@ -28,7 +28,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import pkg from "../package.json";
-import { findAmbiguousExports, terminalOnlyDeps, terminalOnlyPattern } from "../tsup.config.js";
+import { findAmbiguousExports, uiOnlyDeps, uiOnlyPattern } from "../tsup.config.js";
 
 const appRoot = join(import.meta.dirname, "..");
 const srcRoot = join(appRoot, "src");
@@ -37,7 +37,7 @@ const dependencyNames = Object.keys(pkg.dependencies);
 /**
  * Recompute the terminal-only set from the sources: a dependency is terminal-only
  * when every module importing it belongs to the terminal layer (src/main.tsx and
- * src/tui/**). Type-only imports are ignored — they are erased and cannot make a
+ * src/ui/**). Type-only imports are ignored — they are erased and cannot make a
  * package reachable at runtime.
  */
 const deriveTerminalOnlyDeps = (): string[] => {
@@ -94,7 +94,7 @@ const deriveTerminalOnlyDeps = (): string[] => {
   walk(srcRoot);
 
   const isTerminalLayer = (path: string): boolean =>
-    path.startsWith("src/tui/") || path === "src/main.tsx";
+    path.startsWith("src/ui/") || path === "src/main.tsx";
 
   return dependencyNames
     .filter((dependency) => {
@@ -106,25 +106,23 @@ const deriveTerminalOnlyDeps = (): string[] => {
 
 describe("library build terminal-only dependency guard", () => {
   it("declares every entry as a real dependency", () => {
-    const undeclared = terminalOnlyDeps.filter(
-      (dependency) => !dependencyNames.includes(dependency),
-    );
+    const undeclared = uiOnlyDeps.filter((dependency) => !dependencyNames.includes(dependency));
     expect(undeclared).toEqual([]);
   });
 
   it("matches the set derived from the actual import sites", () => {
-    expect(deriveTerminalOnlyDeps()).toEqual([...terminalOnlyDeps].sort());
+    expect(deriveTerminalOnlyDeps()).toEqual([...uiOnlyDeps].sort());
   });
 
   it("matches a terminal-only package and its subpaths only", () => {
-    expect(terminalOnlyPattern.test("ink")).toBe(true);
-    expect(terminalOnlyPattern.test("ink/build/devtools.js")).toBe(true);
-    expect(terminalOnlyPattern.test("chalk")).toBe(true);
-    expect(terminalOnlyPattern.test("chalk/source/index.js")).toBe(true);
-    expect(terminalOnlyPattern.test("fuse.js")).toBe(true);
+    expect(uiOnlyPattern.test("ink")).toBe(true);
+    expect(uiOnlyPattern.test("ink/build/devtools.js")).toBe(true);
+    expect(uiOnlyPattern.test("chalk")).toBe(true);
+    expect(uiOnlyPattern.test("chalk/source/index.js")).toBe(true);
+    expect(uiOnlyPattern.test("fuse.js")).toBe(true);
     // Prefixes of a listed name are different packages.
-    expect(terminalOnlyPattern.test("ink-foo")).toBe(false);
-    expect(terminalOnlyPattern.test("chalkboard")).toBe(false);
+    expect(uiOnlyPattern.test("ink-foo")).toBe(false);
+    expect(uiOnlyPattern.test("chalkboard")).toBe(false);
   });
 
   it("keeps react and other non-terminal dependencies out of the ban", () => {
@@ -140,10 +138,10 @@ describe("library build terminal-only dependency guard", () => {
       "sharp",
       "ws",
     ]) {
-      expect(terminalOnlyPattern.test(specifier)).toBe(false);
+      expect(uiOnlyPattern.test(specifier)).toBe(false);
     }
-    expect(terminalOnlyDeps).not.toContain("react");
-    expect(terminalOnlyDeps).not.toContain("react-dom");
+    expect(uiOnlyDeps).not.toContain("react");
+    expect(uiOnlyDeps).not.toContain("react-dom");
   });
 });
 

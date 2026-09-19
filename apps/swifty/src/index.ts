@@ -25,7 +25,7 @@
 // (`export * as Group from "./group/index.js"`; each group barrel nests its
 // submodules the same way), so top-level export names cannot collide across
 // groups. The CLI entry (bin) is dist/main.js; nothing here may import from
-// src/tui or any terminal-only dependency (ink, chalk, ...). That is enforced
+// src/ui or any terminal-only dependency (ink, chalk, ...). That is enforced
 // at build time by the ban-terminal-only-deps esbuild plugin in
 // tsup.config.ts: reaching one of them fails the build. react/react-dom are
 // not in that set — the cross-platform hooks under src/ui/** are public API.
@@ -38,9 +38,9 @@ export * as Agent from "./agent/index.js";
 
 // === bootstrap ===
 export * as Bootstrap from "./bootstrap/index.js";
-// export * from "./bootstrap/terminal-input.js" // Exclude TUI
-// export * from "./bootstrap/terminal-theme.js" // Exclude TUI
-// export * from "./bootstrap/tui-selection.js" // Exclude TUI
+// export * from "./bootstrap/terminal-input.js" // Exclude UI
+// export * from "./bootstrap/terminal-theme.js" // Exclude UI
+// export * from "./bootstrap/ui-selection.js" // Exclude UI
 
 // === code-review ===
 export * as CodeReview from "./code-review/index.js";
@@ -124,9 +124,6 @@ export * as ToolResult from "./tool-result/index.js";
 // === tools ===
 export * as Tools from "./tools/index.js";
 
-// === ui ===
-export * as UI from "./ui/index.js";
-
 // === utils ===
 export * as Utils from "./utils/index.js";
 
@@ -136,7 +133,7 @@ export * as VSCode from "./vscode/index.js";
 // === worktree ===
 export * as Worktree from "./worktree/index.js";
 
-// Process-level headless entry points. They carry no TUI, but on failure they
+// Process-level headless entry points. They carry no UI, but on failure they
 // may write crash dumps or process.exit() — prefer the composable namespaces
 // above (Agent, Bootstrap.ToolRegistry, ...) in long-lived host processes.
 export * as PrintMode from "./print-mode.js";

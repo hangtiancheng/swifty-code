@@ -21,7 +21,7 @@
  */
 
 const CONTEXT_LINES = 3;
-// Prevent excessively large diffs from overwhelming TUI rendering and context window usage
+// Prevent excessively large diffs from overwhelming UI rendering and context window usage
 const MAX_DIFF_LINES = 200;
 
 export interface DiffResult {

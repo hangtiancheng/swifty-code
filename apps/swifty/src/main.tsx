@@ -28,9 +28,6 @@ import {
   formatInteractionSummary,
   type InteractionSummary,
 } from "./bootstrap/interaction-summary.js";
-import { TerminalInput } from "./bootstrap/terminal-input.js";
-import { detectTerminalTheme } from "./bootstrap/terminal-theme.js";
-import { parseResumeArgument } from "./bootstrap/tui-selection.js";
 import { forkEnabled, loadConfig, withProjectMcpServers } from "./config/index.js";
 import { initLogger, logger } from "./logger/index.js";
 import { parsePrintFlags, runPrintMode } from "./print-mode.js";
@@ -44,9 +41,12 @@ import {
   setTelemetryMode,
   shutdownTelemetry,
 } from "./telemetry/index.js";
-import { App } from "./tui/app.js";
-import { installSyncOutput } from "./tui/sync-output.js";
+import { App } from "./ui/app.js";
 import { setThemeMode } from "./ui/styles.js";
+import { installSyncOutput } from "./ui/sync-output.js";
+import { TerminalInput } from "./ui/terminal-input.js";
+import { detectTerminalTheme } from "./ui/terminal-theme.js";
+import { parseResumeArgument } from "./ui/ui-selection.js";
 import { asErrorString } from "./utils/index.js";
 
 async function main() {
@@ -143,9 +143,9 @@ async function main() {
     return;
   }
 
-  // TUI mode: initialize logger before rendering.
-  setTelemetryMode("tui");
-  initLogger({ sessionId: newSessionId(), mode: "tui" });
+  // UI mode: initialize logger before rendering.
+  setTelemetryMode("terminal");
+  initLogger({ sessionId: newSessionId(), mode: "terminal" });
   const terminalInput = new TerminalInput(process.stdin);
   setThemeMode(await detectTerminalTheme(terminalInput));
   installSyncOutput();

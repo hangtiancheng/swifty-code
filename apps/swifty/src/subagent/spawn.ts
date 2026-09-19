@@ -39,7 +39,7 @@ import type { ToolRegistry } from "@/tools/registry.js";
 
 /**
  * Marker appended to a subagent's output when its run was interrupted. Shared
- * with the TUI so restored transcripts can render interrupted Agent cards with
+ * with the UI so restored transcripts can render interrupted Agent cards with
  * the same "stopped" styling as live ones.
  */
 export const SUBAGENT_INTERRUPTED_MARKER = "[Interrupted]";

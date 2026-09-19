@@ -95,7 +95,7 @@ function decorateTool(
     tool.toolName === "JavaScript"
   ) {
     // A running foreground command/evaluation can be moved to the background
-    // with Ctrl+B — but only while the background subsystem is on: the TUI
+    // with Ctrl+B — but only while the background subsystem is on: the UI
     // always wires a task manager, so the env switch is the only runtime
     // disable, and advertising a no-op keypress would be misleading.
     const backgroundAvailable = process.env.SWIFTY_DISABLE_BACKGROUND_TASKS !== "1";

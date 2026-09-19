@@ -39,14 +39,14 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
   dependencies?: Record<string, string>;
 };
 
-// Terminal-only dependencies: reached exclusively from the terminal layer
-// (src/main.tsx and src/tui/**). The library barrel must never pull them in, or
+// UI-only dependencies: reached exclusively from the terminal layer
+// (src/main.tsx and src/ui/**). The library barrel must never pull them in, or
 // a consumer embedding the library in a non-terminal host would get a
 // terminal-bound graph. `tests/build-guards.test.ts` recomputes this set from
 // the actual import sites and fails on drift, so it cannot go stale silently.
 // react/react-dom are deliberately absent: the cross-platform hooks under
 // src/ui/** are public API and depend on them.
-const terminalOnlyDeps = [
+const uiOnlyDeps = [
   "ink",
   "ansi-escapes",
   "ansi-regex",
@@ -55,6 +55,7 @@ const terminalOnlyDeps = [
   "cli-table3",
   "fuse.js",
   "node-emoji",
+  "react",
   "slice-ansi",
   "string-width",
   "supports-hyperlinks",
@@ -64,10 +65,8 @@ const terminalOnlyDeps = [
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Matches the package itself and any subpath ("chalk" and "chalk/source/index.js").
-const terminalOnlyPattern = new RegExp(
-  `^(?:${terminalOnlyDeps.map(escapeRegExp).join("|")})(?:/|$)`,
-);
-const terminalOnlySet = new Set<string>(terminalOnlyDeps);
+const uiOnlyPattern = new RegExp(`^(?:${uiOnlyDeps.map(escapeRegExp).join("|")})(?:/|$)`);
+const uiOnlySet = new Set<string>(uiOnlyDeps);
 
 // CLI build bundles everything (noExternal), so CJS deps (e.g. signal-exit)
 // use bare require("assert") which esbuild can't shim in ESM output —
@@ -83,7 +82,9 @@ const externalizeNodeBuiltinsPlugin: EsbuildPlugin = {
     // Native modules and packages with runtime assets must stay external so
     // their binaries and companion files remain resolvable from node_modules.
     build.onResolve(
-      { filter: /^(?:sharp|isolated-vm|@anthropic-ai\/sandbox-runtime)(?:\/|$)/ },
+      {
+        filter: /^(?:sharp|isolated-vm|@anthropic-ai\/sandbox-runtime)(?:\/|$)/,
+      },
       (args) => ({
         path: args.path,
         external: true,
@@ -100,7 +101,7 @@ const externalizeNodeBuiltinsPlugin: EsbuildPlugin = {
   },
 };
 
-const tuiDirs = [join(__dirname, "src", "tui") + sep];
+const uiDirs = [join(__dirname, "src", "ui") + sep];
 
 // Vite-style `?raw` imports (e.g. "./snippets/macos.swift?raw"): load the file
 // as a default-exported string, mirroring Vite/Vitest behavior.
@@ -120,31 +121,31 @@ const rawImportPlugin: EsbuildPlugin = {
 
 // Library-build guard: the barrel entry (src/index.ts) must never reach the
 // terminal layer, neither through a bare terminal-only specifier nor through a
-// path resolving into src/tui. Failing the build is the point.
+// path resolving into src/ui. Failing the build is the point.
 //
 // The bare-specifier rule only fires because libConfig lists the terminal-only
 // packages in `noExternal`: tsup registers its own resolver ahead of user
 // plugins and auto-externalizes every `dependencies` entry, so without
 // `noExternal` those requests are resolved as external before this plugin sees
 // them and the guard degrades to dead code.
-const banTerminalOnlyPlugin: EsbuildPlugin = {
-  name: "ban-terminal-only-deps",
+const banUIOnlyPlugin: EsbuildPlugin = {
+  name: "ban-ui-only-deps",
   setup(build) {
     const ban = (importer: string, path: string, kind: string): never => {
       throw new Error(
         `[library-build] ${kind} "${path}" (imported by ${importer || "entry"}) must not be reachable from src/index.ts`,
       );
     };
-    build.onResolve({ filter: terminalOnlyPattern }, (args) =>
-      ban(args.importer, args.path, "terminal-only dependency"),
+    build.onResolve({ filter: uiOnlyPattern }, (args) =>
+      ban(args.importer, args.path, "ui-only dependency"),
     );
-    build.onResolve({ filter: /^@\/tui(\/|$)/ }, (args) =>
-      ban(args.importer, args.path, "TUI module"),
+    build.onResolve({ filter: /^@\/ui(\/|$)/ }, (args) =>
+      ban(args.importer, args.path, "UI module"),
     );
     build.onResolve({ filter: /^\.\.?\// }, (args) => {
       const resolved = resolve(dirname(args.importer), args.path);
-      if (tuiDirs.some((directory) => resolved.startsWith(directory))) {
-        ban(args.importer, args.path, "TUI module");
+      if (uiDirs.some((directory) => resolved.startsWith(directory))) {
+        ban(args.importer, args.path, "UI module");
       }
       return undefined;
     });
@@ -179,7 +180,10 @@ const findAmbiguousExports = (tsconfigPath: string, projectRoot: string): Export
     );
   }
   const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, projectRoot);
-  const program = ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options });
+  const program = ts.createProgram({
+    rootNames: parsed.fileNames,
+    options: parsed.options,
+  });
 
   const srcPrefix = join(projectRoot, "src") + sep;
   const conflicts: ExportConflict[] = [];
@@ -252,7 +256,7 @@ const cliConfig: Options = {
 };
 
 // Library entry: keeps dependencies external (consumers resolve them from their
-// own node_modules), emits bundled d.ts, and must never reach src/tui. outDir is
+// own node_modules), emits bundled d.ts, and must never reach src/ui. outDir is
 // nested under dist/ so the two builds' chunk graphs never overwrite each other.
 const libConfig: Options = {
   entry: ["src/index.ts"],
@@ -272,9 +276,9 @@ const libConfig: Options = {
   // Runtime dependencies stay external, except the terminal-only ones: those
   // must reach banTerminalOnlyPlugin, so a reachable terminal-only package fails
   // the build instead of being silently kept as an external import.
-  external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !terminalOnlySet.has(dep)),
-  noExternal: [terminalOnlyPattern],
-  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin, banTerminalOnlyPlugin],
+  external: [...Object.keys(pkg.dependencies ?? {})].filter((dep) => !uiOnlySet.has(dep)),
+  noExternal: [uiOnlyPattern],
+  esbuildPlugins: [rawImportPlugin, externalizeNodeBuiltinsPlugin, banUIOnlyPlugin],
   onSuccess: async () => {
     assertNoAmbiguousExports();
   },
@@ -284,4 +288,4 @@ export default defineConfig([cliConfig, libConfig]);
 
 // Exported for tests/build-guards.test.ts, which asserts the declared set still
 // matches the import sites and that the scan detects an injected conflict.
-export { findAmbiguousExports, terminalOnlyDeps, terminalOnlyPattern };
+export { findAmbiguousExports, uiOnlyDeps as uiOnlyDeps, uiOnlyPattern as uiOnlyPattern };

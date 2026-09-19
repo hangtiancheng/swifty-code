@@ -80,7 +80,7 @@ export class BashTool implements Tool {
   };
 
   /**
-   * Background task registry, injected by the host (TUI / print mode / remote
+   * Background task registry, injected by the host (UI / print mode / remote
    * server) — the same instance the Agent tool uses, so completion
    * notifications share one drain and TaskStop covers both. When null, Bash is
    * foreground-only: run_in_background disappears from the schema, timeouts
@@ -297,7 +297,7 @@ export class BashTool implements Tool {
     outputFile: { path: string; fd: number },
     manager: TaskManager | null,
   ): CommandHandle {
-    // Async execution keeps the Node event loop free: with spawnSync the TUI
+    // Async execution keeps the Node event loop free: with spawnSync the UI
     // froze (spinner animation, elapsed timers, keyboard input) for the whole
     // command duration.
     //

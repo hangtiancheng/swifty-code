@@ -22,9 +22,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatToolOutputPreview } from "@/tui/tool-preview.js";
+import { formatToolOutputPreview } from "@/ui/tool-preview.js";
 
-describe("TUI v2 tool previews", () => {
+describe("UI v2 tool previews", () => {
   it("shows the tail of shell output", () => {
     const output = Array.from({ length: 8 }, (_, index) => `line ${String(index + 1)}`).join("\n");
     const preview = formatToolOutputPreview("Bash", output);

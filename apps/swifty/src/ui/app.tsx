@@ -142,7 +142,7 @@ import { useIdeInput } from "@/ui/use-ide-input.js";
 import { useTeammateStates } from "@/ui/use-teammate-states.js";
 import { asErrorString, asRecord, contentToText, formatToolArgs, strArg } from "@/utils/index.js";
 
-const log = createChildLogger({ module: "tui" });
+const log = createChildLogger({ module: "terminal" });
 
 type AppState = "providerSelect" | "chat";
 
@@ -552,7 +552,10 @@ export function App({
         } catch (err) {
           setMessages((prev) => [
             ...prev,
-            { role: "system", content: `MCP reload failed: ${asErrorString(err)}` },
+            {
+              role: "system",
+              content: `MCP reload failed: ${asErrorString(err)}`,
+            },
           ]);
           return;
         }
@@ -569,7 +572,10 @@ export function App({
           setMcpInfo({ servers: [], toolCount: 0 });
           setMessages((prev) => [
             ...prev,
-            { role: "system", content: "MCP config reloaded: no MCP servers are configured." },
+            {
+              role: "system",
+              content: "MCP config reloaded: no MCP servers are configured.",
+            },
           ]);
           return;
         }
@@ -657,7 +663,7 @@ export function App({
         registryRef.current.register(new LoadSkillTool(catalog, skillHostRef.current));
         // Register InstallSkill so the model can install skills from a path/URL.
         // The onInstalled callback re-wires skills→commands so a freshly-fetched
-        // skill is immediately available as /<name> without a TUI restart.
+        // skill is immediately available as /<name> without a UI restart.
         registryRef.current.register(
           new InstallSkillTool(workDir, catalog, () => {
             // Only rewire the slash commands; leave the system prompt alone.
@@ -667,7 +673,7 @@ export function App({
           }),
         );
 
-        // Register AskUserQuestion, delegating the prompt to the TUI dialog.
+        // Register AskUserQuestion, delegating the prompt to the UI dialog.
         registryRef.current.register(
           new AskUserQuestionTool(
             (questions) =>
@@ -756,7 +762,7 @@ export function App({
         // take precedence. Idempotent: skips names already taken.
         wireSkillsToRegistry(catalog, cmdRegistryRef.current, skillHostRef.current);
 
-        // Track a subagent run for the TUI. Maintains the live progress card
+        // Track a subagent run for the UI. Maintains the live progress card
         // (SubagentProgress) and records the terminal decoration (status +
         // progress line) consumed when the Agent call is committed to the
         // transcript, so an interrupted run renders as red "stopped" instead
@@ -778,7 +784,10 @@ export function App({
           // progress line shows it until the next tool call replaces it.
           let lastTool: string | undefined;
           const syncRunningTools = () => {
-            const tools = [...runningTools].map(([toolId, toolName]) => ({ toolId, toolName }));
+            const tools = [...runningTools].map(([toolId, toolName]) => ({
+              toolId,
+              toolName,
+            }));
             setSubagents((prev) =>
               prev.map((subagent) =>
                 subagent.toolCallId === toolCallId
@@ -806,7 +815,13 @@ export function App({
             setSubagents((prev) =>
               prev.map((subagent) =>
                 subagent.toolCallId === toolCallId
-                  ? { ...subagent, activeTools: [], lastTool: undefined, status, output }
+                  ? {
+                      ...subagent,
+                      activeTools: [],
+                      lastTool: undefined,
+                      status,
+                      output,
+                    }
                   : subagent,
               ),
             );
@@ -828,7 +843,11 @@ export function App({
                 setSubagents((prev) =>
                   prev.map((subagent) =>
                     subagent.toolCallId === toolCallId
-                      ? { ...subagent, turnCount: subagent.turnCount + 1, activeTools: [] }
+                      ? {
+                          ...subagent,
+                          turnCount: subagent.turnCount + 1,
+                          activeTools: [],
+                        }
                       : subagent,
                   ),
                 );

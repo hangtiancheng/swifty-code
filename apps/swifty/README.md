@@ -1,6 +1,6 @@
 # Swifty
 
-Swifty is a terminal-based AI coding agent. It provides an interactive TUI (terminal user interface) for conversing with large language models, executing code, manipulating files, and orchestrating multi-agent workflows, all from the command line.
+Swifty is a terminal-based AI coding agent. It provides an interactive UI (terminal user interface) for conversing with large language models, executing code, manipulating files, and orchestrating multi-agent workflows, all from the command line.
 
 ## Overview
 
@@ -226,11 +226,11 @@ In addition to `mcp_servers` in `config.yaml`, Swifty reads a project-level `.mc
 
 Each entry takes `command`/`args`/`env` (stdio) or `url`/`headers` with `type` of `http` or `sse`. Environment references support `${VAR}`, `${VAR:-default}`, and `$VAR` in commands, arguments, environment values, URLs, and headers; an unset variable without a default prevents that server from connecting. These servers are merged with the user-level `mcp_servers`; on a name collision the user-level entry wins. At startup, a malformed `.mcp.json` is ignored (logged), while an invalid individual server entry is skipped without disabling valid siblings. During `/mcp reload`, invalid config aborts the reload so the current connections remain intact.
 
-After editing `.mcp.json` or `config.yaml`, use `/mcp reload` in the TUI to re-read both sources. Unchanged connections stay live, removed servers disconnect, new servers connect, and servers whose settings changed restart.
+After editing `.mcp.json` or `config.yaml`, use `/mcp reload` in the UI to re-read both sources. Unchanged connections stay live, removed servers disconnect, new servers connect, and servers whose settings changed restart.
 
 ## Usage
 
-### Interactive TUI Mode
+### Interactive UI Mode
 
 ```bash
 swifty
@@ -238,7 +238,7 @@ swifty
 
 Launches the terminal interface. If multiple providers are configured, a provider selection screen appears first.
 
-Use `/login` to configure and activate a provider from the TUI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or cycle the thinking level, Enter to save, and Esc to cancel. Changing the protocol also moves an untouched thinking level to that protocol's default.
+Use `/login` to configure and activate a provider from the UI. When no provider is configured, the login form opens automatically. Name, protocol, base URL, API key, and model are required in the form. Use ↑↓ or Tab to move between fields, ←→ to select protocol or cycle the thinking level, Enter to save, and Esc to cancel. Changing the protocol also moves an untouched thinking level to that protocol's default.
 
 The form saves to `~/.swifty/config.yaml`, retaining existing providers and other settings. `base_url` is the provider identity: saving a provider whose `base_url` already exists replaces that entry in place instead of adding another one, and names may repeat freely. Context window accepts integers from 1000 to 10000000; max output accepts integers from 1 to 1000000 and must not exceed the context window. Empty optional fields use the defaults above.
 
@@ -263,7 +263,7 @@ Starts a Koa HTTP server and WebSocket bridge. The bundled React frontend is ser
 
 ### Slash Commands
 
-Inside the TUI, these commands are available:
+Inside the UI, these commands are available:
 
 | Command                 | Description                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -311,9 +311,9 @@ Besides the `swifty` CLI, the package ships a library entry for embedding Swifty
 | CLI (`swifty`) | `dist/main.js`                             | Fully bundled, minified single file with a shebang; only Node built-ins stay external.                        |
 | Library        | `dist/lib/index.js`, `dist/lib/index.d.ts` | The `src/index.ts` barrel; runtime dependencies stay external and resolve from the consumer's `node_modules`. |
 
-The library entry is terminal-independent by contract: it must never reach `src/tui/**` or a terminal-only dependency, so a host without a TTY (a server, an editor extension, a test harness) can import it. `pnpm build` enforces that contract:
+The library entry is terminal-independent by contract: it must never reach `src/ui/**` or a terminal-only dependency, so a host without a TTY (a server, an editor extension, a test harness) can import it. `pnpm build` enforces that contract:
 
-- **Terminal-only dependency ban** — the `ban-terminal-only-deps` plugin in `tsup.config.ts` fails the build when a bundle-reachable module imports one of the terminal-only packages (`ink`, `chalk`, `ansi-escapes`, …) or a path inside `src/tui`. The list is declared once in `tsup.config.ts` and re-derived from the actual import sites by `tests/build-guards.test.ts`, which fails if the two drift apart.
+- **Terminal-only dependency ban** — the `ban-terminal-only-deps` plugin in `tsup.config.ts` fails the build when a bundle-reachable module imports one of the terminal-only packages (`ink`, `chalk`, `ansi-escapes`, …) or a path inside `src/ui`. The list is declared once in `tsup.config.ts` and re-derived from the actual import sites by `tests/build-guards.test.ts`, which fails if the two drift apart.
 - **`react` and `react-dom` are allowed** — the cross-platform hooks under `src/ui/**` are public API and depend on them.
 - **Ambiguous export scan** — once the bundle is written, the build runs the TypeScript ambiguous-export check (`TS2308`) over the library graph. A name exported by two `export *` sources is dropped by the bundler without any warning; the scan turns that into a build failure instead of a quietly smaller public API.
 

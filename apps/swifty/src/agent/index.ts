@@ -362,7 +362,11 @@ export class Agent {
             this.abortSignal,
           );
           if (mc.message) {
-            yield { type: "compact", message: mc.message, boundary: mc.boundary };
+            yield {
+              type: "compact",
+              message: mc.message,
+              boundary: mc.boundary,
+            };
           }
           if (mc.compacted) {
             this.restoreContext();
@@ -538,7 +542,11 @@ export class Agent {
                   "Output token limit hit. Resume directly from where you stopped. Do not apologize or repeat previous content. Pick up mid-thought if needed.",
                 );
               }
-              yield { type: "retry", reason: "max_tokens escalation", delay: 0 };
+              yield {
+                type: "retry",
+                reason: "max_tokens escalation",
+                delay: 0,
+              };
               continue;
             } else if (outputRecoveries < MAX_TOKENS_RECOVERIES) {
               outputRecoveries++;
@@ -1023,7 +1031,7 @@ export class Agent {
    * Persist the most recently appended conversation message to the session log.
    *
    * Persistence lives in the main loop rather than in individual frontends: both
-   * the TUI and Web share the same recording path, ensuring intermediate assistant
+   * the UI and Web share the same recording path, ensuring intermediate assistant
    * text and complete tool-call chains are captured for session restoration.
    * Skipped when sessionId is empty (one-shot invocations, sub-agents).
    */

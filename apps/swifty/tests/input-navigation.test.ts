@@ -22,9 +22,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { layoutInputRows, locateInputCursor, moveInputVertically } from "@/tui/input-navigation.js";
-import { collapsePaste, inputBoundary } from "@/tui/input-paste.js";
-import { visibleWidth } from "@/tui/terminal-text.js";
+import { layoutInputRows, locateInputCursor, moveInputVertically } from "@/ui/input-navigation.js";
+import { collapsePaste, inputBoundary } from "@/ui/input-paste.js";
+import { visibleWidth } from "@/ui/terminal-text.js";
 
 describe("input visual-row navigation", () => {
   it("preserves the preferred cell column across short logical lines in both directions", () => {
@@ -89,7 +89,11 @@ describe("input visual-row navigation", () => {
       "efgh",
       "i ",
     ]);
-    expect(locateInputCursor(rows, 0, 9)).toEqual({ row: 2, cell: 1, column: 1 });
+    expect(locateInputCursor(rows, 0, 9)).toEqual({
+      row: 2,
+      cell: 1,
+      column: 1,
+    });
     expect(moveInputVertically(rows, 0, 9, -1)).toEqual({
       cursorLine: 0,
       cursorCol: 5,
@@ -111,7 +115,11 @@ describe("input visual-row navigation", () => {
   it("keeps an end caret on its own row after an exactly full line", () => {
     const rows = layoutInputRows(["abcd"], 4);
     expect(rows).toHaveLength(2);
-    expect(locateInputCursor(rows, 0, 4)).toEqual({ row: 1, cell: 0, column: 0 });
+    expect(locateInputCursor(rows, 0, 4)).toEqual({
+      row: 1,
+      cell: 0,
+      column: 0,
+    });
     expect(moveInputVertically(rows, 0, 4, -1)?.cursorCol).toBe(0);
     expect(moveInputVertically(rows, 0, 0, 1)?.cursorCol).toBe(4);
   });
@@ -173,7 +181,11 @@ describe("input visual-row navigation", () => {
         .filter((row) => row.line === 1)
         .map((row) => row.cells.map((cell) => cell.text).join("")),
     ).toEqual(["界a", " "]);
-    expect(locateInputCursor(rows, 1, 0)).toEqual({ row: 2, cell: 0, column: 0 });
+    expect(locateInputCursor(rows, 1, 0)).toEqual({
+      row: 2,
+      cell: 0,
+      column: 0,
+    });
     expect(locateInputCursor(rows, 1, "\x1b[31m界".length)).toEqual({
       row: 2,
       cell: 1,

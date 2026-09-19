@@ -28,7 +28,7 @@
 //   with tsup noExternal bundling. Writes are buffered asynchronously; the
 //   process exit handler calls closeLogger(), which flushSync()s the buffer.
 // - Writes to a file fd; stdout is only mirrored in remote mode via the
-//   `stdout` option (Ink owns stdout in TUI mode; teammates use it for IPC).
+//   `stdout` option (Ink owns stdout in UI mode; teammates use it for IPC).
 // - Before initLogger(), a Proxy falls back to a silent pino logger so early
 //   log calls are safe no-ops (startup errors should use console.error).
 
@@ -40,7 +40,7 @@ import { join, dirname, basename } from "node:path";
 import pino, { type Logger, type LoggerOptions } from "pino";
 
 /** Execution mode, written into the base field of every log entry. */
-type LoggerMode = "tui" | "remote" | "teammate";
+type LoggerMode = "terminal" | "remote" | "teammate";
 
 /** Options for initLogger. Named to avoid clashing with pino's LoggerOptions. */
 interface InitLoggerOptions {
@@ -56,7 +56,7 @@ interface InitLoggerOptions {
   skipCleanup?: boolean;
   /**
    * Mirror JSONL to stdout in addition to the log file. Only safe in remote
-   * mode (TUI owns stdout; teammates use it for IPC). Lets users watch logs
+   * mode (UI owns stdout; teammates use it for IPC). Lets users watch logs
    * live or pipe them through pino-pretty.
    */
   stdout?: boolean;

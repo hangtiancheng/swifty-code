@@ -22,12 +22,6 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  parseOsc11BackgroundColor,
-  parseTerminalColorSchemeReport,
-  themeForRgb,
-  themeFromEnvironment,
-} from "@/bootstrap/terminal-theme.js";
 import { THINKING_LEVELS } from "@/config/index.js";
 import {
   activityStatusColor,
@@ -37,6 +31,12 @@ import {
   THEME,
   thinkingLevelColor,
 } from "@/ui/styles.js";
+import {
+  parseOsc11BackgroundColor,
+  parseTerminalColorSchemeReport,
+  themeForRgb,
+  themeFromEnvironment,
+} from "@/ui/terminal-theme.js";
 
 afterEach(() => {
   setThemeMode("dark");

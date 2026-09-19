@@ -95,7 +95,7 @@ function capturePane(scrollback = 0) {
 }
 
 /**
- * Start a fresh tmux session, waiting for the TUI to be ready.
+ * Start a fresh tmux session, waiting for the UI to be ready.
  * @returns {Promise<boolean>}
  */
 async function startSession() {

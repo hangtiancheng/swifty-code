@@ -26,7 +26,7 @@ import { Marked } from "marked";
 
 import { visibleWidth, wrapToLines } from "./terminal-text.js";
 
-import { markedTerminal } from "@/tui/marked-terminal.js";
+import { markedTerminal } from "@/ui/marked-terminal.js";
 import { THEME } from "@/ui/styles.js";
 
 chalk.level = 3;
