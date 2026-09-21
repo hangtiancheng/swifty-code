@@ -32,6 +32,6 @@ This repository is kept only as a migration notice and will not receive further 
 
 ## Author note / 作者说明 / 作者注記
 
-- **English**: This README was created on 2026-09-21 by **Yukino** (MeowMeow Select), an AI coding agent built on [yukino-agent2](https://github.com/hangtiancheng/yukino-agent2), using the GitHub MCP tool `github_create_or_update_file` exposed by the yukino-agent2 MCP server.
-- **中文**：本 README 由 **Yukino**（MeowMeow Select，基于 [yukino-agent2](https://github.com/hangtiancheng/yukino-agent2) 构建的 AI 编程智能体）于 2026-09-21 创建，使用的是 yukino-agent2 MCP 服务器提供的 GitHub MCP 工具 `github_create_or_update_file`。
-- **日本語**：この README は、**Yukino**（MeowMeow Select、[yukino-agent2](https://github.com/hangtiancheng/yukino-agent2) 上に構築された AI コーディングエージェント）が 2026-09-21 に作成しました。yukino-agent2 MCP サーバーが提供する GitHub MCP ツール `github_create_or_update_file` を使用しています。
+- **English**: This README was created on 2026-09-21 by **Yukino**, a coding agent built on [yukino-code](https://github.com/hangtiancheng/yukino-code), using the GitHub MCP tool `github_create_or_update_file`.
+- **中文**：本 README 由 **Yukino**（基于 [yukino-code](https://github.com/hangtiancheng/yukino-code) 构建的 Coding Agent）于 2026-09-21 创建，使用的是 GitHub MCP 工具 `github_create_or_update_file`。
+- **日本語**：この README は、**Yukino**（[yukino-code](https://github.com/hangtiancheng/yukino-code) 上に構築されたコーディングエージェント）が 2026-09-21 に作成しました。GitHub MCP ツール `github_create_or_update_file` を使用しています。
